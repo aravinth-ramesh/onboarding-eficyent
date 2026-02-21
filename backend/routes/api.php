@@ -1,0 +1,64 @@
+<?php
+
+use App\Http\Controllers\Admin;
+use App\Http\Controllers\Api;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Public Auth Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('auth')->group(function () {
+    Route::post('/send-otp', [Api\AuthController::class, 'sendOtp']);
+    Route::post('/verify-otp', [Api\AuthController::class, 'verifyOtp']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Authenticated User API Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+    // Auth
+    Route::get('/auth/me', [Api\AuthController::class, 'me']);
+    Route::post('/auth/logout', [Api\AuthController::class, 'logout']);
+
+    // User Types (public list for onboarding)
+    Route::get('/user-types', [Api\UserTypeController::class, 'index']);
+
+    // Onboarding
+    Route::prefix('onboarding')->group(function () {
+        Route::get('/status', [Api\OnboardingController::class, 'status']);
+        Route::post('/set-type', [Api\OnboardingController::class, 'setUserType']);
+        Route::get('/questions', [Api\OnboardingController::class, 'questions']);
+        Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
+        Route::post('/steps/{step}/complete', [Api\OnboardingController::class, 'completeStep']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    // User Types
+    Route::apiResource('user-types', Admin\UserTypeController::class);
+    Route::apiResource('user-types.subcategories', Admin\SubcategoryController::class);
+
+    // Questions
+    Route::apiResource('question-groups', Admin\QuestionGroupController::class);
+    Route::apiResource('questions', Admin\QuestionController::class);
+    Route::apiResource('conditional-rules', Admin\ConditionalRuleController::class);
+
+    // Onboarding Steps (Master Template)
+    Route::apiResource('onboarding-steps', Admin\OnboardingStepController::class);
+    Route::post('onboarding-steps/reorder', [Admin\OnboardingStepController::class, 'reorder']);
+
+    // User Onboarding Management
+    Route::get('user-onboardings', [Admin\UserOnboardingController::class, 'index']);
+    Route::get('user-onboardings/{user_onboarding}', [Admin\UserOnboardingController::class, 'show']);
+    Route::post('user-onboardings/{user_onboarding}/reorder-steps', [Admin\UserOnboardingController::class, 'reorderSteps']);
+    Route::get('audit-logs', [Admin\UserOnboardingController::class, 'auditLogs']);
+});
