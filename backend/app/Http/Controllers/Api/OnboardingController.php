@@ -23,6 +23,37 @@ class OnboardingController extends Controller
     ) {}
 
     /**
+     * Format onboarding data consistently for all endpoints.
+     */
+    private function formatOnboardingResponse(UserOnboarding $onboarding): array
+    {
+        $onboarding->load(['steps', 'userType', 'subcategory']);
+
+        $steps = $onboarding->steps->map(fn (UserOnboardingStep $step) => [
+            'id' => $step->id,
+            'name' => $step->name,
+            'component_key' => $step->component_key,
+            'order' => $step->order,
+            'status' => $step->status,
+            'config' => $step->config,
+            'started_at' => $step->started_at,
+            'completed_at' => $step->completed_at,
+        ]);
+
+        return [
+            'id' => $onboarding->id,
+            'status' => $onboarding->status,
+            'user_type' => $onboarding->userType,
+            'subcategory' => $onboarding->subcategory,
+            'template_version' => $onboarding->template_version,
+            'current_step' => $steps->firstWhere('id', $onboarding->current_step_id),
+            'steps' => $steps,
+            'started_at' => $onboarding->started_at,
+            'completed_at' => $onboarding->completed_at,
+        ];
+    }
+
+    /**
      * Get or initialize the user's onboarding state.
      */
     public function status(): JsonResponse
@@ -34,29 +65,8 @@ class OnboardingController extends Controller
             $onboarding = $this->onboardingService->initializeForUser($user);
         }
 
-        $onboarding->load(['steps', 'userType', 'subcategory']);
-
         return response()->json([
-            'data' => [
-                'id' => $onboarding->id,
-                'status' => $onboarding->status,
-                'user_type' => $onboarding->userType,
-                'subcategory' => $onboarding->subcategory,
-                'template_version' => $onboarding->template_version,
-                'current_step' => $onboarding->steps->firstWhere('id', $onboarding->current_step_id),
-                'steps' => $onboarding->steps->map(fn (UserOnboardingStep $step) => [
-                    'id' => $step->id,
-                    'name' => $step->name,
-                    'component_key' => $step->component_key,
-                    'order' => $step->order,
-                    'status' => $step->status,
-                    'config' => $step->config,
-                    'started_at' => $step->started_at,
-                    'completed_at' => $step->completed_at,
-                ]),
-                'started_at' => $onboarding->started_at,
-                'completed_at' => $onboarding->completed_at,
-            ],
+            'data' => $this->formatOnboardingResponse($onboarding),
         ]);
     }
 
@@ -80,7 +90,7 @@ class OnboardingController extends Controller
 
         return response()->json([
             'message' => 'User type set successfully.',
-            'data' => $onboarding,
+            'data' => $this->formatOnboardingResponse($onboarding),
         ]);
     }
 
@@ -196,7 +206,7 @@ class OnboardingController extends Controller
 
         return response()->json([
             'message' => 'Step completed.',
-            'data' => $onboarding,
+            'data' => $this->formatOnboardingResponse($onboarding),
         ]);
     }
 
@@ -216,7 +226,7 @@ class OnboardingController extends Controller
 
         return response()->json([
             'message' => 'Returned to previous step.',
-            'data' => $onboarding,
+            'data' => $this->formatOnboardingResponse($onboarding),
         ]);
     }
 }

@@ -4,7 +4,7 @@ import { fetchUserTypes, selectUserType, completeOnboardingStep, fetchOnboarding
 
 function SelectTypeStep({ step }) {
   const dispatch = useDispatch();
-  const { userTypes, loading } = useSelector((state) => state.onboarding);
+  const { userTypes, loading, userType, subcategory } = useSelector((state) => state.onboarding);
 
   const [selectedType, setSelectedType] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
@@ -13,6 +13,16 @@ function SelectTypeStep({ step }) {
   useEffect(() => {
     dispatch(fetchUserTypes());
   }, [dispatch]);
+
+  // Pre-select already chosen user type and subcategory
+  useEffect(() => {
+    if (userType && selectedType === null) {
+      setSelectedType(userType.id);
+    }
+    if (subcategory && selectedSubcategory === null) {
+      setSelectedSubcategory(subcategory.id);
+    }
+  }, [userType, subcategory, selectedType, selectedSubcategory]);
 
   const currentType = userTypes.find((t) => t.id === selectedType);
 
