@@ -48,6 +48,7 @@ const authSlice = createSlice({
     loading: false,
     otpSent: false,
     error: null,
+    email: null
   },
   reducers: {
     clearError: (state) => {
@@ -79,9 +80,10 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(sendOtp.fulfilled, (state) => {
+      .addCase(sendOtp.fulfilled, (state, action) => {
         state.loading = false;
         state.otpSent = true;
+        state.email = action.meta.arg;
       })
       .addCase(sendOtp.rejected, (state, action) => {
         state.loading = false;

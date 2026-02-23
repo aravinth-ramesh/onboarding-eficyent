@@ -7,16 +7,16 @@ import appConfig from '../../appConfig';
 function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, otpSent, error } = useSelector((state) => state.auth);
+  const { loading, otpSent, error, email } = useSelector((state) => state.auth);
 
-  const [email, setEmail] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
     dispatch(clearError());
-    await dispatch(sendOtp(email));
+    await dispatch(sendOtp(emailInput));
   };
 
   const submitOtp = useCallback((code) => {
@@ -117,8 +117,8 @@ function LoginPage() {
                     type="email"
                     className="form-control"
                     placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
                     required
                     autoFocus
                     style={{ width: '100%', padding: '0.65rem 0.85rem' }}

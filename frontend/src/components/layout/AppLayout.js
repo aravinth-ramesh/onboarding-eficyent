@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 import appConfig from '../../appConfig';
+import { Link } from 'react-router-dom';
 
 function AppLayout({ children, pageTitle }) {
   const dispatch = useDispatch();
@@ -37,10 +38,10 @@ function AppLayout({ children, pageTitle }) {
         </div>
 
         <nav className="sidebar-nav">
-          <a href="/home" className="sidebar-nav-item active">
-            <span className="sidebar-nav-icon">&#9632;</span>
-            Onboarding
-          </a>
+          <Link to="/home" className="sidebar-nav-item active">
+          <span className="sidebar-nav-icon">&#9632;</span>
+          Onboarding
+          </Link>
         </nav>
 
         <div className="sidebar-footer">
