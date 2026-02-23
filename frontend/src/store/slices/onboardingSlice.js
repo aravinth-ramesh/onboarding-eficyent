@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { logoutUser } from './authSlice';
+import { logoutUser, clearAuth } from './authSlice';
 import * as onboardingApi from '../../api/onboarding';
 
 export const fetchOnboardingStatus = createAsyncThunk(
@@ -182,7 +182,19 @@ const onboardingSlice = createSlice({
         state.steps = action.payload.steps;
         state.currentStep = action.payload.current_step;
       })
-      // Clear onboarding state on logout
+      // Clear onboarding state on logout (sync clearAuth or async logoutUser.fulfilled)
+      .addCase(clearAuth, (state) => {
+        state.status = null;
+        state.steps = [];
+        state.currentStep = null;
+        state.userType = null;
+        state.subcategory = null;
+        state.userTypes = [];
+        state.questionGroups = [];
+        state.answers = {};
+        state.loading = false;
+        state.error = null;
+      })
       .addCase(logoutUser.fulfilled, (state) => {
         state.status = null;
         state.steps = [];

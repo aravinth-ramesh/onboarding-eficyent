@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { logoutUser } from '../../store/slices/authSlice';
+import { logoutUser, clearAuth } from '../../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import { Link } from 'react-router-dom';
@@ -11,9 +11,14 @@ function AppLayout({ children, pageTitle }) {
   const { user } = useSelector((state) => state.auth);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
-    setShowLogoutModal(false);
-    await dispatch(logoutUser());
+  const handleLogout = () => {
+    // 1. Clear token from storage immediately
+    localStorage.removeItem('auth_token');
+    // 2. Clear Redux auth state synchronously (triggers ProtectedRoute redirect)
+    dispatch(clearAuth());
+    // 3. Fire server-side token revocation in background (fire-and-forget)
+    dispatch(logoutUser());
+    // 4. Navigate to login
     navigate('/login');
   };
 
