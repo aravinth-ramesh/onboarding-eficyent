@@ -62,7 +62,18 @@ function KycStep({ step, onBack, isFirstStep }) {
               />
               {files[doc.key] ? (
                 <>
-                  <div className="kyc-upload-success">{'\u2713'} {files[doc.key].name}</div>
+                  <div className="kyc-upload-success">
+                    {'\u2713'}{' '}
+                    <a
+                      href={URL.createObjectURL(files[doc.key])}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="kyc-file-link"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {files[doc.key].name}
+                    </a>
+                  </div>
                   <div className="kyc-upload-hint">Click to replace</div>
                 </>
               ) : (

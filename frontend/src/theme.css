@@ -869,6 +869,16 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
+.kyc-file-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.kyc-file-link:hover {
+  color: var(--color-accent-hover);
+}
+
 /* ── Status Badge ── */
 .status-badge {
   display: inline-flex;
