@@ -199,4 +199,24 @@ class OnboardingController extends Controller
             'data' => $onboarding,
         ]);
     }
+
+    /**
+     * Go back to the previous step.
+     */
+    public function previousStep(UserOnboardingStep $step): JsonResponse
+    {
+        $user = auth()->user();
+        $onboarding = $user->onboarding;
+
+        if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
+            return response()->json(['message' => 'Step not found.'], 404);
+        }
+
+        $onboarding = $this->onboardingService->goToPreviousStep($onboarding, $step);
+
+        return response()->json([
+            'message' => 'Returned to previous step.',
+            'data' => $onboarding,
+        ]);
+    }
 }

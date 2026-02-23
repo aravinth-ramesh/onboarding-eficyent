@@ -95,6 +95,37 @@ class OnboardingService
         return $onboarding->fresh('steps');
     }
 
+    /**
+     * Go back to the previous step.
+     */
+    public function goToPreviousStep(UserOnboarding $onboarding, UserOnboardingStep $currentStep): UserOnboarding
+    {
+        $previousStep = $onboarding->steps()
+            ->where('order', '<', $currentStep->order)
+            ->orderByDesc('order')
+            ->first();
+
+        if (!$previousStep) {
+            return $onboarding->fresh('steps');
+        }
+
+        // Reset current step back to pending
+        $currentStep->update([
+            'status' => 'pending',
+            'started_at' => null,
+        ]);
+
+        // Re-open the previous step
+        $previousStep->update([
+            'status' => 'in_progress',
+            'completed_at' => null,
+        ]);
+
+        $onboarding->update(['current_step_id' => $previousStep->id]);
+
+        return $onboarding->fresh('steps');
+    }
+
     private function getCurrentTemplateVersion(): int
     {
         return OnboardingStep::max('version') ?? 1;

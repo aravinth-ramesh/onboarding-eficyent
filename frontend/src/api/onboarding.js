@@ -20,3 +20,6 @@ export const saveAnswers = (answers) =>
 
 export const completeStep = (stepId) =>
   client.post(`/onboarding/steps/${stepId}/complete`);
+
+export const previousStep = (stepId) =>
+  client.post(`/onboarding/steps/${stepId}/previous`);

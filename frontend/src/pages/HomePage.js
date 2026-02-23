@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { Spinner, Alert } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchOnboardingStatus } from '../store/slices/onboardingSlice';
+import { fetchOnboardingStatus, goToPreviousStep } from '../store/slices/onboardingSlice';
 import AppLayout from '../components/layout/AppLayout';
 import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
+import appConfig from '../appConfig';
 
 function HomePage() {
   const dispatch = useDispatch();
@@ -16,12 +16,22 @@ function HomePage() {
     dispatch(fetchOnboardingStatus());
   }, [dispatch]);
 
+  const handleBack = () => {
+    if (currentStep) {
+      dispatch(goToPreviousStep(currentStep.id)).then(() => {
+        dispatch(fetchOnboardingStatus());
+      });
+    }
+  };
+
+  const isFirstStep = currentStep && steps.length > 0 && steps[0].id === currentStep.id;
+
   if (loading && steps.length === 0) {
     return (
-      <AppLayout>
-        <div className="text-center py-5">
-          <Spinner animation="border" />
-          <p className="mt-2">Loading your onboarding...</p>
+      <AppLayout pageTitle="Client Onboarding">
+        <div className="spinner-corporate">
+          <div className="spinner-border" role="status" />
+          <p>Loading your onboarding...</p>
         </div>
       </AppLayout>
     );
@@ -29,29 +39,34 @@ function HomePage() {
 
   if (status === 'completed') {
     return (
-      <AppLayout>
-        <div className="text-center py-5">
-          <h2 className="text-success">Onboarding Complete</h2>
-          <p className="text-muted mt-2">
-            Your application has been submitted and is under review.
-          </p>
+      <AppLayout pageTitle="Onboarding Complete">
+        <div className="ob-card">
+          <div className="ob-card-body">
+            <div className="completion-screen">
+              <div className="completion-icon">{'\u2713'}</div>
+              <h2>{appConfig.onboardingComplete.heading}</h2>
+              <p>{appConfig.onboardingComplete.message}</p>
+            </div>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout>
-      {error && <Alert variant="danger">{error}</Alert>}
+    <AppLayout pageTitle="Client Onboarding">
+      {error && (
+        <div className="alert-corporate danger" style={{ marginBottom: 16 }}>{error}</div>
+      )}
 
       {steps.length > 0 && (
         <StepIndicator steps={steps} currentStepId={currentStep?.id} />
       )}
 
       {currentStep ? (
-        <StepRenderer step={currentStep} />
+        <StepRenderer step={currentStep} onBack={handleBack} isFirstStep={isFirstStep} />
       ) : (
-        <Alert variant="info">No active onboarding step found.</Alert>
+        <div className="alert-corporate info">No active onboarding step found.</div>
       )}
     </AppLayout>
   );

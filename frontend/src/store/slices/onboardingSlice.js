@@ -73,6 +73,18 @@ export const completeOnboardingStep = createAsyncThunk(
   }
 );
 
+export const goToPreviousStep = createAsyncThunk(
+  'onboarding/previousStep',
+  async (stepId, { rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.previousStep(stepId);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to go back');
+    }
+  }
+);
+
 const onboardingSlice = createSlice({
   name: 'onboarding',
   initialState: {
@@ -155,6 +167,12 @@ const onboardingSlice = createSlice({
       })
       // Complete Step
       .addCase(completeOnboardingStep.fulfilled, (state, action) => {
+        state.status = action.payload.status;
+        state.steps = action.payload.steps;
+        state.currentStep = action.payload.current_step;
+      })
+      // Previous Step
+      .addCase(goToPreviousStep.fulfilled, (state, action) => {
         state.status = action.payload.status;
         state.steps = action.payload.steps;
         state.currentStep = action.payload.current_step;

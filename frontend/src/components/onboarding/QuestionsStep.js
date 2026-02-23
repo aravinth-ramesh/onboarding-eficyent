@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Form, Button, Alert, Spinner, Accordion } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchQuestions,
@@ -11,19 +10,30 @@ import {
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
 import QuestionField from './QuestionField';
 
-function QuestionsStep({ step }) {
+function QuestionsStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
   const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
   const [validationErrors, setValidationErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   useEffect(() => {
     dispatch(fetchQuestions());
   }, [dispatch]);
 
+  // Auto-expand first group
+  useEffect(() => {
+    if (questionGroups.length > 0 && Object.keys(expandedGroups).length === 0) {
+      setExpandedGroups({ [questionGroups[0].id]: true });
+    }
+  }, [questionGroups, expandedGroups]);
+
+  const toggleGroup = (groupId) => {
+    setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
   const handleAnswerChange = (questionId, value) => {
     dispatch(setAnswer({ questionId, value }));
-    // Clear validation error on change
     if (validationErrors[questionId]) {
       setValidationErrors((prev) => {
         const next = { ...prev };
@@ -64,10 +74,8 @@ function QuestionsStep({ step }) {
     }));
 
     const result = await dispatch(submitAnswers(answersPayload));
-    if (!result.error) {
-      return true;
-    }
-    setSubmitError('Failed to save answers.');
+    if (!result.error) return true;
+    setSubmitError('Failed to save answers. Please try again.');
     return false;
   };
 
@@ -75,6 +83,14 @@ function QuestionsStep({ step }) {
     const errors = validate();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      // Expand groups with errors
+      const groupsWithErrors = {};
+      questionGroups.forEach((group) => {
+        group.questions.forEach((q) => {
+          if (errors[q.id]) groupsWithErrors[group.id] = true;
+        });
+      });
+      setExpandedGroups((prev) => ({ ...prev, ...groupsWithErrors }));
       return;
     }
 
@@ -87,45 +103,62 @@ function QuestionsStep({ step }) {
 
   if (loading && questionGroups.length === 0) {
     return (
-      <div className="text-center py-4">
-        <Spinner animation="border" />
+      <div className="spinner-corporate">
+        <div className="spinner-border" role="status" />
+        <p>Loading questions...</p>
       </div>
     );
   }
 
   return (
-    <Card>
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">Onboarding Questions</h5>
-        <Button variant="outline-secondary" size="sm" onClick={handleSave} disabled={loading}>
-          {loading ? <Spinner size="sm" /> : 'Save Draft'}
-        </Button>
-      </Card.Header>
-      <Card.Body>
-        {submitError && <Alert variant="danger">{submitError}</Alert>}
+    <div className="ob-card">
+      <div className="ob-card-header">
+        <h5>Onboarding Questions</h5>
+        <button className="btn-outline-custom" onClick={handleSave} disabled={loading}>
+          {loading ? 'Saving...' : 'Save Draft'}
+        </button>
+      </div>
+      <div className="ob-card-body">
+        {submitError && (
+          <div className="alert-corporate danger" style={{ marginBottom: 16 }}>{submitError}</div>
+        )}
 
-        <Accordion defaultActiveKey={questionGroups[0]?.id?.toString()} alwaysOpen>
-          {questionGroups.map((group) => {
-            const visibleQuestions = group.questions.filter(isQuestionVisible);
-            if (visibleQuestions.length === 0) return null;
+        {questionGroups.map((group) => {
+          const visibleQuestions = group.questions.filter(isQuestionVisible);
+          if (visibleQuestions.length === 0) return null;
 
-            return (
-              <Accordion.Item eventKey={group.id.toString()} key={group.id}>
-                <Accordion.Header>{group.name}</Accordion.Header>
-                <Accordion.Body>
+          const isExpanded = expandedGroups[group.id] !== false;
+          const hasErrors = visibleQuestions.some((q) => validationErrors[q.id]);
+
+          return (
+            <div key={group.id} className="question-group">
+              <div
+                className="question-group-header"
+                onClick={() => toggleGroup(group.id)}
+              >
+                <span>
+                  {group.name}
+                  {hasErrors && <span style={{ color: 'var(--color-danger)', marginLeft: 8, fontSize: '0.75rem' }}>Has errors</span>}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  {isExpanded ? '\u25B2' : '\u25BC'}
+                </span>
+              </div>
+              {isExpanded && (
+                <div className="question-group-body">
                   {group.description && (
-                    <p className="text-muted mb-3">{group.description}</p>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: 16 }}>
+                      {group.description}
+                    </p>
                   )}
                   {visibleQuestions.map((question) => (
-                    <Form.Group key={question.id} className="mb-3">
-                      <Form.Label>
+                    <div key={question.id} className="question-field">
+                      <label className="question-label">
                         {question.label}
-                        {question.is_required && <span className="text-danger"> *</span>}
-                      </Form.Label>
+                        {question.is_required && <span className="required">*</span>}
+                      </label>
                       {question.help_text && (
-                        <Form.Text className="d-block text-muted mb-1">
-                          {question.help_text}
-                        </Form.Text>
+                        <div className="question-help">{question.help_text}</div>
                       )}
                       <QuestionField
                         question={question}
@@ -133,25 +166,27 @@ function QuestionsStep({ step }) {
                         onChange={handleAnswerChange}
                       />
                       {validationErrors[question.id] && (
-                        <Form.Text className="text-danger">
-                          {validationErrors[question.id]}
-                        </Form.Text>
+                        <div className="question-error">{validationErrors[question.id]}</div>
                       )}
-                    </Form.Group>
+                    </div>
                   ))}
-                </Accordion.Body>
-              </Accordion.Item>
-            );
-          })}
-        </Accordion>
-
-        <div className="mt-4 d-flex justify-content-end">
-          <Button variant="primary" onClick={handleContinue} disabled={loading}>
-            {loading ? <Spinner size="sm" /> : 'Save & Continue'}
-          </Button>
-        </div>
-      </Card.Body>
-    </Card>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="ob-card-footer">
+        {!isFirstStep ? (
+          <button className="btn-secondary-custom" onClick={onBack}>
+            &#8592; Back
+          </button>
+        ) : <div />}
+        <button className="btn-primary-custom" onClick={handleContinue} disabled={loading}>
+          {loading ? 'Saving...' : 'Save & Continue \u2192'}
+        </button>
+      </div>
+    </div>
   );
 }
 

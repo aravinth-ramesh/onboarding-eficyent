@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import React, { useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { sendOtp, verifyOtp, clearError, resetOtpState } from '../../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import appConfig from '../../appConfig';
 
 function LoginPage() {
   const dispatch = useDispatch();
@@ -10,87 +10,179 @@ function LoginPage() {
   const { loading, otpSent, error } = useSelector((state) => state.auth);
 
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef([]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
     dispatch(clearError());
-    const result = await dispatch(sendOtp(email));
-    if (!result.error) {
-      // OTP sent successfully
+    await dispatch(sendOtp(email));
+  };
+
+  const submitOtp = useCallback((code) => {
+    dispatch(clearError());
+    dispatch(verifyOtp({ email, code })).then((result) => {
+      if (!result.error) navigate('/home');
+    });
+  }, [email, dispatch, navigate]);
+
+  const handleOtpChange = useCallback((index, value) => {
+    if (value.length > 1) value = value.charAt(value.length - 1);
+    if (value && !/^\d$/.test(value)) return;
+
+    setOtpDigits((prev) => {
+      const next = [...prev];
+      next[index] = value;
+
+      if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
+
+      const code = next.join('');
+      if (code.length === 6 && value) {
+        setTimeout(() => submitOtp(code), 50);
+      }
+
+      return next;
+    });
+  }, [submitOtp]);
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleVerifyOtp = async (e) => {
+  const handleOtpPaste = (e) => {
     e.preventDefault();
-    dispatch(clearError());
-    const result = await dispatch(verifyOtp({ email, code }));
-    if (!result.error) {
-      navigate('/home');
-    }
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const newDigits = Array.from({ length: 6 }, (_, i) => pasted[i] || '');
+    setOtpDigits(newDigits);
+    if (pasted.length === 6) submitOtp(pasted);
+  };
+
+  const handleVerifyManual = async (e) => {
+    e.preventDefault();
+    const code = otpDigits.join('');
+    if (code.length !== 6) return;
+    submitOtp(code);
   };
 
   const handleBack = () => {
     dispatch(resetOtpState());
-    setCode('');
+    setOtpDigits(['', '', '', '', '', '']);
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center min-vh-100 bg-light">
-      <Card style={{ width: '100%', maxWidth: '420px' }}>
-        <Card.Body className="p-4">
-          <h3 className="text-center mb-4">Login</h3>
-
-          {error && (
-            <Alert variant="danger" dismissible onClose={() => dispatch(clearError())}>
-              {error}
-            </Alert>
-          )}
-
-          {!otpSent ? (
-            <Form onSubmit={handleSendOtp}>
-              <Form.Group className="mb-3">
-                <Form.Label>Email Address</Form.Label>
-                <Form.Control
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </Form.Group>
-              <Button type="submit" variant="primary" className="w-100" disabled={loading}>
-                {loading ? <Spinner size="sm" /> : 'Send Verification Code'}
-              </Button>
-            </Form>
+    <div className="login-page">
+      {/* Left branding panel */}
+      <div className="login-left-panel">
+        <div style={{ maxWidth: 400 }}>
+          {appConfig.logoUrl ? (
+            <img src={appConfig.logoUrl} alt={appConfig.siteName} style={{ height: 48, marginBottom: 24 }} />
           ) : (
-            <Form onSubmit={handleVerifyOtp}>
-              <p className="text-muted mb-3">
-                A verification code has been sent to <strong>{email}</strong>
-              </p>
-              <Form.Group className="mb-3">
-                <Form.Label>Verification Code</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="Enter 6-digit code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  maxLength={6}
-                  required
-                  autoFocus
-                />
-              </Form.Group>
-              <Button type="submit" variant="primary" className="w-100 mb-2" disabled={loading}>
-                {loading ? <Spinner size="sm" /> : 'Verify & Login'}
-              </Button>
-              <Button variant="link" className="w-100" onClick={handleBack}>
-                Use a different email
-              </Button>
-            </Form>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: 8 }}>
+              {appConfig.siteName}
+            </div>
           )}
-        </Card.Body>
-      </Card>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 400 }}>{appConfig.siteTagline}</h1>
+          <p style={{ fontSize: '0.9rem', marginTop: 16, lineHeight: 1.7 }}>
+            Complete your onboarding process securely and efficiently. Our streamlined
+            workflow guides you through each step.
+          </p>
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div className="login-right-panel">
+        <div className="login-card">
+          {!otpSent ? (
+            <>
+              <h2>{appConfig.login.heading}</h2>
+              <p className="login-subtitle">{appConfig.login.subheading}</p>
+
+              {error && (
+                <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSendOtp}>
+                <div style={{ marginBottom: 16 }}>
+                  <label className="question-label" style={{ display: 'block', marginBottom: 6 }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoFocus
+                    style={{ width: '100%', padding: '0.65rem 0.85rem' }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary-custom"
+                  disabled={loading}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.7rem' }}
+                >
+                  {loading ? 'Sending...' : 'Continue'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2>{appConfig.login.otpHeading}</h2>
+              <p className="login-subtitle">
+                We sent a 6-digit code to <strong>{email}</strong>
+              </p>
+
+              {error && (
+                <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyManual}>
+                <div className="otp-input-group" onPaste={handleOtpPaste}>
+                  {otpDigits.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => (inputRefs.current[i] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      autoFocus={i === 0}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-primary-custom"
+                  disabled={loading || otpDigits.join('').length !== 6}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.7rem', marginBottom: 12 }}
+                >
+                  {loading ? 'Verifying...' : 'Verify & Sign In'}
+                </button>
+
+                <div style={{ textAlign: 'center' }}>
+                  <button type="button" className="btn-link-custom" onClick={handleBack}>
+                    &#8592; Use a different email
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Card, ListGroup, Button, Alert, Spinner } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchUserTypes, selectUserType, completeOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
 
@@ -19,12 +18,12 @@ function SelectTypeStep({ step }) {
 
   const handleContinue = async () => {
     if (!selectedType) {
-      setError('Please select a type.');
+      setError('Please select an organization type to continue.');
       return;
     }
 
     if (currentType?.has_subcategories && currentType.subcategories.length > 0 && !selectedSubcategory) {
-      setError('Please select a subcategory.');
+      setError('Please select a subcategory to continue.');
       return;
     }
 
@@ -41,64 +40,79 @@ function SelectTypeStep({ step }) {
     }
   };
 
+  if (loading && userTypes.length === 0) {
+    return (
+      <div className="spinner-corporate">
+        <div className="spinner-border" role="status" />
+        <p>Loading organization types...</p>
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <Card.Header>
-        <h5 className="mb-0">Select Your Organization Type</h5>
-      </Card.Header>
-      <Card.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
+    <div className="ob-card">
+      <div className="ob-card-header">
+        <h5>Select Your Organization Type</h5>
+      </div>
+      <div className="ob-card-body">
+        {error && (
+          <div className="alert-corporate danger" style={{ marginBottom: 16 }}>{error}</div>
+        )}
 
-        {loading ? (
-          <div className="text-center py-4">
-            <Spinner animation="border" />
-          </div>
-        ) : (
+        <p className="section-label">Organization Type</p>
+        <div style={{ display: 'grid', gap: 10, marginBottom: 24 }}>
+          {userTypes.map((type) => (
+            <div
+              key={type.id}
+              className={`type-card ${selectedType === type.id ? 'selected' : ''}`}
+              onClick={() => { setSelectedType(type.id); setSelectedSubcategory(null); }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="type-card-check">
+                  {selectedType === type.id && '\u2713'}
+                </div>
+                <div>
+                  <div className="type-card-title">{type.name}</div>
+                  {type.description && <p className="type-card-desc">{type.description}</p>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {currentType?.has_subcategories && currentType.subcategories.length > 0 && (
           <>
-            <ListGroup className="mb-3">
-              {userTypes.map((type) => (
-                <ListGroup.Item
-                  key={type.id}
-                  active={selectedType === type.id}
-                  action
-                  onClick={() => {
-                    setSelectedType(type.id);
-                    setSelectedSubcategory(null);
-                  }}
+            <p className="section-label">Subcategory</p>
+            <div style={{ display: 'grid', gap: 10, marginBottom: 24 }}>
+              {currentType.subcategories.map((sub) => (
+                <div
+                  key={sub.id}
+                  className={`type-card ${selectedSubcategory === sub.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedSubcategory(sub.id)}
                 >
-                  <strong>{type.name}</strong>
-                  {type.description && (
-                    <div className="small text-muted">{type.description}</div>
-                  )}
-                </ListGroup.Item>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="type-card-check">
+                      {selectedSubcategory === sub.id && '\u2713'}
+                    </div>
+                    <div className="type-card-title">{sub.name}</div>
+                  </div>
+                </div>
               ))}
-            </ListGroup>
-
-            {currentType?.has_subcategories && currentType.subcategories.length > 0 && (
-              <>
-                <h6>Select Subcategory</h6>
-                <ListGroup className="mb-3">
-                  {currentType.subcategories.map((sub) => (
-                    <ListGroup.Item
-                      key={sub.id}
-                      active={selectedSubcategory === sub.id}
-                      action
-                      onClick={() => setSelectedSubcategory(sub.id)}
-                    >
-                      {sub.name}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </>
-            )}
-
-            <Button variant="primary" onClick={handleContinue} disabled={!selectedType}>
-              Continue
-            </Button>
+            </div>
           </>
         )}
-      </Card.Body>
-    </Card>
+      </div>
+      <div className="ob-card-footer">
+        <div />
+        <button
+          className="btn-primary-custom"
+          onClick={handleContinue}
+          disabled={!selectedType}
+        >
+          Continue &#8594;
+        </button>
+      </div>
+    </div>
   );
 }
 

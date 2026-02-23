@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Spinner, Alert, Table } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchQuestions,
   completeOnboardingStep,
   fetchOnboardingStatus,
 } from '../../store/slices/onboardingSlice';
+import appConfig from '../../appConfig';
 
-function ReviewStep({ step }) {
+function ReviewStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
   const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +20,7 @@ function ReviewStep({ step }) {
   }, [dispatch, questionGroups.length]);
 
   const formatAnswer = (question, value) => {
-    if (!value) return '-';
+    if (!value) return '\u2014';
 
     if (question.type === 'multi_select') {
       try {
@@ -53,62 +53,64 @@ function ReviewStep({ step }) {
 
   if (loading && questionGroups.length === 0) {
     return (
-      <div className="text-center py-4">
-        <Spinner animation="border" />
+      <div className="spinner-corporate">
+        <div className="spinner-border" role="status" />
+        <p>Loading review...</p>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <Card>
-        <Card.Body className="text-center py-5">
-          <h3 className="text-success mb-3">Onboarding Complete!</h3>
-          <p className="text-muted">
-            Your application has been submitted successfully. We will review your
-            information and get back to you shortly.
-          </p>
-        </Card.Body>
-      </Card>
+      <div className="ob-card">
+        <div className="ob-card-body">
+          <div className="completion-screen">
+            <div className="completion-icon">{'\u2713'}</div>
+            <h2>{appConfig.onboardingComplete.heading}</h2>
+            <p>{appConfig.onboardingComplete.message}</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <Card.Header>
-        <h5 className="mb-0">Review Your Information</h5>
-      </Card.Header>
-      <Card.Body>
-        <Alert variant="info">
-          Please review all your answers below before submitting. You can go back to
-          previous steps to make changes if needed.
-        </Alert>
+    <div className="ob-card">
+      <div className="ob-card-header">
+        <h5>Review Your Information</h5>
+      </div>
+      <div className="ob-card-body">
+        <div className="alert-corporate info" style={{ marginBottom: 20 }}>
+          Please review all your answers before submitting. Use the Back button to make changes.
+        </div>
 
         {questionGroups.map((group) => (
-          <div key={group.id} className="mb-4">
-            <h6 className="border-bottom pb-2">{group.name}</h6>
-            <Table striped bordered size="sm">
+          <div key={group.id} style={{ marginBottom: 24 }}>
+            <p className="section-label">{group.name}</p>
+            <table className="review-table">
               <tbody>
                 {group.questions.map((question) => (
                   <tr key={question.id}>
-                    <td className="fw-bold" style={{ width: '40%' }}>
-                      {question.label}
-                    </td>
-                    <td>{formatAnswer(question, answers[question.id])}</td>
+                    <td className="review-label">{question.label}</td>
+                    <td className="review-value">{formatAnswer(question, answers[question.id])}</td>
                   </tr>
                 ))}
               </tbody>
-            </Table>
+            </table>
           </div>
         ))}
-
-        <div className="mt-4 d-flex justify-content-end">
-          <Button variant="success" size="lg" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Spinner size="sm" /> : 'Submit Application'}
-          </Button>
-        </div>
-      </Card.Body>
-    </Card>
+      </div>
+      <div className="ob-card-footer">
+        {!isFirstStep ? (
+          <button className="btn-secondary-custom" onClick={onBack}>
+            &#8592; Back
+          </button>
+        ) : <div />}
+        <button className="btn-success-custom" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? 'Submitting...' : '\u2713 Submit Application'}
+        </button>
+      </div>
+    </div>
   );
 }
 

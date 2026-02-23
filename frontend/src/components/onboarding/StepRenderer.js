@@ -15,18 +15,18 @@ const STEP_COMPONENTS = {
   review: ReviewStep,
 };
 
-function StepRenderer({ step }) {
+function StepRenderer({ step, onBack, isFirstStep }) {
   const Component = STEP_COMPONENTS[step.component_key];
 
   if (!Component) {
     return (
-      <div className="alert alert-warning">
+      <div className="alert-corporate danger">
         Unknown step type: <code>{step.component_key}</code>
       </div>
     );
   }
 
-  return <Component step={step} />;
+  return <Component step={step} onBack={onBack} isFirstStep={isFirstStep} />;
 }
 
 export default StepRenderer;

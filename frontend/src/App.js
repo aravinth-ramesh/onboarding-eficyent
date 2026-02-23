@@ -5,8 +5,9 @@ import { fetchUser } from './store/slices/authSlice';
 import LoginPage from './components/auth/LoginPage';
 import HomePage from './pages/HomePage';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import { Spinner } from 'react-bootstrap';
+import ThemeProvider from './components/common/ThemeProvider';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './theme.css';
 
 function App() {
   const dispatch = useDispatch();
@@ -21,30 +22,35 @@ function App() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <Spinner animation="border" />
-      </div>
+      <ThemeProvider>
+        <div className="spinner-corporate" style={{ minHeight: '100vh' }}>
+          <div className="spinner-border" role="status" />
+          <p>Loading...</p>
+        </div>
+      </ThemeProvider>
     );
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={isAuthenticated ? <Navigate to="/home" replace /> : <LoginPage />}
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to={isAuthenticated ? '/home' : '/login'} replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/login"
+            element={isAuthenticated ? <Navigate to="/home" replace /> : <LoginPage />}
+          />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to={isAuthenticated ? '/home' : '/login'} replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

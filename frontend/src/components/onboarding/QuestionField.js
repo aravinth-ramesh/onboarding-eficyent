@@ -1,5 +1,4 @@
 import React from 'react';
-import { Form } from 'react-bootstrap';
 
 function QuestionField({ question, value, onChange }) {
   const handleChange = (newValue) => {
@@ -9,8 +8,9 @@ function QuestionField({ question, value, onChange }) {
   switch (question.type) {
     case 'text':
       return (
-        <Form.Control
+        <input
           type="text"
+          className="form-control"
           placeholder={question.placeholder || ''}
           value={value || ''}
           onChange={(e) => handleChange(e.target.value)}
@@ -19,8 +19,8 @@ function QuestionField({ question, value, onChange }) {
 
     case 'textarea':
       return (
-        <Form.Control
-          as="textarea"
+        <textarea
+          className="form-control"
           rows={3}
           placeholder={question.placeholder || ''}
           value={value || ''}
@@ -30,8 +30,9 @@ function QuestionField({ question, value, onChange }) {
 
     case 'number':
       return (
-        <Form.Control
+        <input
           type="number"
+          className="form-control"
           placeholder={question.placeholder || ''}
           value={value || ''}
           onChange={(e) => handleChange(e.target.value)}
@@ -40,8 +41,9 @@ function QuestionField({ question, value, onChange }) {
 
     case 'date':
       return (
-        <Form.Control
+        <input
           type="date"
+          className="form-control"
           value={value || ''}
           onChange={(e) => handleChange(e.target.value)}
         />
@@ -49,24 +51,36 @@ function QuestionField({ question, value, onChange }) {
 
     case 'radio':
       return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(question.options || []).map((option) => (
-            <Form.Check
+            <label
               key={option.value}
-              type="radio"
-              id={`q${question.id}-${option.value}`}
-              label={option.label}
-              name={`question-${question.id}`}
-              checked={value === option.value}
-              onChange={() => handleChange(option.value)}
-            />
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              <input
+                type="radio"
+                className="form-check-input"
+                name={`question-${question.id}`}
+                checked={value === option.value}
+                onChange={() => handleChange(option.value)}
+                style={{ margin: 0 }}
+              />
+              {option.label}
+            </label>
           ))}
         </div>
       );
 
     case 'select':
       return (
-        <Form.Select
+        <select
+          className="form-select"
           value={value || ''}
           onChange={(e) => handleChange(e.target.value)}
         >
@@ -76,7 +90,7 @@ function QuestionField({ question, value, onChange }) {
               {option.label}
             </option>
           ))}
-        </Form.Select>
+        </select>
       );
 
     case 'multi_select': {
@@ -95,16 +109,27 @@ function QuestionField({ question, value, onChange }) {
       };
 
       return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(question.options || []).map((option) => (
-            <Form.Check
+            <label
               key={option.value}
-              type="checkbox"
-              id={`q${question.id}-${option.value}`}
-              label={option.label}
-              checked={selectedValues.includes(option.value)}
-              onChange={() => toggleValue(option.value)}
-            />
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                className="form-check-input"
+                checked={selectedValues.includes(option.value)}
+                onChange={() => toggleValue(option.value)}
+                style={{ margin: 0 }}
+              />
+              {option.label}
+            </label>
           ))}
         </div>
       );
@@ -112,16 +137,18 @@ function QuestionField({ question, value, onChange }) {
 
     case 'file':
       return (
-        <Form.Control
+        <input
           type="file"
+          className="form-control"
           onChange={(e) => handleChange(e.target.files[0]?.name || '')}
         />
       );
 
     default:
       return (
-        <Form.Control
+        <input
           type="text"
+          className="form-control"
           value={value || ''}
           onChange={(e) => handleChange(e.target.value)}
         />
