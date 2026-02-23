@@ -87,51 +87,35 @@
             </div>
         @endif
 
-        @if(session('otp_sent'))
-            {{-- OTP Verification Form --}}
-            <form method="POST" action="{{ route('admin.login.verify-otp') }}">
-                @csrf
-                <input type="hidden" name="email" value="{{ session('otp_email') }}">
+        <form method="POST" action="{{ route('admin.login.submit') }}">
+            @csrf
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" style="font-size: 0.875rem;">Email</label>
-                    <input type="email" class="form-control" value="{{ session('otp_email') }}" disabled>
-                </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size: 0.875rem;">Email Address</label>
+                <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
+                    value="{{ old('email') }}" placeholder="admin@eficyent.com" required autofocus>
+                @error('email')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" style="font-size: 0.875rem;">Verification Code</label>
-                    <input type="text" name="code" class="form-control text-center fw-bold" style="letter-spacing: 0.3em; font-size: 1.2rem;"
-                        maxlength="6" placeholder="000000" required autofocus
-                        inputmode="numeric" pattern="[0-9]*">
-                    @error('code')
-                        <div class="text-danger mt-1" style="font-size: 0.8rem;">{{ $message }}</div>
-                    @enderror
-                </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size: 0.875rem;">Password</label>
+                <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
+                    placeholder="Enter your password" required>
+                @error('password')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
 
-                <button type="submit" class="btn btn-primary w-100 mb-3">Verify & Sign In</button>
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="remember" class="form-check-input" id="remember"
+                    {{ old('remember') ? 'checked' : '' }}>
+                <label class="form-check-label" for="remember" style="font-size: 0.85rem;">Remember me</label>
+            </div>
 
-                <div class="text-center">
-                    <a href="{{ route('admin.login') }}" class="text-decoration-none" style="font-size: 0.85rem;">
-                        Back to login
-                    </a>
-                </div>
-            </form>
-        @else
-            {{-- Email Form --}}
-            <form method="POST" action="{{ route('admin.login.send-otp') }}">
-                @csrf
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" style="font-size: 0.875rem;">Email Address</label>
-                    <input type="email" name="email" class="form-control" value="{{ old('email') }}"
-                        placeholder="admin@eficyent.com" required autofocus>
-                    @error('email')
-                        <div class="text-danger mt-1" style="font-size: 0.8rem;">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100">Send Verification Code</button>
-            </form>
-        @endif
+            <button type="submit" class="btn btn-primary w-100">Sign In</button>
+        </form>
     </div>
 </body>
 </html>

@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Seed admin panel user
+        $this->call(AdminSeeder::class);
+
         // Create admin user
         User::create([
             'name' => 'Admin',

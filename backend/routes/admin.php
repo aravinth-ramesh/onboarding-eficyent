@@ -12,11 +12,10 @@ use App\Http\Controllers\AdminPanel\UserTypeController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Route;
 
-// Admin Auth (guest only)
+// Admin Auth (guest)
 Route::middleware('web')->prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('login/send-otp', [AuthController::class, 'sendOtp'])->name('login.send-otp');
-    Route::post('login/verify-otp', [AuthController::class, 'verifyOtp'])->name('login.verify-otp');
+    Route::post('login', [AuthController::class, 'login'])->name('login.submit');
 });
 
 // Admin Protected Routes

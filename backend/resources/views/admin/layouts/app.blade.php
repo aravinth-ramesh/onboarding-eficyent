@@ -354,10 +354,10 @@
 
         <div class="sidebar-footer">
             <div class="sidebar-user">
-                <div class="sidebar-user-avatar">{{ strtoupper(substr(auth()->user()->name ?? auth()->user()->email, 0, 1)) }}</div>
+                <div class="sidebar-user-avatar">{{ strtoupper(substr(auth('admin')->user()->name ?? auth('admin')->user()->email, 0, 1)) }}</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{{ auth()->user()->name ?? 'Admin' }}</div>
-                    <div class="sidebar-user-email">{{ auth()->user()->email }}</div>
+                    <div class="sidebar-user-name">{{ auth('admin')->user()->name ?? 'Admin' }}</div>
+                    <div class="sidebar-user-email">{{ auth('admin')->user()->email }}</div>
                 </div>
                 <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
                     @csrf

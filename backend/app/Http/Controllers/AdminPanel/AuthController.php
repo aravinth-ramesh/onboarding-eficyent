@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Services\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,65 +10,39 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function __construct(
-        private OtpService $otpService,
-    ) {}
-
-    public function showLogin(): View
+    public function showLogin(): View|RedirectResponse
     {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return view('admin.auth.login');
     }
 
-    public function sendOtp(Request $request): RedirectResponse
+    public function login(Request $request): RedirectResponse
     {
-        $request->validate(['email' => 'required|email']);
-
-        $email = $request->input('email');
-
-        $user = User::where('email', $email)->where('is_admin', true)->first();
-
-        if (!$user) {
-            return back()->with('error', 'No admin account found with this email.')->withInput();
-        }
-
-        if (!$this->otpService->canRequestNewOtp($email)) {
-            return back()->with('error', 'Please wait before requesting a new code.')->withInput();
-        }
-
-        $this->otpService->send($email);
-
-        return back()->with([
-            'otp_sent' => true,
-            'otp_email' => $email,
-            'success' => 'Verification code sent to your email.',
-        ])->withInput();
-    }
-
-    public function verifyOtp(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
-        $email = $request->input('email');
-        $code = $request->input('code');
+        $remember = $request->boolean('remember');
 
-        if (!$this->otpService->verify($email, $code)) {
-            return back()->with([
-                'error' => 'Invalid or expired verification code.',
-                'otp_sent' => true,
-                'otp_email' => $email,
-            ])->withInput();
+        if (!Auth::guard('admin')->attempt($credentials, $remember)) {
+            return back()
+                ->with('error', 'Invalid email or password.')
+                ->withInput($request->only('email'));
         }
 
-        $user = User::where('email', $email)->where('is_admin', true)->first();
+        $admin = Auth::guard('admin')->user();
 
-        if (!$user) {
-            return back()->with('error', 'No admin account found.')->withInput();
+        if (!$admin->is_active) {
+            Auth::guard('admin')->logout();
+            return back()
+                ->with('error', 'Your account has been deactivated.')
+                ->withInput($request->only('email'));
         }
 
-        Auth::login($user);
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard');
@@ -78,7 +50,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        Auth::logout();
+        Auth::guard('admin')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
