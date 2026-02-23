@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, clearAuth } from '../../store/slices/authSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import appConfig from '../../appConfig';
-import { Link } from 'react-router-dom';
 
 function AppLayout({ children, pageTitle }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
-    // 1. Clear token from storage immediately
     localStorage.removeItem('auth_token');
-    // 2. Clear Redux auth state synchronously (triggers ProtectedRoute redirect)
     dispatch(clearAuth());
-    // 3. Fire server-side token revocation in background (fire-and-forget)
     dispatch(logoutUser());
-    // 4. Navigate to login
     navigate('/login');
   };
 
@@ -56,7 +50,7 @@ function AppLayout({ children, pageTitle }) {
               <div className="sidebar-user-name">{user?.name || 'User'}</div>
               <div className="sidebar-user-email">{user?.email}</div>
             </div>
-            <button className="btn-logout" onClick={() => setShowLogoutModal(true)} title="Sign out">
+            <button className="btn-logout" onClick={handleLogout} title="Sign out">
               &#x2192;
             </button>
           </div>
@@ -82,31 +76,6 @@ function AppLayout({ children, pageTitle }) {
           {appConfig.copyrightText}
         </footer>
       </main>
-
-      {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5>Sign Out</h5>
-              <button className="modal-close" onClick={() => setShowLogoutModal(false)}>
-                &#x2715;
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>Are you sure you want to sign out? Any unsaved progress will be lost.</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary-custom" onClick={() => setShowLogoutModal(false)}>
-                Cancel
-              </button>
-              <button className="btn-danger-custom" onClick={handleLogout}>
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
