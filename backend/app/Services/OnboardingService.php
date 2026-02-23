@@ -102,6 +102,7 @@ class OnboardingService
     {
         $previousStep = $onboarding->steps()
             ->where('order', '<', $currentStep->order)
+            ->reorder()
             ->orderByDesc('order')
             ->first();
 
