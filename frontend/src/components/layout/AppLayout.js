@@ -10,7 +10,6 @@ function AppLayout({ children, pageTitle }) {
   const { user } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
     dispatch(clearAuth());
     dispatch(logoutUser());
     navigate('/login');
