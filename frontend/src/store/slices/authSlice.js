@@ -31,7 +31,12 @@ export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ email, code
 });
 
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  await authApi.logout();
+  try {
+    await authApi.logout();
+  } catch {
+    // Server-side logout may fail (token expired, network error, etc.)
+    // Proceed with client-side cleanup regardless
+  }
   localStorage.removeItem('auth_token');
 });
 

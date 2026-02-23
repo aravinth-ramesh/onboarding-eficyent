@@ -19,11 +19,11 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses globally
+// Handle 401 responses globally (skip for logout endpoint to let the thunk handle it)
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/logout')) {
       localStorage.removeItem('auth_token');
       window.location.href = '/login';
     }
