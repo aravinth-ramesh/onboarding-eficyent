@@ -55,6 +55,41 @@
     .submitted-answers-file-link i {
         font-size: 0.9rem;
     }
+    .submitted-answers-action {
+        width: 50px;
+        text-align: center;
+        vertical-align: middle !important;
+    }
+    .submitted-answers-history-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        color: #6c757d;
+        transition: all 0.15s;
+        text-decoration: none;
+        position: relative;
+    }
+    .submitted-answers-history-link:hover {
+        background: #e9ecef;
+        color: var(--color-accent, #2e86de);
+    }
+    .submitted-answers-history-link .history-badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        font-size: 0.6rem;
+        min-width: 16px;
+        height: 16px;
+        line-height: 16px;
+        border-radius: 8px;
+        background: var(--color-accent, #2e86de);
+        color: #fff;
+        text-align: center;
+        padding: 0 4px;
+    }
 </style>
 @endpush
 
@@ -239,6 +274,16 @@
                                         {{ $opt['label'] ?? $val ?? '—' }}
                                     @else
                                         {{ $val ?: '—' }}
+                                    @endif
+                                </td>
+                                <td class="submitted-answers-action">
+                                    @if(($answer->audit_logs_count ?? 0) > 0)
+                                        <a href="{{ route('admin.user-onboardings.answers.history', [$userOnboarding, $answer]) }}"
+                                           class="submitted-answers-history-link"
+                                           title="{{ $answer->audit_logs_count }} edit(s)">
+                                            <i class="bi bi-clock-history"></i>
+                                            <span class="history-badge">{{ $answer->audit_logs_count }}</span>
+                                        </a>
                                     @endif
                                 </td>
                             </tr>

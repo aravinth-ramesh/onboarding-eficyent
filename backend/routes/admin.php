@@ -45,6 +45,7 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
     Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');
+    Route::get('user-onboardings/{userOnboarding}/answers/{answer}/history', [UserOnboardingController::class, 'answerHistory'])->name('user-onboardings.answers.history');
 
     // Audit Logs
     Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');

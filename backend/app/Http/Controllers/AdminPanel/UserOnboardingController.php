@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
 use App\Models\AnswerAuditLog;
+use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +37,25 @@ class UserOnboardingController extends Controller
             'answers.files',
         ]);
 
+        $userOnboarding->answers->loadCount('auditLogs');
+
         return view('admin.user-onboardings.show', compact('userOnboarding'));
+    }
+
+    public function answerHistory(UserOnboarding $userOnboarding, UserAnswer $answer): View
+    {
+        if ((int) $answer->user_onboarding_id !== (int) $userOnboarding->id) {
+            abort(404);
+        }
+
+        $answer->load(['question.group', 'files']);
+
+        $logs = AnswerAuditLog::where('user_answer_id', $answer->id)
+            ->with(['editor'])
+            ->latest('edited_at')
+            ->paginate(20);
+
+        return view('admin.user-onboardings.answer-history', compact('userOnboarding', 'answer', 'logs'));
     }
 
     public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse
