@@ -2,6 +2,27 @@
 
 @section('title', $question ? 'Edit Question' : 'Create Question')
 
+@php
+    // Build existing mappings lookup for pre-selection
+    $existingMappings = [];
+    if ($question && $question->typeMappings) {
+        foreach ($question->typeMappings as $m) {
+            $key = $m->user_type_id;
+            if (!isset($existingMappings[$key])) {
+                $existingMappings[$key] = [
+                    'enabled' => true,
+                    'order' => $m->order,
+                    'is_required' => $m->is_required,
+                    'subcategory_ids' => [],
+                ];
+            }
+            if ($m->user_type_subcategory_id) {
+                $existingMappings[$key]['subcategory_ids'][] = $m->user_type_subcategory_id;
+            }
+        }
+    }
+@endphp
+
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -11,6 +32,9 @@
                     action="{{ $question ? route('admin.questions.update', $question) : route('admin.questions.store') }}">
                     @csrf
                     @if($question) @method('PUT') @endif
+
+                    {{-- Question Details --}}
+                    <h6 class="fw-bold text-uppercase text-muted mb-3" style="font-size: 0.75rem; letter-spacing: 0.05em;">Question Details</h6>
 
                     <div class="row mb-3">
                         <div class="col-md-8">
@@ -120,35 +144,104 @@
                         </div>
                     </div>
 
-                    @if($question && $question->typeMappings->count())
-                        <div class="card bg-light mb-3">
-                            <div class="card-header py-2">Type Mappings</div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-sm mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>User Type</th>
-                                                <th>Subcategory</th>
-                                                <th>Order</th>
-                                                <th>Required</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($question->typeMappings as $mapping)
-                                                <tr>
-                                                    <td>{{ $userTypes->firstWhere('id', $mapping->user_type_id)?->name ?? 'N/A' }}</td>
-                                                    <td>{{ $mapping->user_type_subcategory_id ?? '-' }}</td>
-                                                    <td>{{ $mapping->order }}</td>
-                                                    <td>{{ $mapping->is_required ? 'Yes' : 'No' }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                    <hr>
+
+                    {{-- Type Mappings --}}
+                    <h6 class="fw-bold text-uppercase text-muted mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em;">Type Mappings</h6>
+                    <p class="text-muted mb-3" style="font-size: 0.8rem;">Select which user types can see this question. For types with subcategories, you can optionally restrict to specific subcategories.</p>
+
+                    <div id="typeMappingsSection">
+                        @foreach($userTypes as $idx => $ut)
+                            @php
+                                $mapping = $existingMappings[$ut->id] ?? null;
+                                $isChecked = $mapping ? true : false;
+                            @endphp
+
+                            <div class="card mb-2 type-mapping-card" data-type-id="{{ $ut->id }}">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        {{-- Enable checkbox --}}
+                                        <div class="form-check mb-0">
+                                            <input type="checkbox"
+                                                class="form-check-input type-toggle"
+                                                id="type_toggle_{{ $ut->id }}"
+                                                data-idx="{{ $idx }}"
+                                                {{ $isChecked ? 'checked' : '' }}>
+                                            <label class="form-check-label fw-semibold" for="type_toggle_{{ $ut->id }}">
+                                                {{ $ut->name }}
+                                            </label>
+                                        </div>
+
+                                        {{-- Hidden user_type_id (only sent when enabled) --}}
+                                        <input type="hidden"
+                                            name="mappings[{{ $idx }}][user_type_id]"
+                                            value="{{ $ut->id }}"
+                                            {{ $isChecked ? '' : 'disabled' }}
+                                            class="mapping-input-{{ $idx }}">
+
+                                        <div class="ms-auto d-flex align-items-center gap-3 mapping-options mapping-options-{{ $idx }}" style="{{ $isChecked ? '' : 'display:none' }}">
+                                            {{-- Order --}}
+                                            <div class="d-flex align-items-center gap-1">
+                                                <label class="form-label mb-0" style="font-size: 0.75rem; white-space: nowrap;">Order:</label>
+                                                <input type="number"
+                                                    name="mappings[{{ $idx }}][order]"
+                                                    class="form-control form-control-sm mapping-input-{{ $idx }}"
+                                                    style="width: 70px;"
+                                                    value="{{ $mapping['order'] ?? old('order', $question?->order ?? 0) }}"
+                                                    min="0"
+                                                    {{ $isChecked ? '' : 'disabled' }}>
+                                            </div>
+
+                                            {{-- Required --}}
+                                            <div class="form-check mb-0">
+                                                <input type="hidden"
+                                                    name="mappings[{{ $idx }}][is_required]"
+                                                    value="0"
+                                                    class="mapping-input-{{ $idx }}"
+                                                    {{ $isChecked ? '' : 'disabled' }}>
+                                                <input type="checkbox"
+                                                    name="mappings[{{ $idx }}][is_required]"
+                                                    value="1"
+                                                    class="form-check-input mapping-input-{{ $idx }}"
+                                                    id="mapping_req_{{ $ut->id }}"
+                                                    {{ ($mapping['is_required'] ?? false) ? 'checked' : '' }}
+                                                    {{ $isChecked ? '' : 'disabled' }}>
+                                                <label class="form-check-label" for="mapping_req_{{ $ut->id }}" style="font-size: 0.8rem;">Required</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Subcategories (if any) --}}
+                                    @if($ut->has_subcategories && $ut->subcategories->count())
+                                        <div class="subcategories-section subcategories-{{ $idx }} mt-2 ps-4" style="{{ $isChecked ? '' : 'display:none' }}">
+                                            <div class="text-muted mb-1" style="font-size: 0.75rem;">
+                                                Subcategories <span class="fst-italic">(leave unchecked to apply to all)</span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-3">
+                                                @foreach($ut->subcategories as $sub)
+                                                    @php
+                                                        $subChecked = $mapping && in_array($sub->id, $mapping['subcategory_ids']);
+                                                    @endphp
+                                                    <div class="form-check mb-0">
+                                                        <input type="checkbox"
+                                                            name="mappings[{{ $idx }}][subcategory_ids][]"
+                                                            value="{{ $sub->id }}"
+                                                            class="form-check-input mapping-input-{{ $idx }}"
+                                                            id="sub_{{ $ut->id }}_{{ $sub->id }}"
+                                                            {{ $subChecked ? 'checked' : '' }}
+                                                            {{ $isChecked ? '' : 'disabled' }}>
+                                                        <label class="form-check-label" for="sub_{{ $ut->id }}_{{ $sub->id }}" style="font-size: 0.8rem;">
+                                                            {{ $sub->name }}
+                                                        </label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
-                        </div>
-                    @endif
+                        @endforeach
+                    </div>
 
                     <hr>
 
@@ -165,6 +258,19 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+    .type-mapping-card {
+        border: 1px solid #e1e5eb;
+        transition: border-color 0.15s;
+    }
+    .type-mapping-card.active {
+        border-color: #2e86de;
+        background: #f8fbff;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
     // Show/hide options field based on question type
@@ -178,5 +284,33 @@
 
     typeSelect.addEventListener('change', toggleOptions);
     toggleOptions();
+
+    // Type mapping toggle
+    document.querySelectorAll('.type-toggle').forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const idx = this.dataset.idx;
+            const card = this.closest('.type-mapping-card');
+            const options = card.querySelector('.mapping-options-' + idx);
+            const subcats = card.querySelector('.subcategories-' + idx);
+            const inputs = card.querySelectorAll('.mapping-input-' + idx);
+
+            if (this.checked) {
+                card.classList.add('active');
+                if (options) options.style.display = '';
+                if (subcats) subcats.style.display = '';
+                inputs.forEach(function(input) { input.disabled = false; });
+            } else {
+                card.classList.remove('active');
+                if (options) options.style.display = 'none';
+                if (subcats) subcats.style.display = 'none';
+                inputs.forEach(function(input) { input.disabled = true; });
+            }
+        });
+
+        // Initialize state on page load
+        if (toggle.checked) {
+            toggle.closest('.type-mapping-card').classList.add('active');
+        }
+    });
 </script>
 @endpush
