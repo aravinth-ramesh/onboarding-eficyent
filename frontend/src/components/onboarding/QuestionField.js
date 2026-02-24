@@ -1,4 +1,5 @@
 import React from 'react';
+import FileUploadField from './FileUploadField';
 
 function QuestionField({ question, value, onChange }) {
   const handleChange = (newValue) => {
@@ -137,10 +138,11 @@ function QuestionField({ question, value, onChange }) {
 
     case 'file':
       return (
-        <input
-          type="file"
-          className="form-control"
-          onChange={(e) => handleChange(e.target.files[0]?.name || '')}
+        <FileUploadField
+          question={question}
+          value={value}
+          onChange={onChange}
+          existingFiles={question.files}
         />
       );
 

@@ -13,10 +13,41 @@ class SaveAnswersRequest extends FormRequest
 
     public function rules(): array
     {
+        $maxSize = config('onboarding_uploads.max_file_size_kb', 5120);
+        $allowedMimes = implode(',', config('onboarding_uploads.allowed_mimes', ['pdf', 'jpg', 'jpeg', 'png', 'docx']));
+
         return [
-            'answers' => ['required', 'array', 'min:1'],
+            // Non-file answers (optional when only file answers are submitted)
+            'answers' => ['sometimes', 'array'],
             'answers.*.question_id' => ['required', 'exists:questions,id'],
             'answers.*.value' => ['present'],
+
+            // File answers (optional)
+            'file_answers' => ['sometimes', 'array'],
+            'file_answers.*.question_id' => ['required', 'exists:questions,id'],
+            'file_answers.*.file' => ['required', 'file', "mimes:{$allowedMimes}", "max:{$maxSize}"],
         ];
+    }
+
+    public function messages(): array
+    {
+        $maxSizeMb = round(config('onboarding_uploads.max_file_size_kb', 5120) / 1024, 1);
+
+        return [
+            'file_answers.*.file.mimes' => 'Only allowed file types: ' . implode(', ', config('onboarding_uploads.allowed_mimes', [])) . '.',
+            'file_answers.*.file.max' => "Each file must not exceed {$maxSizeMb} MB.",
+        ];
+    }
+
+    /**
+     * Ensure at least one of answers or file_answers is present.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if (empty($this->input('answers')) && empty($this->file('file_answers')) && empty($this->input('file_answers'))) {
+                $validator->errors()->add('answers', 'At least one answer or file must be provided.');
+            }
+        });
     }
 }

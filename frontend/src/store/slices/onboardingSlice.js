@@ -52,9 +52,12 @@ export const fetchQuestions = createAsyncThunk(
 
 export const submitAnswers = createAsyncThunk(
   'onboarding/submitAnswers',
-  async (answers, { rejectWithValue }) => {
+  async ({ answers, fileAnswers }, { rejectWithValue }) => {
     try {
-      const response = await onboardingApi.saveAnswers(answers);
+      const hasFiles = fileAnswers && Object.keys(fileAnswers).length > 0;
+      const response = hasFiles
+        ? await onboardingApi.saveAnswersWithFiles(answers, fileAnswers)
+        : await onboardingApi.saveAnswers(answers);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to save answers');

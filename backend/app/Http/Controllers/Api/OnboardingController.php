@@ -197,6 +197,7 @@ class OnboardingController extends Controller
 
     /**
      * Save answers for questions.
+     * Accepts JSON or multipart/form-data (when file answers are included).
      */
     public function saveAnswers(SaveAnswersRequest $request): JsonResponse
     {
@@ -207,11 +208,38 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
-        $this->answerService->saveBulkAnswers(
-            $user,
-            $onboarding,
-            $request->validated('answers'),
-        );
+        // Save non-file answers
+        $textAnswers = $request->validated('answers') ?? [];
+        if (!empty($textAnswers)) {
+            $this->answerService->saveBulkAnswers(
+                $user,
+                $onboarding,
+                $textAnswers,
+            );
+        }
+
+        // Save file answers (grouped by question_id)
+        $fileAnswers = $request->validated('file_answers') ?? [];
+        if (!empty($fileAnswers)) {
+            // Group files by question_id
+            $grouped = [];
+            foreach ($fileAnswers as $entry) {
+                $qid = (int) $entry['question_id'];
+                $grouped[$qid][] = $entry['file'];
+            }
+
+            foreach ($grouped as $questionId => $files) {
+                $question = Question::find($questionId);
+                if ($question && $question->type === 'file') {
+                    $this->answerService->saveFileAnswer(
+                        $user,
+                        $onboarding,
+                        $questionId,
+                        $files,
+                    );
+                }
+            }
+        }
 
         return response()->json(['message' => 'Answers saved successfully.']);
     }
