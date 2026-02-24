@@ -41,9 +41,10 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
     // Onboarding Steps
     Route::resource('onboarding-steps', OnboardingStepController::class)->except(['show']);
 
-    // User Onboardings (read-only)
+    // User Onboardings
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
+    Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');
 
     // Audit Logs
     Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');

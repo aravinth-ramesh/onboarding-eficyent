@@ -14,11 +14,11 @@
     <div class="card-body py-2">
         <form method="GET" action="{{ route('admin.conditional-rules.index') }}" class="d-flex align-items-center gap-3">
             <label class="form-label mb-0 fw-semibold" style="white-space: nowrap;">Filter by Question:</label>
-            <select name="question_id" class="form-select form-select-sm" style="max-width: 400px;" onchange="this.form.submit()">
+            <select name="question_id" class="form-select form-select-sm select2-enable" style="max-width: 400px;" onchange="this.form.submit()" data-placeholder="All Questions">
                 <option value="">All Questions</option>
                 @foreach($questions as $q)
                     <option value="{{ $q->id }}" {{ request('question_id') == $q->id ? 'selected' : '' }}>
-                        {{ Str::limit($q->label, 60) }}
+                        [{{ $q->group->name ?? 'N/A' }}] {{ Str::limit($q->label, 60) }}
                     </option>
                 @endforeach
             </select>
@@ -47,8 +47,14 @@
                 <tbody>
                     @forelse($rules as $rule)
                         <tr>
-                            <td class="fw-semibold">{{ Str::limit($rule->question->label ?? 'N/A', 40) }}</td>
-                            <td>{{ Str::limit($rule->parentQuestion->label ?? 'N/A', 40) }}</td>
+                            <td class="fw-semibold">
+                                <span class="badge bg-light text-dark mb-1">{{ $rule->question->group->name ?? 'N/A' }}</span><br>
+                                {{ Str::limit($rule->question->label ?? 'N/A', 40) }}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark mb-1">{{ $rule->parentQuestion->group->name ?? 'N/A' }}</span><br>
+                                {{ Str::limit($rule->parentQuestion->label ?? 'N/A', 40) }}
+                            </td>
                             <td><code>{{ $rule->comparison_type }}</code></td>
                             <td>{{ Str::limit($rule->trigger_value ?? '-', 30) }}</td>
                             <td>

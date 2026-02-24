@@ -5,6 +5,8 @@ namespace App\Http\Controllers\AdminPanel;
 use App\Http\Controllers\Controller;
 use App\Models\AnswerAuditLog;
 use App\Models\UserOnboarding;
+use App\Models\UserOnboardingStep;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -34,6 +36,24 @@ class UserOnboardingController extends Controller
         ]);
 
         return view('admin.user-onboardings.show', compact('userOnboarding'));
+    }
+
+    public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse
+    {
+        if ((int) $step->user_onboarding_id !== (int) $userOnboarding->id) {
+            abort(404);
+        }
+
+        if ($step->status === 'skipped') {
+            $step->update(['status' => 'pending']);
+            $message = "Step \"{$step->name}\" has been enabled.";
+        } else {
+            $step->update(['status' => 'skipped', 'started_at' => null, 'completed_at' => null]);
+            $message = "Step \"{$step->name}\" has been disabled (skipped).";
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', $message);
     }
 
     public function auditLogs(Request $request): View

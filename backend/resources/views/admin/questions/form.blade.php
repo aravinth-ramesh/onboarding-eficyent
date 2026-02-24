@@ -47,7 +47,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Question Group <span class="text-danger">*</span></label>
-                            <select name="question_group_id" class="form-select @error('question_group_id') is-invalid @enderror" required>
+                            <select name="question_group_id" class="form-select select2-enable @error('question_group_id') is-invalid @enderror" required data-placeholder="Select Group">
                                 <option value="">Select Group</option>
                                 @foreach($groups as $group)
                                     <option value="{{ $group->id }}"
@@ -74,7 +74,7 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
-                            <select name="type" class="form-select @error('type') is-invalid @enderror" required id="questionType">
+                            <select name="type" class="form-select select2-enable @error('type') is-invalid @enderror" required id="questionType" data-placeholder="Select Type">
                                 @foreach(['text', 'textarea', 'number', 'date', 'select', 'multi_select', 'radio', 'file'] as $type)
                                     <option value="{{ $type }}"
                                         {{ old('type', $question?->type) === $type ? 'selected' : '' }}>

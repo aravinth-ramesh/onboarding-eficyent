@@ -7,6 +7,8 @@
     <title>@yield('title', 'Admin') - Eficyent Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
     <style>
         :root {
             --sidebar-width: 260px;
@@ -250,6 +252,11 @@
             color: #155724;
         }
 
+        .badge-skipped {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
         /* Stat Cards */
         .stat-card {
             border-radius: 8px;
@@ -414,6 +421,21 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.select2-enable').each(function() {
+                $(this).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: $(this).data('placeholder') || '-- Select --',
+                    allowClear: !$(this).prop('required'),
+                    width: '100%',
+                    dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body),
+                });
+            });
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

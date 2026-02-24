@@ -14,7 +14,7 @@
     <div class="card-body py-2">
         <form method="GET" action="{{ route('admin.questions.index') }}" class="d-flex align-items-center gap-3">
             <label class="form-label mb-0 fw-semibold" style="white-space: nowrap;">Filter by Group:</label>
-            <select name="group_id" class="form-select form-select-sm" style="max-width: 300px;" onchange="this.form.submit()">
+            <select name="group_id" class="form-select form-select-sm select2-enable" style="max-width: 300px;" onchange="this.form.submit()" data-placeholder="All Groups">
                 <option value="">All Groups</option>
                 @foreach($groups as $group)
                     <option value="{{ $group->id }}" {{ request('group_id') == $group->id ? 'selected' : '' }}>

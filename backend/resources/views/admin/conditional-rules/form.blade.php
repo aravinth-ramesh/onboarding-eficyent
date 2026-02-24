@@ -15,7 +15,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Target Question <span class="text-danger">*</span></label>
-                            <select name="question_id" class="form-select @error('question_id') is-invalid @enderror" required>
+                            <select name="question_id" class="form-select select2-enable @error('question_id') is-invalid @enderror" required data-placeholder="Select Question">
                                 <option value="">Select Question</option>
                                 @foreach($questions as $q)
                                     <option value="{{ $q->id }}"
@@ -31,7 +31,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Parent Question <span class="text-danger">*</span></label>
-                            <select name="parent_question_id" class="form-select @error('parent_question_id') is-invalid @enderror" required>
+                            <select name="parent_question_id" class="form-select select2-enable @error('parent_question_id') is-invalid @enderror" required data-placeholder="Select Parent Question">
                                 <option value="">Select Parent Question</option>
                                 @foreach($questions as $q)
                                     <option value="{{ $q->id }}"
@@ -50,7 +50,7 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Comparison Type <span class="text-danger">*</span></label>
-                            <select name="comparison_type" class="form-select @error('comparison_type') is-invalid @enderror" required>
+                            <select name="comparison_type" class="form-select select2-enable @error('comparison_type') is-invalid @enderror" required data-placeholder="Select Comparison">
                                 @foreach(['equals', 'not_equals', 'contains', 'not_contains', 'greater_than', 'less_than', 'in', 'not_in', 'is_empty', 'is_not_empty'] as $comp)
                                     <option value="{{ $comp }}"
                                         {{ old('comparison_type', $rule?->comparison_type) === $comp ? 'selected' : '' }}>
@@ -73,7 +73,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Action</label>
-                            <select name="action" class="form-select @error('action') is-invalid @enderror">
+                            <select name="action" class="form-select select2-enable @error('action') is-invalid @enderror" data-placeholder="Select Action">
                                 <option value="show" {{ old('action', $rule?->action) === 'show' ? 'selected' : '' }}>Show</option>
                                 <option value="hide" {{ old('action', $rule?->action) === 'hide' ? 'selected' : '' }}>Hide</option>
                             </select>
@@ -86,7 +86,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Logical Operator</label>
-                            <select name="logical_operator" class="form-select @error('logical_operator') is-invalid @enderror">
+                            <select name="logical_operator" class="form-select select2-enable @error('logical_operator') is-invalid @enderror" data-placeholder="Select Operator">
                                 <option value="and" {{ old('logical_operator', $rule?->logical_operator) === 'and' ? 'selected' : '' }}>AND</option>
                                 <option value="or" {{ old('logical_operator', $rule?->logical_operator) === 'or' ? 'selected' : '' }}>OR</option>
                             </select>

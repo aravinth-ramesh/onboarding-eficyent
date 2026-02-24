@@ -63,11 +63,12 @@
                                 <th>Status</th>
                                 <th>Started</th>
                                 <th>Completed</th>
+                                <th style="width: 80px;">Toggle</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($userOnboarding->steps->sortBy('order') as $step)
-                                <tr class="{{ $step->id === $userOnboarding->current_step_id ? 'table-primary' : '' }}">
+                                <tr class="{{ $step->status === 'skipped' ? 'table-warning opacity-75' : ($step->id === $userOnboarding->current_step_id ? 'table-primary' : '') }}">
                                     <td>{{ $step->order }}</td>
                                     <td class="fw-semibold">
                                         {{ $step->name }}
@@ -83,10 +84,24 @@
                                     </td>
                                     <td>{{ $step->started_at?->format('M d, H:i') ?? '-' }}</td>
                                     <td>{{ $step->completed_at?->format('M d, H:i') ?? '-' }}</td>
+                                    <td>
+                                        @if($step->status !== 'completed')
+                                            <form action="{{ route('admin.user-onboardings.steps.toggle', [$userOnboarding, $step]) }}" method="POST"
+                                                onsubmit="return confirm('{{ $step->status === 'skipped' ? 'Enable this step?' : 'Disable (skip) this step?' }}')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm {{ $step->status === 'skipped' ? 'btn-outline-success' : 'btn-outline-warning' }} btn-action"
+                                                    title="{{ $step->status === 'skipped' ? 'Enable step' : 'Disable step' }}">
+                                                    <i class="bi {{ $step->status === 'skipped' ? 'bi-toggle-off' : 'bi-toggle-on' }}"></i>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-muted" title="Completed steps cannot be toggled"><i class="bi bi-lock"></i></span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-3">No steps found.</td>
+                                    <td colspan="7" class="text-center text-muted py-3">No steps found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

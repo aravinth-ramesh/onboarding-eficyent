@@ -14,14 +14,14 @@ class ConditionalRuleController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ConditionalRule::with(['question', 'parentQuestion']);
+        $query = ConditionalRule::with(['question.group', 'parentQuestion.group']);
 
         if ($request->filled('question_id')) {
             $query->where('question_id', $request->input('question_id'));
         }
 
         $rules = $query->paginate(20)->withQueryString();
-        $questions = Question::orderBy('label')->get();
+        $questions = Question::with('group')->orderBy('label')->get();
 
         return view('admin.conditional-rules.index', compact('rules', 'questions'));
     }

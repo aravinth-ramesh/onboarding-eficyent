@@ -8,7 +8,7 @@
     <div class="card-body py-2">
         <form method="GET" action="{{ route('admin.user-onboardings.index') }}" class="d-flex align-items-center gap-3">
             <label class="form-label mb-0 fw-semibold" style="white-space: nowrap;">Filter by Status:</label>
-            <select name="status" class="form-select form-select-sm" style="max-width: 200px;" onchange="this.form.submit()">
+            <select name="status" class="form-select form-select-sm select2-enable" style="max-width: 200px;" onchange="this.form.submit()" data-placeholder="All Statuses">
                 <option value="">All Statuses</option>
                 @foreach(['pending', 'in_progress', 'completed'] as $status)
                     <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
