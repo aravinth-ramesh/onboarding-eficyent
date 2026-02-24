@@ -32,7 +32,7 @@ class AnswerFile extends Model
         $disk = Storage::disk($this->disk);
 
         if ($this->disk === 's3') {
-            return $disk->temporaryUrl($this->s3_path, now()->addMinutes(
+            return $disk->temporaryUrl($this->s3_path, (int)now()->addMinutes(
                 config('onboarding_uploads.url_expiry_minutes', 60)
             ));
         }
