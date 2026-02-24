@@ -29,16 +29,19 @@ class OnboardingController extends Controller
     {
         $onboarding->load(['steps', 'userType', 'subcategory']);
 
-        $steps = $onboarding->steps->map(fn (UserOnboardingStep $step) => [
-            'id' => $step->id,
-            'name' => $step->name,
-            'component_key' => $step->component_key,
-            'order' => $step->order,
-            'status' => $step->status,
-            'config' => $step->config,
-            'started_at' => $step->started_at,
-            'completed_at' => $step->completed_at,
-        ]);
+        $steps = $onboarding->steps
+            ->where('status', '!=', 'skipped')
+            ->values()
+            ->map(fn (UserOnboardingStep $step) => [
+                'id' => $step->id,
+                'name' => $step->name,
+                'component_key' => $step->component_key,
+                'order' => $step->order,
+                'status' => $step->status,
+                'config' => $step->config,
+                'started_at' => $step->started_at,
+                'completed_at' => $step->completed_at,
+            ]);
 
         return [
             'id' => $onboarding->id,

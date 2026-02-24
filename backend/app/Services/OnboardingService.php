@@ -70,10 +70,10 @@ class OnboardingService
             'completed_at' => now(),
         ]);
 
-        // Find next pending step
+        // Find next pending step (skip over skipped steps)
         $nextStep = $onboarding->steps()
             ->where('order', '>', $step->order)
-            ->where('status', '!=', 'completed')
+            ->whereNotIn('status', ['completed', 'skipped'])
             ->orderBy('order')
             ->first();
 
@@ -102,6 +102,7 @@ class OnboardingService
     {
         $previousStep = $onboarding->steps()
             ->where('order', '<', $currentStep->order)
+            ->where('status', '!=', 'skipped')
             ->reorder()
             ->orderByDesc('order')
             ->first();
