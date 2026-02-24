@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/set-type', [Api\OnboardingController::class, 'setUserType']);
         Route::get('/questions', [Api\OnboardingController::class, 'questions']);
         Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
+        Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
         Route::post('/steps/{step}/complete', [Api\OnboardingController::class, 'completeStep']);
         Route::post('/steps/{step}/previous', [Api\OnboardingController::class, 'previousStep']);
     });

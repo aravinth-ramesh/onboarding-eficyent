@@ -134,7 +134,20 @@
                             </td>
                             <td class="fw-semibold">{{ Str::limit($answer->question->label ?? 'N/A', 60) }}</td>
                             <td><code>{{ $answer->question->type ?? '-' }}</code></td>
-                            <td>{{ Str::limit($answer->value ?? '-', 100) }}</td>
+                            <td>
+                                @if(($answer->question->type ?? '') === 'file' && $answer->files->count())
+                                    @foreach($answer->files as $file)
+                                        <div class="mb-1">
+                                            <a href="{{ $file->url }}" target="_blank" class="text-decoration-none">
+                                                <i class="bi bi-file-earmark"></i> {{ $file->original_filename }}
+                                            </a>
+                                            <small class="text-muted">({{ number_format($file->file_size / 1024, 1) }} KB)</small>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    {{ Str::limit($answer->value ?? '-', 100) }}
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>

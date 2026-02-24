@@ -3,12 +3,20 @@
 namespace App\Services;
 
 use App\Models\AnswerAuditLog;
+use App\Models\AnswerFile;
+use App\Models\Question;
 use App\Models\User;
 use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 class AnswerService
 {
+    public function __construct(
+        private FileUploadService $fileUploadService,
+    ) {}
+
     /**
      * Save or update an answer, logging edits.
      */
@@ -59,7 +67,86 @@ class AnswerService
     }
 
     /**
-     * Save multiple answers at once.
+     * Save a file-type answer: upload files to S3, store metadata in answer_files.
+     * Previous files are audit-logged but NOT deleted from S3.
+     *
+     * @param  UploadedFile[]  $files
+     */
+    public function saveFileAnswer(
+        User $user,
+        UserOnboarding $onboarding,
+        int $questionId,
+        array $files,
+        ?User $editedBy = null,
+    ): UserAnswer {
+        $editedBy = $editedBy ?? $user;
+
+        return DB::transaction(function () use ($user, $onboarding, $questionId, $files, $editedBy) {
+            // Upload all files first
+            $uploadedMeta = $this->fileUploadService->uploadMultiple($files, $user->id);
+
+            // Build new value summary (JSON array of file paths)
+            $newPaths = array_column($uploadedMeta, 's3_path');
+            $newValue = json_encode($newPaths);
+
+            $existing = UserAnswer::where('user_id', $user->id)
+                ->where('question_id', $questionId)
+                ->where('user_onboarding_id', $onboarding->id)
+                ->first();
+
+            if ($existing) {
+                // Audit log the old file data before replacing
+                $oldFileData = $existing->files->map(fn (AnswerFile $f) => [
+                    'original_filename' => $f->original_filename,
+                    's3_path' => $f->s3_path,
+                    'mime_type' => $f->mime_type,
+                    'file_size' => $f->file_size,
+                ])->toArray();
+
+                AnswerAuditLog::create([
+                    'user_answer_id' => $existing->id,
+                    'question_id' => $questionId,
+                    'user_id' => $user->id,
+                    'edited_by' => $editedBy->id,
+                    'old_value' => json_encode($oldFileData),
+                    'new_value' => $newValue,
+                    'edited_at' => now(),
+                ]);
+
+                // Remove old file records (NOT deleting from S3)
+                $existing->files()->delete();
+
+                // Update answer value
+                $existing->update(['value' => $newValue]);
+
+                $answer = $existing;
+            } else {
+                $answer = UserAnswer::create([
+                    'user_id' => $user->id,
+                    'question_id' => $questionId,
+                    'user_onboarding_id' => $onboarding->id,
+                    'value' => $newValue,
+                ]);
+            }
+
+            // Create new file records
+            foreach ($uploadedMeta as $meta) {
+                AnswerFile::create([
+                    'user_answer_id' => $answer->id,
+                    'original_filename' => $meta['original_filename'],
+                    's3_path' => $meta['s3_path'],
+                    'mime_type' => $meta['mime_type'],
+                    'file_size' => $meta['file_size'],
+                    'disk' => $meta['disk'],
+                ]);
+            }
+
+            return $answer->load('files');
+        });
+    }
+
+    /**
+     * Save multiple answers at once (non-file types only).
      */
     public function saveBulkAnswers(
         User $user,

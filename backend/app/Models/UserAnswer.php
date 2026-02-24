@@ -34,4 +34,9 @@ class UserAnswer extends Model
     {
         return $this->hasMany(AnswerAuditLog::class);
     }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(AnswerFile::class);
+    }
 }

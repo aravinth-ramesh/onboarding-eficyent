@@ -33,6 +33,7 @@ class UserOnboardingController extends Controller
             'subcategory',
             'steps',
             'answers.question.group',
+            'answers.files',
         ]);
 
         return view('admin.user-onboardings.show', compact('userOnboarding'));

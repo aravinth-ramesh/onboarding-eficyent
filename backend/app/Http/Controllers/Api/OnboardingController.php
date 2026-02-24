@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\SaveAnswersRequest;
 use App\Http\Requests\Api\SetUserTypeRequest;
+use App\Http\Requests\Api\UploadFileAnswerRequest;
 use App\Models\Question;
 use App\Models\QuestionTypeMapping;
+use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
 use App\Services\AnswerService;
@@ -125,11 +127,14 @@ class OnboardingController extends Controller
         // Deduplicate mappings — keep one per question (prefer subcategory-specific over generic)
         $mappings = $mappings->unique(fn ($m) => $m->question_id)->values();
 
-        // Get existing answers
-        $answers = $user->answers()
+        // Get existing answers (with files for file-type questions)
+        $answerModels = $user->answers()
             ->where('user_onboarding_id', $onboarding->id)
-            ->pluck('value', 'question_id')
-            ->toArray();
+            ->with('files')
+            ->get()
+            ->keyBy('question_id');
+
+        $answers = $answerModels->mapWithKeys(fn (UserAnswer $a) => [$a->question_id => $a->value])->toArray();
 
         // Group questions by their question group
         $grouped = $mappings->groupBy(fn ($m) => $m->question->group->id);
@@ -137,11 +142,11 @@ class OnboardingController extends Controller
         $groups = $grouped->map(function ($mappingsInGroup) use ($answers) {
             $group = $mappingsInGroup->first()->question->group;
 
-            $questions = $mappingsInGroup->map(function ($mapping) use ($answers) {
+            $questions = $mappingsInGroup->map(function ($mapping) use ($answers, $answerModels) {
                 $question = $mapping->question;
                 $rules = $question->conditionalRules;
 
-                return [
+                $questionData = [
                     'id' => $question->id,
                     'label' => $question->label,
                     'description' => $question->description,
@@ -161,6 +166,21 @@ class OnboardingController extends Controller
                         'logical_operator' => $rule->logical_operator ?? 'and',
                     ])->values()->toArray(),
                 ];
+
+                // Include file metadata for file-type questions
+                if ($question->type === 'file' && isset($answerModels[$question->id])) {
+                    $questionData['files'] = $answerModels[$question->id]->files->map(fn ($f) => [
+                        'id' => $f->id,
+                        'original_filename' => $f->original_filename,
+                        'mime_type' => $f->mime_type,
+                        'file_size' => $f->file_size,
+                        'url' => $f->url,
+                    ])->values()->toArray();
+                } elseif ($question->type === 'file') {
+                    $questionData['files'] = [];
+                }
+
+                return $questionData;
             })->sortBy('order')->values();
 
             return [
@@ -194,6 +214,48 @@ class OnboardingController extends Controller
         );
 
         return response()->json(['message' => 'Answers saved successfully.']);
+    }
+
+    /**
+     * Upload file(s) for a file-type question.
+     * Accepts multipart/form-data with question_id and files[].
+     */
+    public function uploadFileAnswer(UploadFileAnswerRequest $request): JsonResponse
+    {
+        $user = auth()->user();
+        $onboarding = $user->onboarding;
+
+        if (!$onboarding) {
+            return response()->json(['message' => 'Onboarding not initialized.'], 404);
+        }
+
+        $question = Question::findOrFail($request->validated('question_id'));
+
+        if ($question->type !== 'file') {
+            return response()->json(['message' => 'This question does not accept file uploads.'], 422);
+        }
+
+        $answer = $this->answerService->saveFileAnswer(
+            $user,
+            $onboarding,
+            $question->id,
+            $request->file('files'),
+        );
+
+        return response()->json([
+            'message' => 'File(s) uploaded successfully.',
+            'data' => [
+                'question_id' => $question->id,
+                'answer_id' => $answer->id,
+                'files' => $answer->files->map(fn ($f) => [
+                    'id' => $f->id,
+                    'original_filename' => $f->original_filename,
+                    'mime_type' => $f->mime_type,
+                    'file_size' => $f->file_size,
+                    'url' => $f->url,
+                ])->values()->toArray(),
+            ],
+        ]);
     }
 
     /**
