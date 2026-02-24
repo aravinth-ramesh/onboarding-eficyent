@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOnboardingStatus, goToPreviousStep } from '../store/slices/onboardingSlice';
 import AppLayout from '../components/layout/AppLayout';
 import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
+import SubmittedAnswersView from '../components/onboarding/SubmittedAnswersView';
 import appConfig from '../appConfig';
 
 function HomePage() {
@@ -11,6 +12,7 @@ function HomePage() {
   const { steps, currentStep, status, loading, error } = useSelector(
     (state) => state.onboarding
   );
+  const [viewingAnswers, setViewingAnswers] = useState(false);
 
   useEffect(() => {
     dispatch(fetchOnboardingStatus());
@@ -38,6 +40,14 @@ function HomePage() {
   }
 
   if (status === 'completed') {
+    if (viewingAnswers) {
+      return (
+        <AppLayout pageTitle="Submitted Answers">
+          <SubmittedAnswersView onBack={() => setViewingAnswers(false)} />
+        </AppLayout>
+      );
+    }
+
     return (
       <AppLayout pageTitle="Onboarding Complete">
         <div className="ob-card">
@@ -46,6 +56,13 @@ function HomePage() {
               <div className="completion-icon">{'\u2713'}</div>
               <h2>{appConfig.onboardingComplete.heading}</h2>
               <p>{appConfig.onboardingComplete.message}</p>
+              <button
+                className="btn-primary-custom"
+                style={{ marginTop: 16 }}
+                onClick={() => setViewingAnswers(true)}
+              >
+                View Submitted Answers
+              </button>
             </div>
           </div>
         </div>
