@@ -8,6 +8,7 @@ use App\Models\QuestionGroup;
 use App\Models\UserType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -48,7 +49,6 @@ class QuestionController extends Controller
             'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file'])],
             'options' => ['nullable', 'string'],
             'is_required' => ['boolean'],
-            'order' => ['integer', 'min:0'],
             'placeholder' => ['nullable', 'string', 'max:255'],
             'help_text' => ['nullable', 'string', 'max:500'],
             'is_active' => ['boolean'],
@@ -63,7 +63,9 @@ class QuestionController extends Controller
             $validated['options'] = null;
         }
 
-        $question = Question::create($validated);
+        $question = DB::transaction(function () use ($validated) {
+            return Question::create($validated);
+        });
 
         $this->syncTypeMappings($request, $question);
 
@@ -89,7 +91,6 @@ class QuestionController extends Controller
             'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file'])],
             'options' => ['nullable', 'string'],
             'is_required' => ['boolean'],
-            'order' => ['integer', 'min:0'],
             'placeholder' => ['nullable', 'string', 'max:255'],
             'help_text' => ['nullable', 'string', 'max:500'],
             'is_active' => ['boolean'],
@@ -138,22 +139,20 @@ class QuestionController extends Controller
             $subcategoryIds = $mapping['subcategory_ids'] ?? [];
 
             if (!empty($subcategoryIds) && is_array($subcategoryIds)) {
-                // Create one mapping per selected subcategory
                 foreach ($subcategoryIds as $subId) {
                     $question->typeMappings()->create([
                         'user_type_id' => $mapping['user_type_id'],
                         'user_type_subcategory_id' => $subId,
-                        'order' => $mapping['order'] ?? $question->order,
+                        'order' => $question->order,
                         'is_required' => !empty($mapping['is_required']),
                         'is_active' => true,
                     ]);
                 }
             } else {
-                // Map to user type without subcategory
                 $question->typeMappings()->create([
                     'user_type_id' => $mapping['user_type_id'],
                     'user_type_subcategory_id' => null,
-                    'order' => $mapping['order'] ?? $question->order,
+                    'order' => $question->order,
                     'is_required' => !empty($mapping['is_required']),
                     'is_active' => true,
                 ]);

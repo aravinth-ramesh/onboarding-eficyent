@@ -7,6 +7,7 @@ use App\Models\UserType;
 use App\Models\UserTypeSubcategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class SubcategoryController extends Controller
@@ -35,12 +36,13 @@ class SubcategoryController extends Controller
             'slug' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'is_active' => ['boolean'],
-            'order' => ['integer', 'min:0'],
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        $userType->subcategories()->create($validated);
+        DB::transaction(function () use ($userType, $validated) {
+            $userType->subcategories()->create($validated);
+        });
 
         if (!$userType->has_subcategories) {
             $userType->update(['has_subcategories' => true]);
@@ -62,7 +64,6 @@ class SubcategoryController extends Controller
             'slug' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'is_active' => ['boolean'],
-            'order' => ['integer', 'min:0'],
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

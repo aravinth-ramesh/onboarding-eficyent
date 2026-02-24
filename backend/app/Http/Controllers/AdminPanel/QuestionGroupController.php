@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\QuestionGroup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -31,13 +32,14 @@ class QuestionGroupController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', Rule::unique('question_groups')],
             'description' => ['nullable', 'string'],
-            'order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        QuestionGroup::create($validated);
+        DB::transaction(function () use ($validated) {
+            QuestionGroup::create($validated);
+        });
 
         return redirect()->route('admin.question-groups.index')
             ->with('success', 'Question group created successfully.');
@@ -56,7 +58,6 @@ class QuestionGroupController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', Rule::unique('question_groups')->ignore($questionGroup->id)],
             'description' => ['nullable', 'string'],
-            'order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 

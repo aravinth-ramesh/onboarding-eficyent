@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UserType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -33,13 +34,14 @@ class UserTypeController extends Controller
             'description' => ['nullable', 'string'],
             'has_subcategories' => ['boolean'],
             'is_active' => ['boolean'],
-            'order' => ['integer', 'min:0'],
         ]);
 
         $validated['has_subcategories'] = $request->boolean('has_subcategories');
         $validated['is_active'] = $request->boolean('is_active');
 
-        UserType::create($validated);
+        DB::transaction(function () use ($validated) {
+            UserType::create($validated);
+        });
 
         return redirect()->route('admin.user-types.index')
             ->with('success', 'User type created successfully.');
@@ -60,7 +62,6 @@ class UserTypeController extends Controller
             'description' => ['nullable', 'string'],
             'has_subcategories' => ['boolean'],
             'is_active' => ['boolean'],
-            'order' => ['integer', 'min:0'],
         ]);
 
         $validated['has_subcategories'] = $request->boolean('has_subcategories');

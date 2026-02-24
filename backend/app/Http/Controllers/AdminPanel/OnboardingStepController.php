@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OnboardingStep;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -30,7 +31,6 @@ class OnboardingStepController extends Controller
             'slug' => ['required', 'string', 'max:255', Rule::unique('onboarding_steps')],
             'description' => ['nullable', 'string'],
             'component_key' => ['required', 'string', 'max:100'],
-            'order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
             'config' => ['nullable', 'string'],
         ]);
@@ -43,7 +43,9 @@ class OnboardingStepController extends Controller
             $validated['config'] = null;
         }
 
-        OnboardingStep::create($validated);
+        DB::transaction(function () use ($validated) {
+            OnboardingStep::create($validated);
+        });
 
         return redirect()->route('admin.onboarding-steps.index')
             ->with('success', 'Onboarding step created successfully.');
@@ -61,7 +63,6 @@ class OnboardingStepController extends Controller
             'slug' => ['required', 'string', 'max:255', Rule::unique('onboarding_steps')->ignore($onboardingStep->id)],
             'description' => ['nullable', 'string'],
             'component_key' => ['required', 'string', 'max:100'],
-            'order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
             'config' => ['nullable', 'string'],
         ]);

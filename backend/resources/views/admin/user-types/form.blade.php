@@ -41,14 +41,13 @@
                     </div>
 
                     <div class="row mb-3">
+                        @if($userType)
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Order</label>
-                            <input type="number" name="order" class="form-control @error('order') is-invalid @enderror"
-                                value="{{ old('order', $userType?->order ?? 0) }}" min="0">
-                            @error('order')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="text" class="form-control" value="#{{ $userType->order }}" disabled>
+                            <div class="form-text">Auto-assigned.</div>
                         </div>
+                        @endif
                         <div class="col-md-4 d-flex align-items-end">
                             <div class="form-check">
                                 <input type="hidden" name="has_subcategories" value="0">

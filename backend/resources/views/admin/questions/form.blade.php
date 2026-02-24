@@ -94,14 +94,13 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                        @if($question)
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Order</label>
-                            <input type="number" name="order" class="form-control @error('order') is-invalid @enderror"
-                                value="{{ old('order', $question?->order ?? 0) }}" min="0">
-                            @error('order')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="text" class="form-control" value="#{{ $question->order }}" disabled>
+                            <div class="form-text">Auto-assigned on creation.</div>
                         </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -180,18 +179,6 @@
                                             class="mapping-input-{{ $idx }}">
 
                                         <div class="ms-auto d-flex align-items-center gap-3 mapping-options mapping-options-{{ $idx }}" style="{{ $isChecked ? '' : 'display:none' }}">
-                                            {{-- Order --}}
-                                            <div class="d-flex align-items-center gap-1">
-                                                <label class="form-label mb-0" style="font-size: 0.75rem; white-space: nowrap;">Order:</label>
-                                                <input type="number"
-                                                    name="mappings[{{ $idx }}][order]"
-                                                    class="form-control form-control-sm mapping-input-{{ $idx }}"
-                                                    style="width: 70px;"
-                                                    value="{{ $mapping['order'] ?? old('order', $question?->order ?? 0) }}"
-                                                    min="0"
-                                                    {{ $isChecked ? '' : 'disabled' }}>
-                                            </div>
-
                                             {{-- Required --}}
                                             <div class="form-check mb-0">
                                                 <input type="hidden"

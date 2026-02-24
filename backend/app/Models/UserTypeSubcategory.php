@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAutoOrder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserTypeSubcategory extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasAutoOrder;
+
+    public function orderScopeColumns(): array
+    {
+        return ['user_type_id'];
+    }
 
     protected $fillable = [
         'user_type_id',
