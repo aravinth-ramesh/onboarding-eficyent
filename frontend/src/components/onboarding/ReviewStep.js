@@ -22,6 +22,31 @@ function ReviewStep({ step, onBack, isFirstStep }) {
   const formatAnswer = (question, value) => {
     if (!value) return '\u2014';
 
+    // File-type questions: show file links from question.files
+    if (question.type === 'file' && question.files && question.files.length > 0) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {question.files.map((file) => (
+            <a
+              key={file.id}
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="kyc-file-link"
+              style={{ fontSize: '0.85rem' }}
+            >
+              {'\u{1F4CE}'} {file.original_filename}
+            </a>
+          ))}
+        </div>
+      );
+    }
+
+    // File marker from local selection (not yet uploaded)
+    if (question.type === 'file') {
+      return '\u2014';
+    }
+
     if (question.type === 'multi_select') {
       try {
         const arr = typeof value === 'string' ? JSON.parse(value) : value;

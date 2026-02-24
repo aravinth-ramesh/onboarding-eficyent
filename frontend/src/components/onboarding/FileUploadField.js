@@ -15,10 +15,8 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
   const handleFiles = useCallback((fileList) => {
     const newFiles = Array.from(fileList);
     if (question.options?.multiple === false) {
-      // Single file mode: replace
       onChange(question.id, newFiles.slice(0, 1));
     } else {
-      // Multi file mode: append
       onChange(question.id, [...selectedFiles, ...newFiles]);
     }
   }, [question.id, question.options, selectedFiles, onChange]);
@@ -46,18 +44,12 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
     if (e.target.files && e.target.files.length > 0) {
       handleFiles(e.target.files);
     }
-    // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
   const handleRemoveFile = (index) => {
     const updated = selectedFiles.filter((_, i) => i !== index);
     onChange(question.id, updated);
-  };
-
-  const handleRemoveExisting = () => {
-    // Clear existing files marker — parent will handle
-    onChange(question.id, []);
   };
 
   const formatSize = (bytes) => {
@@ -72,6 +64,16 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
 
   return (
     <div>
+      {/* Hidden file input — always in DOM so refs work for "Replace files" */}
+      <input
+        ref={inputRef}
+        type="file"
+        multiple={question.options?.multiple !== false}
+        accept={question.options?.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc,.xlsx,.xls,.csv'}
+        onChange={handleInputChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Show previously uploaded files from server */}
       {hasExistingFiles && (
         <div style={{ marginBottom: 10 }}>
@@ -128,7 +130,7 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
         </div>
       )}
 
-      {/* Drop zone (always visible unless existing files shown without intent to replace) */}
+      {/* Drop zone — visible when no existing files are shown */}
       {!hasExistingFiles && (
         <label
           className={`file-upload-dropzone ${dragActive ? 'drag-active' : ''} ${hasNewFiles ? 'has-files' : ''}`}
@@ -136,15 +138,8 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
         >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple={question.options?.multiple !== false}
-            accept={question.options?.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc,.xlsx,.xls,.csv'}
-            onChange={handleInputChange}
-            style={{ display: 'none' }}
-          />
           <div className="file-upload-dropzone-content">
             <div className="file-upload-dropzone-icon">&#128206;</div>
             <div className="file-upload-dropzone-text">
