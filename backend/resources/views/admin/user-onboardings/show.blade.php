@@ -2,6 +2,62 @@
 
 @section('title', 'Onboarding Details')
 
+@push('styles')
+<style>
+    .submitted-answers-section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--color-accent, #2e86de);
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid var(--color-accent, #2e86de);
+        display: inline-block;
+    }
+    .submitted-answers-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .submitted-answers-table tr {
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .submitted-answers-table tr:last-child {
+        border-bottom: none;
+    }
+    .submitted-answers-table td {
+        padding: 10px 12px;
+        vertical-align: top;
+        font-size: 0.875rem;
+    }
+    .submitted-answers-label {
+        width: 40%;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .submitted-answers-value {
+        color: #2c3e50;
+        font-weight: 500;
+    }
+    .submitted-answers-file-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--color-accent, #2e86de);
+        text-decoration: none;
+        font-size: 0.85rem;
+        padding: 3px 0;
+    }
+    .submitted-answers-file-link:hover {
+        text-decoration: underline;
+        color: var(--color-primary-dark, #0f2440);
+    }
+    .submitted-answers-file-link i {
+        font-size: 0.9rem;
+    }
+</style>
+@endpush
+
 @section('actions')
     <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Back
@@ -114,49 +170,88 @@
 
 {{-- Answers --}}
 <div class="card">
-    <div class="card-header">User Answers</div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Group</th>
-                        <th>Question</th>
-                        <th>Type</th>
-                        <th>Answer</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($userOnboarding->answers->sortBy('question.group.order') as $answer)
-                        <tr>
-                            <td>
-                                <span class="badge bg-light text-dark">{{ $answer->question->group->name ?? 'N/A' }}</span>
-                            </td>
-                            <td class="fw-semibold">{{ Str::limit($answer->question->label ?? 'N/A', 60) }}</td>
-                            <td><code>{{ $answer->question->type ?? '-' }}</code></td>
-                            <td>
-                                @if(($answer->question->type ?? '') === 'file' && $answer->files->count())
-                                    @foreach($answer->files as $file)
-                                        <div class="mb-1">
-                                            <a href="{{ $file->url }}" target="_blank" class="text-decoration-none">
-                                                <i class="bi bi-file-earmark"></i> {{ $file->original_filename }}
-                                            </a>
-                                            <small class="text-muted">({{ number_format($file->file_size / 1024, 1) }} KB)</small>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Submitted Answers</span>
+        <span class="badge badge-{{ $userOnboarding->status }}">
+            {{ ucfirst(str_replace('_', ' ', $userOnboarding->status)) }}
+        </span>
+    </div>
+    <div class="card-body">
+        @php
+            $grouped = $userOnboarding->answers
+                ->filter(fn($a) => $a->question && $a->question->group)
+                ->sortBy([
+                    fn($a) => $a->question->group->order ?? 0,
+                    fn($a) => $a->question->order ?? 0,
+                ])
+                ->groupBy(fn($a) => $a->question->group->id);
+        @endphp
+
+        @forelse($grouped as $groupId => $groupAnswers)
+            @php $groupName = $groupAnswers->first()->question->group->name; @endphp
+            <div class="{{ !$loop->first ? 'mt-4' : '' }}">
+                <div class="submitted-answers-section-label">{{ $groupName }}</div>
+                <table class="submitted-answers-table">
+                    <tbody>
+                        @foreach($groupAnswers as $answer)
+                            @php
+                                $question = $answer->question;
+                                $type = $question->type ?? 'text';
+                                $options = $question->options ?? [];
+                                $val = $answer->value;
+                            @endphp
+                            <tr>
+                                <td class="submitted-answers-label">{{ $question->label ?? 'N/A' }}</td>
+                                <td class="submitted-answers-value">
+                                    @if($type === 'file' && $answer->files->count())
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach($answer->files as $file)
+                                                <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                                    <i class="bi bi-paperclip"></i>
+                                                    {{ $file->original_filename }}
+                                                    <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                                </a>
+                                            @endforeach
                                         </div>
-                                    @endforeach
-                                @else
-                                    {{ Str::limit($answer->value ?? '-', 100) }}
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">No answers submitted yet.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                                    @elseif($type === 'file')
+                                        <span class="text-muted">&mdash;</span>
+                                    @elseif($type === 'multi_select')
+                                        @php
+                                            $selected = is_string($val) ? json_decode($val, true) : ($val ?? []);
+                                            $labels = collect($selected)->map(function ($v) use ($options) {
+                                                $opt = collect($options)->firstWhere('value', $v);
+                                                return $opt['label'] ?? $v;
+                                            });
+                                        @endphp
+                                        @if(count($labels))
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach($labels as $label)
+                                                    <span class="badge bg-light text-dark border">{{ $label }}</span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-muted">&mdash;</span>
+                                        @endif
+                                    @elseif(in_array($type, ['radio', 'select']))
+                                        @php
+                                            $opt = collect($options)->firstWhere('value', $val);
+                                        @endphp
+                                        {{ $opt['label'] ?? $val ?? '—' }}
+                                    @else
+                                        {{ $val ?: '—' }}
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @empty
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                No answers submitted yet.
+            </div>
+        @endforelse
     </div>
 </div>
 @endsection
