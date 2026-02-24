@@ -115,9 +115,12 @@ class OnboardingController extends Controller
                 }
             })
             ->where('is_active', true)
-            ->with(['question.group', 'question.conditionalRules'])
+            ->with(['question.group', 'question.conditionalRules' => fn ($q) => $q->where('is_active', true)])
             ->orderBy('order')
             ->get();
+
+        // Deduplicate mappings — keep one per question (prefer subcategory-specific over generic)
+        $mappings = $mappings->unique(fn ($m) => $m->question_id)->values();
 
         // Get existing answers
         $answers = $user->answers()
@@ -152,8 +155,8 @@ class OnboardingController extends Controller
                         'comparison_type' => $rule->comparison_type,
                         'trigger_value' => $rule->trigger_value,
                         'action' => $rule->action,
-                        'logical_operator' => $rule->logical_operator,
-                    ]),
+                        'logical_operator' => $rule->logical_operator ?? 'and',
+                    ])->values()->toArray(),
                 ];
             })->sortBy('order')->values();
 
