@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, clearAuth } from '../../store/slices/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import appConfig from '../../appConfig';
+import NotificationBell from '../notifications/NotificationBell';
 
 function AppLayout({ children, pageTitle }) {
   const dispatch = useDispatch();
@@ -61,6 +62,7 @@ function AppLayout({ children, pageTitle }) {
         <header className="app-topbar">
           <div className="topbar-title">{pageTitle || 'Client Onboarding'}</div>
           <div className="topbar-actions">
+            <NotificationBell />
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
               {user?.email}
             </span>

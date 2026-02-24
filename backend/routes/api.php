@@ -27,6 +27,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // User Types (public list for onboarding)
     Route::get('/user-types', [Api\UserTypeController::class, 'index']);
 
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [Api\NotificationController::class, 'index']);
+        Route::get('/count', [Api\NotificationController::class, 'unreadCount']);
+        Route::get('/{notification}', [Api\NotificationController::class, 'show']);
+        Route::post('/{notification}/read', [Api\NotificationController::class, 'markAsRead']);
+        Route::post('/{notification}/resolve', [Api\NotificationController::class, 'resolve']);
+        Route::post('/{notification}/resolve-upload', [Api\NotificationController::class, 'resolveWithFile']);
+    });
+
     // Onboarding
     Route::prefix('onboarding')->group(function () {
         Route::get('/status', [Api\OnboardingController::class, 'status']);

@@ -48,4 +48,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(AnswerAuditLog::class);
     }
+
+    public function adminNotifications(): HasMany
+    {
+        return $this->hasMany(AdminNotification::class);
+    }
+
+    public function adminQuestions(): HasMany
+    {
+        return $this->hasMany(AdminQuestion::class);
+    }
 }
