@@ -63,6 +63,7 @@ class OnboardingController extends Controller
      */
     public function status(): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -80,6 +81,7 @@ class OnboardingController extends Controller
      */
     public function setUserType(SetUserTypeRequest $request): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -104,6 +106,7 @@ class OnboardingController extends Controller
      */
     public function questions(): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -139,7 +142,7 @@ class OnboardingController extends Controller
         // Group questions by their question group
         $grouped = $mappings->groupBy(fn ($m) => $m->question->group->id);
 
-        $groups = $grouped->map(function ($mappingsInGroup) use ($answers) {
+        $groups = $grouped->map(function ($mappingsInGroup) use ($answers, $answerModels) {
             $group = $mappingsInGroup->first()->question->group;
 
             $questions = $mappingsInGroup->map(function ($mapping) use ($answers, $answerModels) {
@@ -201,6 +204,7 @@ class OnboardingController extends Controller
      */
     public function saveAnswers(SaveAnswersRequest $request): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -250,6 +254,7 @@ class OnboardingController extends Controller
      */
     public function uploadFileAnswer(UploadFileAnswerRequest $request): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -291,6 +296,7 @@ class OnboardingController extends Controller
      */
     public function completeStep(UserOnboardingStep $step): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
@@ -311,6 +317,7 @@ class OnboardingController extends Controller
      */
     public function previousStep(UserOnboardingStep $step): JsonResponse
     {
+        /**@disregard */
         $user = auth()->user();
         $onboarding = $user->onboarding;
 
