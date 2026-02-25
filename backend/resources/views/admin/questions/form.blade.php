@@ -28,7 +28,7 @@
     <div class="col-lg-10">
         <div class="card">
             <div class="card-body">
-                <form method="POST"
+                <form method="POST" id="questionForm"
                     action="{{ $question ? route('admin.questions.update', $question) : route('admin.questions.store') }}">
                     @csrf
                     @if($question) @method('PUT') @endif
@@ -553,7 +553,7 @@
     });
 
     // === Serialize data on form submit ===
-    document.querySelector('form').addEventListener('submit', function() {
+    document.getElementById('questionForm').addEventListener('submit', function() {
         var val = typeSelect.value;
 
         // Serialize options builder for radio/select/multi_select
