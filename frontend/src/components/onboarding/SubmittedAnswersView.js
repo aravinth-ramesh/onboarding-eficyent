@@ -60,6 +60,43 @@ function SubmittedAnswersView({ onBack }) {
       return opt ? opt.label : value;
     }
 
+    if (question.type === 'table') {
+      let rows = value;
+      if (typeof rows === 'string') {
+        try { rows = JSON.parse(rows); } catch { return value; }
+      }
+      if (!Array.isArray(rows) || rows.length === 0) return '\u2014';
+      const columns = (question.options && question.options.columns) || [];
+      if (columns.length === 0) return `${rows.length} row(s)`;
+      return (
+        <div className="table-field-readonly">
+          <table className="table-field-table readonly">
+            <thead>
+              <tr>
+                <th className="table-field-row-num">#</th>
+                {columns.map((col) => <th key={col.key}>{col.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i}>
+                  <td className="table-field-row-num">{i + 1}</td>
+                  {columns.map((col) => {
+                    const cellVal = row[col.key] || '';
+                    if (col.type === 'select' && col.options) {
+                      const opt = col.options.find((o) => o.value === cellVal);
+                      return <td key={col.key}>{opt ? opt.label : cellVal || '\u2014'}</td>;
+                    }
+                    return <td key={col.key}>{cellVal || '\u2014'}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
     return value;
   };
 

@@ -83,6 +83,19 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       if (question.files && question.files.length > 0) return false;
       return true;
     }
+    // For table questions, check if any rows have data
+    if (question.type === 'table') {
+      const val = answers[question.id];
+      let rows = val;
+      if (typeof rows === 'string') {
+        try { rows = JSON.parse(rows); } catch { rows = []; }
+      }
+      if (!Array.isArray(rows) || rows.length === 0) return true;
+      // Check if at least one row has any non-empty value
+      return !rows.some((row) =>
+        Object.values(row || {}).some((v) => v !== undefined && v !== null && v !== '')
+      );
+    }
     const val = answers[question.id];
     return val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
   };

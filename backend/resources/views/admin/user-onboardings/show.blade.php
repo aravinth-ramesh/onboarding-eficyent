@@ -320,6 +320,45 @@
                                             $opt = collect($options)->firstWhere('value', $val);
                                         @endphp
                                         {{ $opt['label'] ?? $val ?? '—' }}
+                                    @elseif($type === 'table')
+                                        @php
+                                            $tableRows = is_string($val) ? json_decode($val, true) : ($val ?? []);
+                                            $columns = $options['columns'] ?? [];
+                                        @endphp
+                                        @if(!empty($tableRows) && !empty($columns))
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-0" style="font-size: 0.82rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th style="width: 40px;">#</th>
+                                                            @foreach($columns as $col)
+                                                                <th>{{ $col['label'] }}</th>
+                                                            @endforeach
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($tableRows as $rowIdx => $row)
+                                                            <tr>
+                                                                <td class="text-muted">{{ $rowIdx + 1 }}</td>
+                                                                @foreach($columns as $col)
+                                                                    <td>
+                                                                        @php $cellVal = $row[$col['key']] ?? ''; @endphp
+                                                                        @if($col['type'] === 'select' && !empty($col['options']))
+                                                                            @php $cellOpt = collect($col['options'])->firstWhere('value', $cellVal); @endphp
+                                                                            {{ $cellOpt['label'] ?? $cellVal ?: '—' }}
+                                                                        @else
+                                                                            {{ $cellVal ?: '—' }}
+                                                                        @endif
+                                                                    </td>
+                                                                @endforeach
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @else
+                                            <span class="text-muted">&mdash;</span>
+                                        @endif
                                     @else
                                         {{ $val ?: '—' }}
                                     @endif

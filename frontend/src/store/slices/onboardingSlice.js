@@ -149,11 +149,11 @@ const onboardingSlice = createSlice({
       .addCase(fetchQuestions.fulfilled, (state, action) => {
         state.loading = false;
         state.questionGroups = action.payload;
-        // Populate existing answers (parse JSON strings for multi_select)
+        // Populate existing answers (parse JSON strings for multi_select and table)
         action.payload.forEach((group) => {
           group.questions.forEach((q) => {
             if (q.answer !== null && q.answer !== undefined) {
-              if (q.type === 'multi_select' && typeof q.answer === 'string') {
+              if ((q.type === 'multi_select' || q.type === 'table') && typeof q.answer === 'string') {
                 try {
                   const parsed = JSON.parse(q.answer);
                   state.answers[q.id] = Array.isArray(parsed) ? parsed : q.answer;

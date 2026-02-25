@@ -1,5 +1,6 @@
 import React from 'react';
 import FileUploadField from './FileUploadField';
+import TableField from './TableField';
 
 function QuestionField({ question, value, onChange }) {
   const handleChange = (newValue) => {
@@ -143,6 +144,15 @@ function QuestionField({ question, value, onChange }) {
           value={value}
           onChange={onChange}
           existingFiles={question.files}
+        />
+      );
+
+    case 'table':
+      return (
+        <TableField
+          question={question}
+          value={value}
+          onChange={onChange}
         />
       );
 

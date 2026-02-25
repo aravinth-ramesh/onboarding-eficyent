@@ -90,6 +90,43 @@ function NotificationDetail({ notificationId, onClose }) {
     if (question.type === 'file' && notification.files && notification.files.length > 0) {
       return notification.files.map((f) => f.original_filename).join(', ');
     }
+    if (question.type === 'table') {
+      try {
+        const rows = typeof val === 'string' ? JSON.parse(val) : val;
+        if (Array.isArray(rows)) {
+          const columns = (question.options && question.options.columns) || [];
+          if (columns.length === 0) return `${rows.length} row(s)`;
+          return (
+            <div className="table-field-readonly" style={{ marginTop: 4 }}>
+              <table className="table-field-table readonly">
+                <thead>
+                  <tr>
+                    <th className="table-field-row-num">#</th>
+                    {columns.map((col) => <th key={col.key}>{col.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i}>
+                      <td className="table-field-row-num">{i + 1}</td>
+                      {columns.map((col) => {
+                        const cellVal = row[col.key] || '';
+                        if (col.type === 'select' && col.options) {
+                          const opt = col.options.find((o) => o.value === cellVal);
+                          return <td key={col.key}>{opt ? opt.label : cellVal || '\u2014'}</td>;
+                        }
+                        return <td key={col.key}>{cellVal || '\u2014'}</td>;
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+      } catch { /* fall through */ }
+      return val;
+    }
     return val;
   };
 
