@@ -112,13 +112,17 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3" id="optionsField">
-                        <label class="form-label fw-semibold">Options (JSON)</label>
-                        <textarea name="options" id="optionsTextarea" class="form-control font-monospace @error('options') is-invalid @enderror"
-                            rows="4" placeholder='[{"label": "Option 1", "value": "option_1"}]'>{{ old('options', $question?->options ? json_encode($question->options, JSON_PRETTY_PRINT) : '') }}</textarea>
-                        <div class="form-text">Required for select, multi_select, and radio types. JSON array of objects with "label" and "value" keys.</div>
+                    {{-- Visual Options Builder (for radio, select, multi_select) --}}
+                    <div class="mb-3" id="optionsField" style="display: none;">
+                        <label class="form-label fw-semibold">Options <span class="text-danger">*</span></label>
+                        <div class="form-text mb-2">Add label/value pairs for each option.</div>
+                        <div id="optionsList"></div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="addOptionBtn">
+                            <i class="bi bi-plus"></i> Add Option
+                        </button>
+                        <input type="hidden" name="options" id="optionsHidden">
                         @error('options')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
 
@@ -326,43 +330,109 @@
         gap: 6px;
         margin-bottom: 4px;
     }
+    .option-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+    .option-row .form-control {
+        flex: 1;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    // Show/hide options field based on question type
     var typeSelect = document.getElementById('questionType');
     var optionsField = document.getElementById('optionsField');
     var tableBuilder = document.getElementById('tableColumnsBuilder');
-    var optionsTextarea = document.getElementById('optionsTextarea');
+    var optionsHidden = document.getElementById('optionsHidden');
     var tableOptionsJson = document.getElementById('tableOptionsJson');
     var typesWithOptions = ['select', 'multi_select', 'radio'];
 
+    // === Toggle sections based on type ===
     function toggleOptions() {
         var val = typeSelect.value;
         if (val === 'table') {
             optionsField.style.display = 'none';
             tableBuilder.style.display = 'block';
-            // Disable the textarea so it doesn't submit
-            optionsTextarea.disabled = true;
+            optionsHidden.disabled = true;
             tableOptionsJson.disabled = false;
         } else if (typesWithOptions.includes(val)) {
             optionsField.style.display = 'block';
             tableBuilder.style.display = 'none';
-            optionsTextarea.disabled = false;
+            optionsHidden.disabled = false;
             tableOptionsJson.disabled = true;
         } else {
             optionsField.style.display = 'none';
             tableBuilder.style.display = 'none';
-            optionsTextarea.disabled = true;
+            optionsHidden.disabled = true;
             tableOptionsJson.disabled = true;
         }
     }
 
-    typeSelect.addEventListener('change', toggleOptions);
+    // Use jQuery .on('change') so Select2-triggered changes are caught
+    $('#questionType').on('change', function() {
+        toggleOptions();
+    });
 
-    // --- Table Column Builder ---
+    // === Visual Options Builder (for radio, select, multi_select) ===
+    var optionsList = document.getElementById('optionsList');
+
+    function createOptionRow(label, value) {
+        var row = document.createElement('div');
+        row.className = 'option-row';
+        row.innerHTML = '<input type="text" class="form-control form-control-sm opt-label" placeholder="Label" value="' + (label || '') + '">' +
+            '<input type="text" class="form-control form-control-sm opt-value" placeholder="Value" value="' + (value || '') + '">' +
+            '<button type="button" class="btn btn-sm btn-outline-danger remove-opt-btn" title="Remove"><i class="bi bi-x"></i></button>';
+
+        // Auto-generate value from label
+        var labelInput = row.querySelector('.opt-label');
+        var valueInput = row.querySelector('.opt-value');
+        labelInput.addEventListener('input', function() {
+            if (!valueInput.dataset.manual) {
+                valueInput.value = slugify(labelInput.value);
+            }
+        });
+        valueInput.addEventListener('input', function() {
+            if (this.value) valueInput.dataset.manual = '1';
+            else delete valueInput.dataset.manual;
+        });
+        if (value) valueInput.dataset.manual = '1';
+
+        // Remove row
+        row.querySelector('.remove-opt-btn').addEventListener('click', function() {
+            if (optionsList.querySelectorAll('.option-row').length > 1) {
+                row.remove();
+            }
+        });
+
+        optionsList.appendChild(row);
+    }
+
+    document.getElementById('addOptionBtn').addEventListener('click', function() {
+        createOptionRow();
+    });
+
+    // Load existing options when editing a radio/select/multi_select question
+    @if($question && in_array($question->type, ['radio', 'select', 'multi_select']) && $question->options)
+    (function() {
+        var existing = @json($question->options);
+        if (Array.isArray(existing) && existing.length) {
+            existing.forEach(function(opt) {
+                createOptionRow(opt.label || '', opt.value || '');
+            });
+        } else {
+            createOptionRow();
+        }
+    })();
+    @else
+    // Default: one empty row
+    createOptionRow();
+    @endif
+
+    // === Table Column Builder ===
     var tableColumnsList = document.getElementById('tableColumnsList');
     var columnCounter = 0;
 
@@ -435,51 +505,37 @@
                 '</div>' +
             '</div>';
 
-        // Auto-generate key from label
         var labelInput = card.querySelector('.col-label');
         var keyInput = card.querySelector('.col-key');
         labelInput.addEventListener('input', function() {
-            if (!keyInput.dataset.manual) {
-                keyInput.value = slugify(this.value);
-            }
+            if (!keyInput.dataset.manual) keyInput.value = slugify(this.value);
         });
         keyInput.addEventListener('input', function() {
-            if (this.value) keyInput.dataset.manual = '1';
-            else delete keyInput.dataset.manual;
+            if (this.value) keyInput.dataset.manual = '1'; else delete keyInput.dataset.manual;
         });
         if (data.key) keyInput.dataset.manual = '1';
 
-        // Toggle suboptions on type change
-        var colTypeSelect = card.querySelector('.col-type');
-        var suboptWrapper = card.querySelector('.col-suboptions-wrapper');
-        colTypeSelect.addEventListener('change', function() {
-            suboptWrapper.style.display = this.value === 'select' ? '' : 'none';
+        card.querySelector('.col-type').addEventListener('change', function() {
+            card.querySelector('.col-suboptions-wrapper').style.display = this.value === 'select' ? '' : 'none';
         });
 
-        // Remove column
         card.querySelector('.remove-column-btn').addEventListener('click', function() {
             card.remove();
             renumberColumns();
         });
 
-        // Add suboption
         card.querySelector('.add-subopt-btn').addEventListener('click', function() {
-            var list = card.querySelector('.suboptions-list');
             var row = document.createElement('div');
             row.className = 'suboption-row';
             row.innerHTML = '<input type="text" class="form-control form-control-sm subopt-label" placeholder="Label">' +
                 '<input type="text" class="form-control form-control-sm subopt-value" placeholder="Value">' +
                 '<button type="button" class="btn btn-sm btn-outline-danger remove-subopt-btn" title="Remove"><i class="bi bi-x"></i></button>';
-            list.appendChild(row);
+            card.querySelector('.suboptions-list').appendChild(row);
         });
 
-        // Remove suboption (delegated)
         card.querySelector('.suboptions-list').addEventListener('click', function(e) {
             var btn = e.target.closest('.remove-subopt-btn');
-            if (btn) {
-                var rows = card.querySelectorAll('.suboption-row');
-                if (rows.length > 1) btn.closest('.suboption-row').remove();
-            }
+            if (btn && card.querySelectorAll('.suboption-row').length > 1) btn.closest('.suboption-row').remove();
         });
 
         tableColumnsList.appendChild(card);
@@ -487,8 +543,7 @@
     }
 
     function renumberColumns() {
-        var cards = tableColumnsList.querySelectorAll('.table-column-card');
-        cards.forEach(function(card, i) {
+        tableColumnsList.querySelectorAll('.table-column-card').forEach(function(card, i) {
             card.querySelector('.column-number').textContent = 'Column #' + (i + 1);
         });
     }
@@ -497,10 +552,23 @@
         createColumnCard();
     });
 
-    // Serialize table builder to JSON on form submit
-    var form = document.querySelector('form');
-    form.addEventListener('submit', function() {
-        if (typeSelect.value === 'table') {
+    // === Serialize data on form submit ===
+    document.querySelector('form').addEventListener('submit', function() {
+        var val = typeSelect.value;
+
+        // Serialize options builder for radio/select/multi_select
+        if (typesWithOptions.includes(val)) {
+            var options = [];
+            optionsList.querySelectorAll('.option-row').forEach(function(row) {
+                var label = row.querySelector('.opt-label').value.trim();
+                var value = row.querySelector('.opt-value').value.trim();
+                if (label && value) options.push({ label: label, value: value });
+            });
+            optionsHidden.value = JSON.stringify(options);
+        }
+
+        // Serialize table builder for table type
+        if (val === 'table') {
             var columns = [];
             tableColumnsList.querySelectorAll('.table-column-card').forEach(function(card) {
                 var col = {
@@ -513,31 +581,28 @@
                 if (col.type === 'select') {
                     col.options = [];
                     card.querySelectorAll('.suboption-row').forEach(function(row) {
-                        var label = row.querySelector('.subopt-label').value.trim();
-                        var value = row.querySelector('.subopt-value').value.trim();
-                        if (label && value) col.options.push({ label: label, value: value });
+                        var l = row.querySelector('.subopt-label').value.trim();
+                        var v = row.querySelector('.subopt-value').value.trim();
+                        if (l && v) col.options.push({ label: l, value: v });
                     });
                 }
                 if (col.label) columns.push(col);
             });
-            var opts = {
+            tableOptionsJson.value = JSON.stringify({
                 columns: columns,
                 min_rows: parseInt(document.getElementById('tableMinRows').value) || 1,
                 max_rows: parseInt(document.getElementById('tableMaxRows').value) || 10,
                 allow_add_rows: document.getElementById('tableAllowAddRows').checked
-            };
-            tableOptionsJson.value = JSON.stringify(opts);
+            });
         }
     });
 
-    // Load existing table data when editing
+    // === Load existing table data when editing ===
     @if($question && $question->type === 'table' && $question->options)
     (function() {
         var existing = @json($question->options);
         if (existing && existing.columns) {
-            existing.columns.forEach(function(col) {
-                createColumnCard(col);
-            });
+            existing.columns.forEach(function(col) { createColumnCard(col); });
             document.getElementById('tableMinRows').value = existing.min_rows || 1;
             document.getElementById('tableMaxRows').value = existing.max_rows || 10;
             document.getElementById('tableAllowAddRows').checked = existing.allow_add_rows !== false;
@@ -545,15 +610,14 @@
     })();
     @endif
 
-    // Initialize on page load
+    // === Initialize on page load ===
     toggleOptions();
 
-    // If no columns exist for table type and creating, add one default column
     if (typeSelect.value === 'table' && tableColumnsList.children.length === 0) {
         createColumnCard();
     }
 
-    // Type mapping toggle
+    // === Type mapping toggle ===
     document.querySelectorAll('.type-toggle').forEach(function(toggle) {
         toggle.addEventListener('change', function() {
             var idx = this.dataset.idx;
@@ -575,7 +639,6 @@
             }
         });
 
-        // Initialize state on page load
         if (toggle.checked) {
             toggle.closest('.type-mapping-card').classList.add('active');
         }
