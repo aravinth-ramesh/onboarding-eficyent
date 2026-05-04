@@ -1,4 +1,136 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef, useState } from 'react';
+
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+function TableFileCell({ column, value, onChange }) {
+  const inputRef = useRef(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const isFile = value instanceof File;
+  const uploaded = !isFile && value && typeof value === 'object' && (value.filename || value.path)
+    ? value
+    : null;
+
+  const acceptAttr = column.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc';
+
+  const handlePick = useCallback((file) => {
+    onChange(file || null);
+  }, [onChange]);
+
+  const handleInputChange = (e) => {
+    const picked = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+    handlePick(picked);
+    e.target.value = '';
+  };
+
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handlePick(e.dataTransfer.files[0]);
+    }
+  }, [handlePick]);
+
+  return (
+    <div className="table-field-file">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={acceptAttr}
+        onChange={handleInputChange}
+        style={{ display: 'none' }}
+      />
+
+      {isFile && (
+        <div className="file-upload-preview">
+          <div className="file-upload-preview-icon">{'\u{1F4C4}'}</div>
+          <div className="file-upload-preview-info">
+            <span className="file-upload-preview-name">{value.name}</span>
+            <span className="file-upload-preview-size">{formatFileSize(value.size)}</span>
+          </div>
+          <button
+            type="button"
+            className="file-upload-remove"
+            onClick={() => handlePick(null)}
+            title="Remove file"
+          >
+            {'✕'}
+          </button>
+        </div>
+      )}
+
+      {!isFile && uploaded && (
+        <>
+          <div className="file-upload-preview uploaded">
+            <div className="file-upload-preview-icon">{'\u{1F4C4}'}</div>
+            <div className="file-upload-preview-info">
+              {uploaded.url ? (
+                <a
+                  href={uploaded.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="kyc-file-link"
+                >
+                  {uploaded.filename || 'Uploaded file'}
+                </a>
+              ) : (
+                <span className="file-upload-preview-name">{uploaded.filename || 'Uploaded file'}</span>
+              )}
+              {uploaded.size != null && (
+                <span className="file-upload-preview-size">{formatFileSize(uploaded.size)}</span>
+              )}
+            </div>
+            <span className="file-upload-preview-badge">Uploaded</span>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <button
+              type="button"
+              className="btn-link-custom"
+              style={{ fontSize: '0.78rem', color: 'var(--color-accent)' }}
+              onClick={() => inputRef.current?.click()}
+            >
+              Replace file
+            </button>
+          </div>
+        </>
+      )}
+
+      {!isFile && !uploaded && (
+        <label
+          className={`file-upload-dropzone ${dragActive ? 'drag-active' : ''}`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
+        >
+          <div className="file-upload-dropzone-content">
+            <div className="file-upload-dropzone-icon">{'\u{1F4CE}'}</div>
+            <div className="file-upload-dropzone-text">
+              <span>Drag &amp; drop a file, or <strong>click to browse</strong></span>
+            </div>
+          </div>
+        </label>
+      )}
+    </div>
+  );
+}
 
 function TableField({ question, value, onChange, cellErrors }) {
   const errorMap = cellErrors || {};
@@ -139,30 +271,14 @@ function TableField({ question, value, onChange, cellErrors }) {
         );
       }
 
-      case 'file': {
-        let displayName = null;
-        if (rowValue instanceof File) {
-          displayName = rowValue.name;
-        } else if (rowValue && typeof rowValue === 'object' && rowValue.filename) {
-          displayName = rowValue.filename;
-        }
+      case 'file':
         return (
-          <div className="table-field-file">
-            <input
-              type="file"
-              className="form-control form-control-sm table-field-input"
-              accept={column.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc'}
-              onChange={(e) => {
-                const picked = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                handleCellChange(rowIndex, column.key, picked);
-              }}
-            />
-            {displayName && (
-              <div className="table-field-file-name" title={displayName}>{displayName}</div>
-            )}
-          </div>
+          <TableFileCell
+            column={column}
+            value={rowValue}
+            onChange={(picked) => handleCellChange(rowIndex, column.key, picked)}
+          />
         );
-      }
 
       default:
         return (
