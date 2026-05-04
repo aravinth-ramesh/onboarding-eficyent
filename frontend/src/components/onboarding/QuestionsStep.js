@@ -32,6 +32,49 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     return evaluateConditionalRules(question.conditional_rules, answers);
   };
 
+  // Reorder a group's questions so any conditional child is emitted directly
+  // after the parent referenced by its rule (when the parent lives in the
+  // same group). Children whose parent lives elsewhere keep their natural
+  // backend order.
+  const reorderQuestionsWithChildren = (questions) => {
+    if (!Array.isArray(questions) || questions.length === 0) return [];
+
+    const byId = new Map(questions.map((q) => [q.id, q]));
+    const childrenByParent = new Map();
+    const anchored = new Set();
+
+    questions.forEach((q) => {
+      const rule = q.conditional_rules && q.conditional_rules[0];
+      if (rule && byId.has(rule.parent_question_id)) {
+        const parentId = rule.parent_question_id;
+        if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+        childrenByParent.get(parentId).push(q);
+        anchored.add(q.id);
+      }
+    });
+
+    const result = [];
+    const seen = new Set();
+
+    const emit = (q) => {
+      if (seen.has(q.id)) return;
+      seen.add(q.id);
+      result.push(q);
+      const kids = childrenByParent.get(q.id);
+      if (kids && kids.length) {
+        const sorted = [...kids].sort((a, b) => (a.order || 0) - (b.order || 0));
+        sorted.forEach(emit);
+      }
+    };
+
+    questions.forEach((q) => {
+      if (anchored.has(q.id)) return;
+      emit(q);
+    });
+
+    return result;
+  };
+
   // Filter out groups that have no visible questions
   const visibleGroups = useMemo(() => {
     return questionGroups.filter((group) =>
@@ -41,9 +84,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   }, [questionGroups, answers]);
 
   const activeGroup = visibleGroups[activeGroupIndex];
-  const activeQuestions = activeGroup
-    ? activeGroup.questions.filter(isQuestionVisible)
-    : [];
+  const activeQuestions = useMemo(() => {
+    if (!activeGroup) return [];
+    return reorderQuestionsWithChildren(activeGroup.questions).filter(isQuestionVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGroup, answers]);
   const isLastGroup = activeGroupIndex === visibleGroups.length - 1;
   const isFirstGroup = activeGroupIndex === 0;
 
