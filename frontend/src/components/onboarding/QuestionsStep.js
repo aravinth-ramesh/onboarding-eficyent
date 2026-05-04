@@ -275,13 +275,21 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handlePrevGroup = () => {
+  const handlePrevGroup = async () => {
     if (isFirstGroup) {
       onBack();
-    } else {
-      setActiveGroupIndex((prev) => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
+    // Persist any pending edits in the current group so they aren't dropped
+    // when we refresh, then refresh from the backend so previously saved
+    // answers (e.g. uploaded table-cell files with their signed URLs)
+    // repopulate the fields.
+    await handleSave();
+    setActiveGroupIndex((prev) => prev - 1);
+    setTableCellErrors({});
+    setValidationErrors({});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await dispatch(fetchQuestions());
   };
 
   const handleSubmitAll = async () => {
