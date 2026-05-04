@@ -1,4 +1,73 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+
+const formatSize = (bytes) => {
+  if (bytes === undefined || bytes === null) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const looksLikePdf = (mime, name = '') => mime === 'application/pdf' || /\.pdf$/i.test(name);
+const looksLikeImage = (mime) => mime && mime.startsWith('image/');
+
+function FilePreviewCard({
+  name,
+  size,
+  mime,
+  previewUrl,
+  downloadUrl,
+  kind,
+  onReplace,
+  onRemove,
+}) {
+  const isImage = looksLikeImage(mime) && previewUrl;
+  const isPdf = looksLikePdf(mime, name);
+
+  return (
+    <div className={`file-preview-card ${kind}`}>
+      <div className="file-preview-thumb">
+        {isImage ? (
+          <img src={previewUrl} alt={name} />
+        ) : (
+          <div className="file-preview-icon">{isPdf ? '\u{1F4C4}' : '\u{1F4CE}'}</div>
+        )}
+      </div>
+      <div className="file-preview-info">
+        <span className={`file-preview-badge ${kind}`}>
+          {'✓'} {kind === 'uploaded' ? 'Uploaded' : 'Selected'}
+        </span>
+        {downloadUrl ? (
+          <a
+            href={downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="file-preview-name"
+            title={name}
+          >
+            {name}
+          </a>
+        ) : (
+          <span className="file-preview-name" title={name}>{name}</span>
+        )}
+        {size != null && size !== '' && (
+          <span className="file-preview-size">{formatSize(size)}</span>
+        )}
+      </div>
+      <div className="file-preview-actions">
+        {onReplace && (
+          <button type="button" className="kyc-btn-link" onClick={onReplace}>
+            Replace
+          </button>
+        )}
+        {onRemove && (
+          <button type="button" className="kyc-btn-link danger" onClick={onRemove}>
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * File upload field with drag-and-drop UI (matching KYC module styling).
@@ -9,17 +78,30 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // value = array of File objects selected by user
+  const isMultiple = question.options?.multiple !== false;
   const selectedFiles = Array.isArray(value) ? value : [];
+
+  // Generate (and revoke) object URLs for image previews of newly selected files.
+  const selectedPreviews = useMemo(() => {
+    return selectedFiles.map((f) =>
+      f && f.type && f.type.startsWith('image/') ? URL.createObjectURL(f) : null
+    );
+  }, [selectedFiles]);
+
+  useEffect(() => {
+    return () => {
+      selectedPreviews.forEach((u) => u && URL.revokeObjectURL(u));
+    };
+  }, [selectedPreviews]);
 
   const handleFiles = useCallback((fileList) => {
     const newFiles = Array.from(fileList);
-    if (question.options?.multiple === false) {
+    if (!isMultiple) {
       onChange(question.id, newFiles.slice(0, 1));
     } else {
       onChange(question.id, [...selectedFiles, ...newFiles]);
     }
-  }, [question.id, question.options, selectedFiles, onChange]);
+  }, [question.id, isMultiple, selectedFiles, onChange]);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -47,91 +129,64 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
     e.target.value = '';
   };
 
-  const handleRemoveFile = (index) => {
+  const handleRemoveSelected = (index) => {
     const updated = selectedFiles.filter((_, i) => i !== index);
     onChange(question.id, updated);
   };
 
-  const formatSize = (bytes) => {
-    if (!bytes) return '';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const hasNewFiles = selectedFiles.length > 0;
   const hasExistingFiles = existingFiles && existingFiles.length > 0 && !hasNewFiles;
+  // Show the dropzone whenever the user can still add another file:
+  // - always when nothing is selected and no existing file is shown
+  // - in multi-file mode, also when files already exist (to add more)
+  const showDropzone = !hasExistingFiles && (!hasNewFiles || isMultiple);
 
   return (
     <div>
-      {/* Hidden file input — always in DOM so refs work for "Replace files" */}
       <input
         ref={inputRef}
         type="file"
-        multiple={question.options?.multiple !== false}
+        multiple={isMultiple}
         accept={question.options?.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc,.xlsx,.xls,.csv'}
         onChange={handleInputChange}
         style={{ display: 'none' }}
       />
 
-      {/* Show previously uploaded files from server */}
       {hasExistingFiles && (
-        <div style={{ marginBottom: 10 }}>
+        <div className="file-preview-list">
           {existingFiles.map((file) => (
-            <div key={file.id} className="file-upload-preview uploaded">
-              <div className="file-upload-preview-icon">&#128196;</div>
-              <div className="file-upload-preview-info">
-                <a
-                  href={file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="kyc-file-link"
-                >
-                  {file.original_filename}
-                </a>
-                <span className="file-upload-preview-size">{formatSize(file.file_size)}</span>
-              </div>
-              <span className="file-upload-preview-badge">Uploaded</span>
-            </div>
+            <FilePreviewCard
+              key={file.id}
+              kind="uploaded"
+              name={file.original_filename}
+              size={file.file_size}
+              mime={file.mime_type}
+              previewUrl={looksLikeImage(file.mime_type) ? file.url : null}
+              downloadUrl={file.url}
+              onReplace={() => inputRef.current?.click()}
+            />
           ))}
-          <div style={{ marginTop: 6 }}>
-            <button
-              type="button"
-              className="btn-link-custom"
-              style={{ fontSize: '0.78rem', color: 'var(--color-accent)' }}
-              onClick={() => inputRef.current?.click()}
-            >
-              Replace files
-            </button>
-          </div>
         </div>
       )}
 
-      {/* Show newly selected files */}
       {hasNewFiles && (
-        <div style={{ marginBottom: 10 }}>
+        <div className="file-preview-list">
           {selectedFiles.map((file, index) => (
-            <div key={`${file.name}-${index}`} className="file-upload-preview">
-              <div className="file-upload-preview-icon">&#128196;</div>
-              <div className="file-upload-preview-info">
-                <span className="file-upload-preview-name">{file.name}</span>
-                <span className="file-upload-preview-size">{formatSize(file.size)}</span>
-              </div>
-              <button
-                type="button"
-                className="file-upload-remove"
-                onClick={() => handleRemoveFile(index)}
-                title="Remove file"
-              >
-                &#10005;
-              </button>
-            </div>
+            <FilePreviewCard
+              key={`${file.name}-${index}`}
+              kind="selected"
+              name={file.name}
+              size={file.size}
+              mime={file.type}
+              previewUrl={selectedPreviews[index]}
+              onReplace={!isMultiple ? () => inputRef.current?.click() : undefined}
+              onRemove={() => handleRemoveSelected(index)}
+            />
           ))}
         </div>
       )}
 
-      {/* Drop zone — visible when no existing files are shown */}
-      {!hasExistingFiles && (
+      {showDropzone && (
         <label
           className={`file-upload-dropzone ${dragActive ? 'drag-active' : ''} ${hasNewFiles ? 'has-files' : ''}`}
           onDragEnter={handleDrag}
@@ -141,9 +196,13 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
           onClick={() => inputRef.current?.click()}
         >
           <div className="file-upload-dropzone-content">
-            <div className="file-upload-dropzone-icon">&#128206;</div>
+            <div className="file-upload-dropzone-icon">{'\u{1F4CE}'}</div>
             <div className="file-upload-dropzone-text">
-              <span>Drag & drop files here, or <strong>click to browse</strong></span>
+              <span>
+                {hasNewFiles && isMultiple
+                  ? <>Add another file — drag &amp; drop or <strong>click to browse</strong></>
+                  : <>Drag &amp; drop files here, or <strong>click to browse</strong></>}
+              </span>
             </div>
             <div className="file-upload-dropzone-hint">
               PDF, JPG, PNG, DOCX (max 5MB each)
