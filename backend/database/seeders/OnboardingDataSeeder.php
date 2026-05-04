@@ -35,9 +35,37 @@ class OnboardingDataSeeder extends Seeder
 
     public function run(): void
     {
+        $this->clean();
         $this->seedUserTypes();
         $this->seedQuestionGroups();
         $this->seedOnboardingSteps();
+    }
+
+    private function clean(): void
+    {
+        Question::withTrashed()->each(function (Question $question) {
+            $question->forceDelete();
+        });
+
+        QuestionGroup::withTrashed()->each(function (QuestionGroup $questionGroup) {
+            $questionGroup->forceDelete();
+        });
+
+        UserType::withTrashed()->each(function (UserType $userType) {
+            $userType->forceDelete();
+        });
+
+        UserTypeSubcategory::withTrashed()->each(function (UserTypeSubcategory $userTypeSubcategory) {
+            $userTypeSubcategory->forceDelete();
+        });
+
+        QuestionTypeMapping::all()->each(function (QuestionTypeMapping $questionTypeMapping) {
+            $questionTypeMapping->forceDelete();
+        });
+
+        OnboardingStep::withTrashed()->each(function (OnboardingStep $onboardingStep) {
+            $onboardingStep->forceDelete();
+        });
     }
 
     private function seedUserTypes(): void
