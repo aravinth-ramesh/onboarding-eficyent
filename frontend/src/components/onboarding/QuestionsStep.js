@@ -157,7 +157,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     const requiredColumns = columns.filter((c) => c.required);
     const isRowEmpty = (row) => !columns.some((col) => isCellFilled(row?.[col.key]));
     const filledRows = rows.filter((r) => !isRowEmpty(r));
-    const requiredAndEmpty = question.is_required && filledRows.length === 0;
+    // Treat the table as required when EITHER the question itself is
+    // marked required OR any column is required. Otherwise a conditional
+    // table with required columns but an unticked "Required" checkbox
+    // lets users advance past an empty table without filling anything.
+    const mustBeFilled = question.is_required || requiredColumns.length > 0;
+    const requiredAndEmpty = mustBeFilled && filledRows.length === 0;
 
     const cells = {};
 
