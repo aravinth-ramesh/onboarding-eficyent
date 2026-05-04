@@ -1,6 +1,8 @@
 import React, { useMemo, useCallback } from 'react';
 
-function TableField({ question, value, onChange }) {
+function TableField({ question, value, onChange, cellErrors }) {
+  const errorMap = cellErrors || {};
+  const hasCellError = (rowIndex, columnKey) => Boolean(errorMap[`${rowIndex}_${columnKey}`]);
   const tableConfig = useMemo(() => {
     const opts = question.options || {};
     return {
@@ -198,18 +200,25 @@ function TableField({ question, value, onChange }) {
               </div>
             )}
             <div className="table-field-card-grid">
-              {tableConfig.columns.map((col) => (
-                <div
-                  key={col.key}
-                  className={`table-field-card-field${col.type === 'checkbox' || col.type === 'file' ? ' full-width' : ''}`}
-                >
-                  <label className="table-field-card-label">
-                    {col.label}
-                    {col.required && <span className="required">*</span>}
-                  </label>
-                  {renderCellInput(col, row[col.key], rowIndex)}
-                </div>
-              ))}
+              {tableConfig.columns.map((col) => {
+                const wide = col.type === 'checkbox' || col.type === 'file';
+                const invalid = hasCellError(rowIndex, col.key);
+                return (
+                  <div
+                    key={col.key}
+                    className={`table-field-card-field${wide ? ' full-width' : ''}${invalid ? ' has-error' : ''}`}
+                  >
+                    <label className="table-field-card-label">
+                      {col.label}
+                      {col.required && <span className="required">*</span>}
+                    </label>
+                    {renderCellInput(col, row[col.key], rowIndex)}
+                    {invalid && (
+                      <div className="table-field-cell-error">This field is required.</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}

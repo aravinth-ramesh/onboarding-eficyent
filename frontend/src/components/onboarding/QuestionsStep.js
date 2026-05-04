@@ -15,6 +15,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
+  const [tableCellErrors, setTableCellErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
 
   // File answers stored outside Redux (File objects are not serializable)
@@ -73,7 +74,57 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
         return next;
       });
     }
+    setTableCellErrors((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
   }, [dispatch, fileQuestionIds, validationErrors]);
+
+  const isCellFilled = (v) => {
+    if (v === null || v === undefined || v === '') return false;
+    if (Array.isArray(v) && v.length === 0) return false;
+    return true;
+  };
+
+  const getTableRows = (val) => {
+    let rows = val;
+    if (typeof rows === 'string') {
+      try { rows = JSON.parse(rows); } catch { rows = []; }
+    }
+    return Array.isArray(rows) ? rows : [];
+  };
+
+  // Returns { message, cells } when invalid, otherwise null.
+  const validateTableQuestion = (question) => {
+    const columns = (question.options && question.options.columns) || [];
+    const rows = getTableRows(answers[question.id]);
+    const requiredColumns = columns.filter((c) => c.required);
+    const isRowEmpty = (row) => !columns.some((col) => isCellFilled(row?.[col.key]));
+    const filledRows = rows.filter((r) => !isRowEmpty(r));
+
+    if (question.is_required && filledRows.length === 0) {
+      return { message: 'This field is required.', cells: {} };
+    }
+
+    const cells = {};
+    rows.forEach((row, rowIndex) => {
+      // Skip wholly empty rows when the question itself is optional;
+      // for required questions, validate at least the first row.
+      if (isRowEmpty(row) && (!question.is_required || rowIndex !== 0)) return;
+      requiredColumns.forEach((col) => {
+        if (!isCellFilled(row?.[col.key])) {
+          cells[`${rowIndex}_${col.key}`] = true;
+        }
+      });
+    });
+
+    if (Object.keys(cells).length > 0) {
+      return { message: 'Please fill all required fields in the table.', cells };
+    }
+    return null;
+  };
 
   const isAnswerEmpty = (question) => {
     // For file questions, check if new files selected or existing server files present
@@ -83,44 +134,41 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       if (question.files && question.files.length > 0) return false;
       return true;
     }
-    // For table questions, check if any rows have data
-    if (question.type === 'table') {
-      const val = answers[question.id];
-      let rows = val;
-      if (typeof rows === 'string') {
-        try { rows = JSON.parse(rows); } catch { rows = []; }
-      }
-      if (!Array.isArray(rows) || rows.length === 0) return true;
-      // Check if at least one row has any non-empty value
-      return !rows.some((row) =>
-        Object.values(row || {}).some((v) => v !== undefined && v !== null && v !== '')
-      );
-    }
     const val = answers[question.id];
     return val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
   };
 
-  const validateCurrentGroup = () => {
+  const collectErrors = (questions) => {
     const errors = {};
-    activeQuestions.forEach((question) => {
+    const cellErrors = {};
+    questions.forEach((question) => {
+      if (question.type === 'table') {
+        const result = validateTableQuestion(question);
+        if (result) {
+          errors[question.id] = result.message;
+          if (Object.keys(result.cells).length > 0) {
+            cellErrors[question.id] = result.cells;
+          }
+        }
+        return;
+      }
       if (question.is_required && isAnswerEmpty(question)) {
         errors[question.id] = 'This field is required.';
       }
     });
-    return errors;
+    return { errors, cellErrors };
   };
 
+  const validateCurrentGroup = () => collectErrors(activeQuestions);
+
   const validateAllGroups = () => {
-    const errors = {};
+    const allQuestions = [];
     visibleGroups.forEach((group) => {
       group.questions.forEach((question) => {
-        if (!isQuestionVisible(question)) return;
-        if (question.is_required && isAnswerEmpty(question)) {
-          errors[question.id] = 'This field is required.';
-        }
+        if (isQuestionVisible(question)) allQuestions.push(question);
       });
     });
-    return errors;
+    return collectErrors(allQuestions);
   };
 
   const handleSave = async () => {
@@ -153,11 +201,13 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   };
 
   const handleNextGroup = async () => {
-    const errors = validateCurrentGroup();
+    const { errors, cellErrors } = validateCurrentGroup();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      setTableCellErrors(cellErrors);
       return;
     }
+    setTableCellErrors({});
 
     // Auto-save on group navigation
     await handleSave();
@@ -176,14 +226,15 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
 
   const handleSubmitAll = async () => {
     // Validate current group first
-    const currentErrors = validateCurrentGroup();
+    const { errors: currentErrors, cellErrors: currentCellErrors } = validateCurrentGroup();
     if (Object.keys(currentErrors).length > 0) {
       setValidationErrors(currentErrors);
+      setTableCellErrors(currentCellErrors);
       return;
     }
 
     // Validate all groups
-    const allErrors = validateAllGroups();
+    const { errors: allErrors, cellErrors: allCellErrors } = validateAllGroups();
     if (Object.keys(allErrors).length > 0) {
       // Find the first group with errors and navigate to it
       for (let i = 0; i < visibleGroups.length; i++) {
@@ -193,10 +244,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
         if (groupHasError) {
           setActiveGroupIndex(i);
           setValidationErrors(allErrors);
+          setTableCellErrors(allCellErrors);
           return;
         }
       }
     }
+    setTableCellErrors({});
 
     const saved = await handleSave();
     if (saved) {
@@ -290,6 +343,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
               question={question}
               value={answers[question.id]}
               onChange={handleAnswerChange}
+              cellErrors={tableCellErrors[question.id]}
             />
             {validationErrors[question.id] && (
               <div className="question-error">{validationErrors[question.id]}</div>
