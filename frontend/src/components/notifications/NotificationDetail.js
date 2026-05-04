@@ -9,6 +9,7 @@ import {
   fetchNotifications,
 } from '../../store/slices/notificationSlice';
 import QuestionField from '../onboarding/QuestionField';
+import FileUploadField from '../onboarding/FileUploadField';
 
 function NotificationDetail({ notificationId, onClose }) {
   const dispatch = useDispatch();
@@ -215,17 +216,11 @@ function NotificationDetail({ notificationId, onClose }) {
               </div>
               {isFileType ? (
                 <div className="notification-detail-file-upload">
-                  <input
-                    type="file"
-                    multiple
-                    className="form-control"
-                    onChange={(e) => setFiles(Array.from(e.target.files))}
+                  <FileUploadField
+                    question={question}
+                    value={files}
+                    onChange={handleFileChange}
                   />
-                  {files.length > 0 && (
-                    <div style={{ marginTop: 8, fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                      {files.length} file(s) selected
-                    </div>
-                  )}
                 </div>
               ) : (
                 <QuestionField
