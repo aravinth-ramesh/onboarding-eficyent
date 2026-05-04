@@ -2,7 +2,7 @@ import React from 'react';
 import FileUploadField from './FileUploadField';
 import TableField from './TableField';
 
-function QuestionField({ question, value, onChange }) {
+function QuestionField({ question, value, onChange, cellErrors }) {
   const handleChange = (newValue) => {
     onChange(question.id, newValue);
   };
@@ -153,6 +153,7 @@ function QuestionField({ question, value, onChange }) {
           question={question}
           value={value}
           onChange={onChange}
+          cellErrors={cellErrors}
         />
       );
 
