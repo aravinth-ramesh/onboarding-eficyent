@@ -112,6 +112,51 @@ function TableField({ question, value, onChange }) {
           </select>
         );
 
+      case 'checkbox': {
+        const selected = Array.isArray(rowValue) ? rowValue : [];
+        const toggle = (optValue) => {
+          const next = selected.includes(optValue)
+            ? selected.filter((v) => v !== optValue)
+            : [...selected, optValue];
+          handleCellChange(rowIndex, column.key, next);
+        };
+        return (
+          <div className="table-field-checkbox-group">
+            {(column.options || []).map((opt) => (
+              <label key={opt.value} className="table-field-checkbox-option">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={selected.includes(opt.value)}
+                  onChange={() => toggle(opt.value)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
+
+      case 'file': {
+        const file = rowValue instanceof File ? rowValue : null;
+        return (
+          <div className="table-field-file">
+            <input
+              type="file"
+              className="form-control form-control-sm table-field-input"
+              accept={column.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc'}
+              onChange={(e) => {
+                const picked = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                handleCellChange(rowIndex, column.key, picked);
+              }}
+            />
+            {file && (
+              <div className="table-field-file-name" title={file.name}>{file.name}</div>
+            )}
+          </div>
+        );
+      }
+
       default:
         return (
           <input
