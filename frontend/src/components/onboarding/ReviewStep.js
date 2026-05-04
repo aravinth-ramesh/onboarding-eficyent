@@ -6,6 +6,7 @@ import {
   fetchOnboardingStatus,
 } from '../../store/slices/onboardingSlice';
 import appConfig from '../../appConfig';
+import TableAnswerView from './TableAnswerView';
 
 function ReviewStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
@@ -66,74 +67,7 @@ function ReviewStep({ step, onBack, isFirstStep }) {
     }
 
     if (question.type === 'table') {
-      let rows = value;
-      if (typeof rows === 'string') {
-        try { rows = JSON.parse(rows); } catch { return value; }
-      }
-      if (!Array.isArray(rows) || rows.length === 0) return '\u2014';
-      const columns = (question.options && question.options.columns) || [];
-      if (columns.length === 0) return `${rows.length} row(s)`;
-      return (
-        <div className="table-field-readonly">
-          <table className="table-field-table readonly">
-            <thead>
-              <tr>
-                <th className="table-field-row-num">#</th>
-                {columns.map((col) => <th key={col.key}>{col.label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i}>
-                  <td className="table-field-row-num">{i + 1}</td>
-                  {columns.map((col) => {
-                    const cellVal = row[col.key];
-
-                    if (col.type === 'file') {
-                      if (cellVal && typeof cellVal === 'object' && (cellVal.filename || cellVal.path)) {
-                        const name = cellVal.filename || 'Uploaded file';
-                        return (
-                          <td key={col.key}>
-                            {cellVal.url ? (
-                              <a
-                                href={cellVal.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="kyc-file-link"
-                              >
-                                {'\u{1F4CE}'} {name}
-                              </a>
-                            ) : (
-                              <span>{'\u{1F4CE}'} {name}</span>
-                            )}
-                          </td>
-                        );
-                      }
-                      return <td key={col.key}>{'\u2014'}</td>;
-                    }
-
-                    if (col.type === 'checkbox') {
-                      const arr = Array.isArray(cellVal) ? cellVal : [];
-                      if (arr.length === 0) return <td key={col.key}>{'\u2014'}</td>;
-                      const labels = arr.map((v) => {
-                        const opt = (col.options || []).find((o) => o.value === v);
-                        return opt ? opt.label : v;
-                      });
-                      return <td key={col.key}>{labels.join(', ')}</td>;
-                    }
-
-                    if (col.type === 'select' && col.options) {
-                      const opt = col.options.find((o) => o.value === cellVal);
-                      return <td key={col.key}>{opt ? opt.label : cellVal || '\u2014'}</td>;
-                    }
-                    return <td key={col.key}>{cellVal || '\u2014'}</td>;
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
+      return <TableAnswerView question={question} value={value} />;
     }
 
     return value;
@@ -185,12 +119,24 @@ function ReviewStep({ step, onBack, isFirstStep }) {
             <p className="section-label">{group.name}</p>
             <table className="review-table">
               <tbody>
-                {group.questions.map((question) => (
-                  <tr key={question.id}>
-                    <td className="review-label">{question.label}</td>
-                    <td className="review-value">{formatAnswer(question, answers[question.id])}</td>
-                  </tr>
-                ))}
+                {group.questions.map((question) => {
+                  if (question.type === 'table') {
+                    return (
+                      <tr key={question.id} className="review-table-row-fullwidth">
+                        <td colSpan={2} className="review-table-fullwidth">
+                          <div className="review-table-block-label">{question.label}</div>
+                          <TableAnswerView question={question} value={answers[question.id]} />
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={question.id}>
+                      <td className="review-label">{question.label}</td>
+                      <td className="review-value">{formatAnswer(question, answers[question.id])}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

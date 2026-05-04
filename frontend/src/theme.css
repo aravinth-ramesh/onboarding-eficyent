@@ -829,6 +829,110 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-primary);
 }
 
+/* Full-width row used to host card-based table-type answers */
+.review-table .review-table-row-fullwidth td.review-table-fullwidth {
+  padding: 1rem 0.75rem;
+  background: transparent;
+}
+
+.review-table-block-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+/* ── Card-based table answer view ── */
+.table-answer-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.table-answer-card {
+  border: 1px solid var(--color-border, #e1e5eb);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--color-surface, #f8f9fa);
+}
+
+.table-answer-card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border, #e1e5eb);
+}
+
+.table-answer-card-index {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-accent, #2e86de);
+}
+
+.table-answer-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+}
+
+.table-answer-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table-answer-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.table-answer-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary, #6c757d);
+  margin: 0 0 3px 0;
+}
+
+.table-answer-field-value {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-primary, #2c3e50);
+  word-break: break-word;
+}
+
+.table-answer-empty {
+  color: var(--color-text-muted, #8e99a4);
+}
+
+.table-answer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.table-answer-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft, rgba(46, 134, 222, 0.12));
+  color: var(--color-accent, #2e86de);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .table-answer-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── KYC Upload ── */
 .kyc-upload-item {
   border: 2px dashed var(--color-border);
