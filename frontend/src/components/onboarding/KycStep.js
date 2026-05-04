@@ -79,13 +79,13 @@ function KycUploadTile({ doc, file, onChange }) {
             <div className="kyc-selected-size">{formatFileSize(file.size)}</div>
           </div>
           <div className="kyc-selected-actions">
-            <button
+            {/* <button
               type="button"
               className="kyc-btn-link"
               onClick={() => inputRef.current?.click()}
             >
               Replace
-            </button>
+            </button> */}
             <button
               type="button"
               className="kyc-btn-link danger"

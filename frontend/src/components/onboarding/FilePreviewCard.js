@@ -63,11 +63,11 @@ function FilePreviewCard({
         )}
       </div>
       <div className="file-preview-actions">
-        {onReplace && (
+        {/* {onReplace && (
           <button type="button" className="kyc-btn-link" onClick={onReplace}>
             Replace
           </button>
-        )}
+        )} */}
         {onRemove && (
           <button type="button" className="kyc-btn-link danger" onClick={onRemove}>
             Remove
