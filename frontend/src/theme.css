@@ -1732,42 +1732,88 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.75rem;
 }
 
-/* Mobile card layout for table fields */
+/* Form-style layout for editable table fields */
+.table-field-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .table-field-card {
   border: 1px solid var(--color-border, #e1e5eb);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-  background: var(--color-surface, #f8f9fa);
+  padding: 16px;
+  background: #fff;
 }
 
 .table-field-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border, #e1e5eb);
   font-weight: 600;
   font-size: 0.82rem;
   color: var(--color-text-secondary, #6c757d);
 }
 
+.table-field-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
 .table-field-card-field {
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table-field-card-field.full-width {
+  grid-column: 1 / -1;
 }
 
 .table-field-card-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-secondary, #6c757d);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
-@media (max-width: 768px) {
-  .table-field-desktop {
-    display: none;
-  }
-  .table-field-mobile {
-    display: block;
+.table-field-form .table-field-input {
+  border: 1px solid var(--color-border, #e1e5eb) !important;
+  background: #fff !important;
+  padding: 6px 10px !important;
+}
+
+.table-field-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 4px 0;
+}
+
+.table-field-checkbox-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.table-field-file-name {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #8e99a4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .table-field-card-grid {
+    grid-template-columns: 1fr;
   }
 }
