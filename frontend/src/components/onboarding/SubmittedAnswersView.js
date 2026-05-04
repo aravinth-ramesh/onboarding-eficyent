@@ -82,7 +82,41 @@ function SubmittedAnswersView({ onBack }) {
                 <tr key={i}>
                   <td className="table-field-row-num">{i + 1}</td>
                   {columns.map((col) => {
-                    const cellVal = row[col.key] || '';
+                    const cellVal = row[col.key];
+
+                    if (col.type === 'file') {
+                      if (cellVal && typeof cellVal === 'object' && (cellVal.filename || cellVal.path)) {
+                        const name = cellVal.filename || 'Uploaded file';
+                        return (
+                          <td key={col.key}>
+                            {cellVal.url ? (
+                              <a
+                                href={cellVal.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="kyc-file-link"
+                              >
+                                {'\u{1F4CE}'} {name}
+                              </a>
+                            ) : (
+                              <span>{'\u{1F4CE}'} {name}</span>
+                            )}
+                          </td>
+                        );
+                      }
+                      return <td key={col.key}>{'\u2014'}</td>;
+                    }
+
+                    if (col.type === 'checkbox') {
+                      const arr = Array.isArray(cellVal) ? cellVal : [];
+                      if (arr.length === 0) return <td key={col.key}>{'\u2014'}</td>;
+                      const labels = arr.map((v) => {
+                        const opt = (col.options || []).find((o) => o.value === v);
+                        return opt ? opt.label : v;
+                      });
+                      return <td key={col.key}>{labels.join(', ')}</td>;
+                    }
+
                     if (col.type === 'select' && col.options) {
                       const opt = col.options.find((o) => o.value === cellVal);
                       return <td key={col.key}>{opt ? opt.label : cellVal || '\u2014'}</td>;
