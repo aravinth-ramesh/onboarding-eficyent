@@ -180,16 +180,63 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     return collectErrors(allQuestions);
   };
 
+  // Map of table-question id -> question (for column-type lookups during save).
+  const tableQuestionMap = useMemo(() => {
+    const map = {};
+    questionGroups.forEach((g) =>
+      g.questions.forEach((q) => {
+        if (q.type === 'table') map[q.id] = q;
+      })
+    );
+    return map;
+  }, [questionGroups]);
+
   const handleSave = async () => {
     setSubmitError(null);
 
-    // Separate non-file answers from file answers
+    const tableFilePayload = [];
+
+    // Separate non-file answers from file answers, extracting any File objects
+    // that were dropped into table cells so they can be uploaded as multipart.
     const answersPayload = Object.entries(answers)
       .filter(([questionId]) => !fileQuestionIds.has(parseInt(questionId)))
-      .map(([questionId, value]) => ({
-        question_id: parseInt(questionId),
-        value,
-      }));
+      .map(([questionId, value]) => {
+        const qid = parseInt(questionId);
+        const question = tableQuestionMap[qid];
+        if (!question) {
+          return { question_id: qid, value };
+        }
+
+        let rows = value;
+        if (typeof rows === 'string') {
+          try { rows = JSON.parse(rows); } catch { rows = []; }
+        }
+        if (!Array.isArray(rows)) {
+          return { question_id: qid, value };
+        }
+
+        const fileColumnKeys = ((question.options && question.options.columns) || [])
+          .filter((c) => c.type === 'file')
+          .map((c) => c.key);
+
+        if (fileColumnKeys.length === 0) {
+          return { question_id: qid, value: rows };
+        }
+
+        const cleanedRows = rows.map((row, rowIndex) => {
+          const cleaned = { ...(row || {}) };
+          fileColumnKeys.forEach((columnKey) => {
+            const cellValue = cleaned[columnKey];
+            if (cellValue instanceof File) {
+              tableFilePayload.push({ questionId: qid, rowIndex, columnKey, file: cellValue });
+              cleaned[columnKey] = '';
+            }
+          });
+          return cleaned;
+        });
+
+        return { question_id: qid, value: cleanedRows };
+      });
 
     // Collect file answers (only those with actual File objects)
     const filePayload = {};
@@ -199,7 +246,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       }
     });
 
-    const result = await dispatch(submitAnswers({ answers: answersPayload, fileAnswers: filePayload }));
+    const result = await dispatch(submitAnswers({
+      answers: answersPayload,
+      fileAnswers: filePayload,
+      tableFileAnswers: tableFilePayload,
+    }));
     if (!result.error) {
       // Clear file ref after successful upload
       fileAnswersRef.current = {};

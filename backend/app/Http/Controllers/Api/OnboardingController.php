@@ -245,6 +245,27 @@ class OnboardingController extends Controller
             }
         }
 
+        // Save per-cell files for table-type answers (grouped by question_id)
+        $tableFileAnswers = $request->validated('table_file_answers') ?? [];
+        if (!empty($tableFileAnswers)) {
+            $grouped = [];
+            foreach ($tableFileAnswers as $entry) {
+                $grouped[(int) $entry['question_id']][] = $entry;
+            }
+
+            foreach ($grouped as $questionId => $entries) {
+                $question = Question::find($questionId);
+                if ($question && $question->type === 'table') {
+                    $this->answerService->saveTableCellFiles(
+                        $user,
+                        $onboarding,
+                        $questionId,
+                        $entries,
+                    );
+                }
+            }
+        }
+
         return response()->json(['message' => 'Answers saved successfully.']);
     }
 

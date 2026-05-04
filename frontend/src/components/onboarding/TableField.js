@@ -140,7 +140,12 @@ function TableField({ question, value, onChange, cellErrors }) {
       }
 
       case 'file': {
-        const file = rowValue instanceof File ? rowValue : null;
+        let displayName = null;
+        if (rowValue instanceof File) {
+          displayName = rowValue.name;
+        } else if (rowValue && typeof rowValue === 'object' && rowValue.filename) {
+          displayName = rowValue.filename;
+        }
         return (
           <div className="table-field-file">
             <input
@@ -152,8 +157,8 @@ function TableField({ question, value, onChange, cellErrors }) {
                 handleCellChange(rowIndex, column.key, picked);
               }}
             />
-            {file && (
-              <div className="table-field-file-name" title={file.name}>{file.name}</div>
+            {displayName && (
+              <div className="table-field-file-name" title={displayName}>{displayName}</div>
             )}
           </div>
         );
