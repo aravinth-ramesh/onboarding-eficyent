@@ -103,16 +103,22 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     const requiredColumns = columns.filter((c) => c.required);
     const isRowEmpty = (row) => !columns.some((col) => isCellFilled(row?.[col.key]));
     const filledRows = rows.filter((r) => !isRowEmpty(r));
-
-    if (question.is_required && filledRows.length === 0) {
-      return { message: 'This field is required.', cells: {} };
-    }
+    const requiredAndEmpty = question.is_required && filledRows.length === 0;
 
     const cells = {};
+
+    // Ensure the first row's required cells are flagged when the question is
+    // required but the user hasn't filled anything yet (rows may not even exist
+    // in the answer store until the first edit).
+    if (requiredAndEmpty) {
+      requiredColumns.forEach((col) => {
+        cells[`0_${col.key}`] = true;
+      });
+    }
+
     rows.forEach((row, rowIndex) => {
-      // Skip wholly empty rows when the question itself is optional;
-      // for required questions, validate at least the first row.
-      if (isRowEmpty(row) && (!question.is_required || rowIndex !== 0)) return;
+      // Skip wholly empty trailing rows when not required; always validate the first row.
+      if (isRowEmpty(row) && rowIndex !== 0) return;
       requiredColumns.forEach((col) => {
         if (!isCellFilled(row?.[col.key])) {
           cells[`${rowIndex}_${col.key}`] = true;
@@ -120,6 +126,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       });
     });
 
+    if (requiredAndEmpty) {
+      return { message: 'This field is required.', cells };
+    }
     if (Object.keys(cells).length > 0) {
       return { message: 'Please fill all required fields in the table.', cells };
     }
