@@ -26,6 +26,13 @@ class SaveAnswersRequest extends FormRequest
             'file_answers' => ['sometimes', 'array'],
             'file_answers.*.question_id' => ['required', 'exists:questions,id'],
             'file_answers.*.file' => ['required', 'file', "mimes:{$allowedMimes}", "max:{$maxSize}"],
+
+            // Per-cell files for table-type answers (optional)
+            'table_file_answers' => ['sometimes', 'array'],
+            'table_file_answers.*.question_id' => ['required', 'exists:questions,id'],
+            'table_file_answers.*.row_index' => ['required', 'integer', 'min:0'],
+            'table_file_answers.*.column_key' => ['required', 'string', 'max:255'],
+            'table_file_answers.*.file' => ['required', 'file', "mimes:{$allowedMimes}", "max:{$maxSize}"],
         ];
     }
 
@@ -36,6 +43,8 @@ class SaveAnswersRequest extends FormRequest
         return [
             'file_answers.*.file.mimes' => 'Only allowed file types: ' . implode(', ', config('onboarding_uploads.allowed_mimes', [])) . '.',
             'file_answers.*.file.max' => "Each file must not exceed {$maxSizeMb} MB.",
+            'table_file_answers.*.file.mimes' => 'Only allowed file types: ' . implode(', ', config('onboarding_uploads.allowed_mimes', [])) . '.',
+            'table_file_answers.*.file.max' => "Each file must not exceed {$maxSizeMb} MB.",
         ];
     }
 
@@ -45,7 +54,11 @@ class SaveAnswersRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (empty($this->input('answers')) && empty($this->file('file_answers')) && empty($this->input('file_answers'))) {
+            if (
+                empty($this->input('answers'))
+                && empty($this->file('file_answers')) && empty($this->input('file_answers'))
+                && empty($this->file('table_file_answers')) && empty($this->input('table_file_answers'))
+            ) {
                 $validator->errors()->add('answers', 'At least one answer or file must be provided.');
             }
         });
