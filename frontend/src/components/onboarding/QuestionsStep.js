@@ -454,7 +454,15 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             )}
             <QuestionField
               question={question}
-              value={answers[question.id]}
+              value={
+                // File questions store File objects outside Redux (in
+                // fileAnswersRef) and only put a '__files__' marker into
+                // state. Surface the actual array so FileUploadField can
+                // preview the selection before submit.
+                question.type === 'file'
+                  ? (fileAnswersRef.current[question.id] || [])
+                  : answers[question.id]
+              }
               onChange={handleAnswerChange}
               cellErrors={tableCellErrors[question.id]}
             />
