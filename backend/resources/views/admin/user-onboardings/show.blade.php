@@ -343,11 +343,45 @@
                                                                 @foreach($columns as $col)
                                                                     <td>
                                                                         @php $cellVal = $row[$col['key']] ?? ''; @endphp
-                                                                        @if($col['type'] === 'select' && !empty($col['options']))
-                                                                            @php $cellOpt = collect($col['options'])->firstWhere('value', $cellVal); @endphp
-                                                                            {{ $cellOpt['label'] ?? $cellVal ?: '—' }}
+                                                                        @if(($col['type'] ?? null) === 'file')
+                                                                            @if(is_array($cellVal) && (!empty($cellVal['filename']) || !empty($cellVal['path'])))
+                                                                                @php $cellName = $cellVal['filename'] ?? 'Uploaded file'; @endphp
+                                                                                @if(!empty($cellVal['url']))
+                                                                                    <a href="{{ $cellVal['url'] }}" target="_blank" class="submitted-answers-file-link">
+                                                                                        <i class="bi bi-paperclip"></i> {{ $cellName }}
+                                                                                    </a>
+                                                                                @else
+                                                                                    <span><i class="bi bi-paperclip"></i> {{ $cellName }}</span>
+                                                                                @endif
+                                                                            @else
+                                                                                <span class="text-muted">&mdash;</span>
+                                                                            @endif
+                                                                        @elseif(($col['type'] ?? null) === 'checkbox')
+                                                                            @php
+                                                                                $cellArr = is_array($cellVal) ? $cellVal : [];
+                                                                                $cellLabels = collect($cellArr)->map(function ($v) use ($col) {
+                                                                                    $opt = collect($col['options'] ?? [])->firstWhere('value', $v);
+                                                                                    return $opt['label'] ?? $v;
+                                                                                });
+                                                                            @endphp
+                                                                            @if($cellLabels->count())
+                                                                                <div class="d-flex flex-wrap gap-1">
+                                                                                    @foreach($cellLabels as $label)
+                                                                                        <span class="badge bg-light text-dark border">{{ $label }}</span>
+                                                                                    @endforeach
+                                                                                </div>
+                                                                            @else
+                                                                                <span class="text-muted">&mdash;</span>
+                                                                            @endif
+                                                                        @elseif(($col['type'] ?? null) === 'select' && !empty($col['options']))
+                                                                            @php
+                                                                                $cellOpt = collect($col['options'])->firstWhere('value', $cellVal);
+                                                                                $cellText = $cellOpt['label'] ?? (is_scalar($cellVal) ? (string) $cellVal : '');
+                                                                            @endphp
+                                                                            {{ $cellText !== '' ? $cellText : '—' }}
                                                                         @else
-                                                                            {{ $cellVal ?: '—' }}
+                                                                            @php $cellText = is_scalar($cellVal) ? (string) $cellVal : ''; @endphp
+                                                                            {{ $cellText !== '' ? $cellText : '—' }}
                                                                         @endif
                                                                     </td>
                                                                 @endforeach
