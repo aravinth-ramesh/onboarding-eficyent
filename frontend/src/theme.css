@@ -1813,10 +1813,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .table-field-card-field.has-error .table-field-input,
-.table-field-card-field.has-error .table-field-checkbox-group,
-.table-field-card-field.has-error .table-field-file {
+.table-field-card-field.has-error .table-field-checkbox-group {
   border: 1px solid var(--color-danger, #e74c3c) !important;
   border-radius: 4px;
+}
+
+.table-field-card-field.has-error .file-upload-dropzone {
+  border-color: var(--color-danger, #e74c3c);
 }
 
 .table-field-card-field.has-error .table-field-card-label {
