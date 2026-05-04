@@ -195,6 +195,14 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       const newFiles = fileAnswersRef.current[question.id];
       if (Array.isArray(newFiles) && newFiles.length > 0) return false;
       if (question.files && question.files.length > 0) return false;
+      // After a successful save the ref is cleared and Redux's
+      // state.questionGroups isn't refreshed (we only refetch on Back),
+      // so question.files stays stale even though the file is actually
+      // saved server-side. Trust the marker we kept in state.answers as
+      // a non-empty signal so validation across pages doesn't bounce
+      // the user back to a page whose file already uploaded.
+      const stored = answers[question.id];
+      if (typeof stored === 'string' && stored.startsWith('__files__')) return false;
       return true;
     }
     const val = answers[question.id];
