@@ -67,10 +67,16 @@ function evaluateSingleRule(rule, answers) {
   const triggerValue = rule.trigger_value;
 
   switch (rule.comparison_type) {
-    case 'equals':
-      return normalizeAnswer(parentAnswer) === String(triggerValue);
-    case 'not_equals':
-      return normalizeAnswer(parentAnswer) !== String(triggerValue);
+    case 'equals': {
+      // For multi-value answers (multi_select / checkbox), "equals X" matches
+      // when X is one of the selected values.
+      const arr = parseAnswerArray(parentAnswer);
+      return arr.some((v) => String(v) === String(triggerValue));
+    }
+    case 'not_equals': {
+      const arr = parseAnswerArray(parentAnswer);
+      return !arr.some((v) => String(v) === String(triggerValue));
+    }
     case 'contains': {
       // Handle array answers (multi_select) — check if trigger value is in the array
       const answerArr = parseAnswerArray(parentAnswer);
