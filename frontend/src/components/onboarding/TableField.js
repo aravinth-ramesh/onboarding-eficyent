@@ -179,76 +179,38 @@ function TableField({ question, value, onChange }) {
 
   return (
     <div className="table-field">
-      {/* Desktop table view */}
-      <div className="table-field-desktop">
-        <div className="table-responsive">
-          <table className="table-field-table">
-            <thead>
-              <tr>
-                <th className="table-field-row-num">#</th>
-                {tableConfig.columns.map((col) => (
-                  <th key={col.key}>
-                    {col.label}
-                    {col.required && <span className="required">*</span>}
-                  </th>
-                ))}
-                {canRemoveRow && <th className="table-field-action-col"></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  <td className="table-field-row-num">{rowIndex + 1}</td>
-                  {tableConfig.columns.map((col) => (
-                    <td key={col.key}>
-                      {renderCellInput(col, row[col.key], rowIndex)}
-                    </td>
-                  ))}
-                  {canRemoveRow && (
-                    <td className="table-field-action-col">
-                      <button
-                        type="button"
-                        className="table-field-remove-btn"
-                        onClick={() => handleRemoveRow(rowIndex)}
-                        title="Remove row"
-                      >
-                        {'\u2715'}
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile card view */}
-      <div className="table-field-mobile">
+      <div className="table-field-form">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="table-field-card">
-            <div className="table-field-card-header">
-              <span>Row {rowIndex + 1}</span>
-              {canRemoveRow && (
-                <button
-                  type="button"
-                  className="table-field-remove-btn"
-                  onClick={() => handleRemoveRow(rowIndex)}
-                  title="Remove row"
-                >
-                  {'\u2715'}
-                </button>
-              )}
-            </div>
-            {tableConfig.columns.map((col) => (
-              <div key={col.key} className="table-field-card-field">
-                <label className="table-field-card-label">
-                  {col.label}
-                  {col.required && <span className="required">*</span>}
-                </label>
-                {renderCellInput(col, row[col.key], rowIndex)}
+            {(rows.length > 1 || tableConfig.allowAddRows) && (
+              <div className="table-field-card-header">
+                <span>Entry {rowIndex + 1}</span>
+                {canRemoveRow && (
+                  <button
+                    type="button"
+                    className="table-field-remove-btn"
+                    onClick={() => handleRemoveRow(rowIndex)}
+                    title="Remove entry"
+                  >
+                    {'\u2715'}
+                  </button>
+                )}
               </div>
-            ))}
+            )}
+            <div className="table-field-card-grid">
+              {tableConfig.columns.map((col) => (
+                <div
+                  key={col.key}
+                  className={`table-field-card-field${col.type === 'checkbox' || col.type === 'file' ? ' full-width' : ''}`}
+                >
+                  <label className="table-field-card-label">
+                    {col.label}
+                    {col.required && <span className="required">*</span>}
+                  </label>
+                  {renderCellInput(col, row[col.key], rowIndex)}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -259,13 +221,13 @@ function TableField({ question, value, onChange }) {
           className="table-field-add-btn"
           onClick={handleAddRow}
         >
-          + Add Row
+          + Add Entry
         </button>
       )}
 
       {rows.length >= tableConfig.maxRows && (
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-          Maximum of {tableConfig.maxRows} rows reached.
+          Maximum of {tableConfig.maxRows} entries reached.
         </div>
       )}
     </div>
