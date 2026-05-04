@@ -190,12 +190,20 @@ class OnboardingDataSeeder extends Seeder
             $jsonType = $row['type'];
             $type = self::TYPE_MAP[$jsonType] ?? 'text';
 
-            $validationRules = null;
+            $meta = null;
             if (! empty($row['meta'])) {
                 $decoded = json_decode($row['meta'], true);
                 if (is_array($decoded)) {
-                    $validationRules = $decoded;
+                    $meta = $decoded;
                 }
+            }
+
+            $options = null;
+            $validationRules = null;
+            if ($type === 'table') {
+                $options = $this->buildTableOptionsFromMeta($meta);
+            } elseif ($meta !== null) {
+                $validationRules = $meta;
             }
 
             $question = $this->createQuestion($group, [
@@ -204,6 +212,7 @@ class OnboardingDataSeeder extends Seeder
                 'type' => $type,
                 'is_required' => ($row['required'] ?? '0') === '1',
                 'order' => (int) $row['order'],
+                'options' => $options,
                 'validation_rules' => $validationRules,
                 'is_active' => ($row['status'] ?? '1') === '1',
             ]);
@@ -241,6 +250,51 @@ class OnboardingDataSeeder extends Seeder
 
             $questionMap[$legacyQid]->update(['options' => $options]);
         }
+    }
+
+    /**
+     * Convert legacy meta `{fields:[{name,type,label,required}], multiple}`
+     * into the options shape consumed by the frontend table renderer:
+     * `{columns:[{key,type,label,required,placeholder}], min_rows, max_rows, allow_add_rows}`.
+     *
+     * @param  array<string, mixed>|null  $meta
+     * @return array<string, mixed>|null
+     */
+    private function buildTableOptionsFromMeta(?array $meta): ?array
+    {
+        if (! is_array($meta) || empty($meta['fields']) || ! is_array($meta['fields'])) {
+            return null;
+        }
+
+        $columnTypeMap = [
+            'text' => 'text',
+            'number' => 'number',
+            'date' => 'date',
+            'select' => 'select',
+            'checkbox' => 'checkbox',
+            'file' => 'file',
+        ];
+
+        $columns = [];
+        foreach ($meta['fields'] as $field) {
+            $sourceType = $field['type'] ?? 'text';
+            $columns[] = [
+                'key' => $field['name'] ?? Str::slug($field['label'] ?? '', '_'),
+                'label' => $field['label'] ?? ($field['name'] ?? ''),
+                'type' => $columnTypeMap[$sourceType] ?? 'text',
+                'required' => (int) ($field['required'] ?? 0) === 1,
+                'placeholder' => $field['placeholder'] ?? '',
+            ];
+        }
+
+        $allowAdd = isset($meta['multiple']) ? ((string) $meta['multiple'] === '1') : true;
+
+        return [
+            'columns' => $columns,
+            'min_rows' => 1,
+            'max_rows' => $allowAdd ? 10 : 1,
+            'allow_add_rows' => $allowAdd,
+        ];
     }
 
     private function seedOnboardingSteps(): void
