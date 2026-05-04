@@ -1,11 +1,5 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
-
-const formatFileSize = (bytes) => {
-  if (!bytes && bytes !== 0) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
+import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 
 function TableFileCell({ column, value, onChange }) {
   const inputRef = useRef(null);
@@ -17,6 +11,16 @@ function TableFileCell({ column, value, onChange }) {
     : null;
 
   const acceptAttr = column.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc';
+
+  // Local thumbnail for newly chosen image files. Revoked on change/unmount.
+  const previewUrl = useMemo(() => {
+    if (!isFile || !value.type || !value.type.startsWith('image/')) return null;
+    return URL.createObjectURL(value);
+  }, [value, isFile]);
+
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
 
   const handlePick = useCallback((file) => {
     onChange(file || null);
@@ -58,57 +62,28 @@ function TableFileCell({ column, value, onChange }) {
       />
 
       {isFile && (
-        <div className="file-upload-preview">
-          <div className="file-upload-preview-icon">{'\u{1F4C4}'}</div>
-          <div className="file-upload-preview-info">
-            <span className="file-upload-preview-name">{value.name}</span>
-            <span className="file-upload-preview-size">{formatFileSize(value.size)}</span>
-          </div>
-          <button
-            type="button"
-            className="file-upload-remove"
-            onClick={() => handlePick(null)}
-            title="Remove file"
-          >
-            {'✕'}
-          </button>
-        </div>
+        <FilePreviewCard
+          kind="selected"
+          name={value.name}
+          size={value.size}
+          mime={value.type}
+          previewUrl={previewUrl}
+          onReplace={() => inputRef.current?.click()}
+          onRemove={() => handlePick(null)}
+        />
       )}
 
       {!isFile && uploaded && (
-        <>
-          <div className="file-upload-preview uploaded">
-            <div className="file-upload-preview-icon">{'\u{1F4C4}'}</div>
-            <div className="file-upload-preview-info">
-              {uploaded.url ? (
-                <a
-                  href={uploaded.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="kyc-file-link"
-                >
-                  {uploaded.filename || 'Uploaded file'}
-                </a>
-              ) : (
-                <span className="file-upload-preview-name">{uploaded.filename || 'Uploaded file'}</span>
-              )}
-              {uploaded.size != null && (
-                <span className="file-upload-preview-size">{formatFileSize(uploaded.size)}</span>
-              )}
-            </div>
-            <span className="file-upload-preview-badge">Uploaded</span>
-          </div>
-          <div style={{ marginTop: 6 }}>
-            <button
-              type="button"
-              className="btn-link-custom"
-              style={{ fontSize: '0.78rem', color: 'var(--color-accent)' }}
-              onClick={() => inputRef.current?.click()}
-            >
-              Replace file
-            </button>
-          </div>
-        </>
+        <FilePreviewCard
+          kind="uploaded"
+          name={uploaded.filename || 'Uploaded file'}
+          size={uploaded.size}
+          mime={uploaded.mime}
+          previewUrl={looksLikeImage(uploaded.mime) ? uploaded.url : null}
+          downloadUrl={uploaded.url}
+          onReplace={() => inputRef.current?.click()}
+          onRemove={() => handlePick(null)}
+        />
       )}
 
       {!isFile && !uploaded && (

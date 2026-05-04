@@ -107,8 +107,17 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     if (fileQuestionIds.has(questionId)) {
       // Store File objects in ref (not Redux)
       fileAnswersRef.current[questionId] = value;
-      // Store a marker in Redux for validation
-      dispatch(setAnswer({ questionId, value: Array.isArray(value) && value.length > 0 ? '__files__' : '' }));
+      // Marker dispatched to Redux must change whenever the selection
+      // changes, otherwise Immer/useSelector skip the update and the
+      // re-render that surfaces the new ref value never happens. Encode
+      // the file count + each file's name/size so add, remove, and
+      // replace all yield a different marker string.
+      let marker = '';
+      if (Array.isArray(value) && value.length > 0) {
+        const sig = value.map((f) => `${f?.name ?? ''}|${f?.size ?? ''}`).join(',');
+        marker = `__files__:${value.length}:${sig}`;
+      }
+      dispatch(setAnswer({ questionId, value: marker }));
     } else {
       dispatch(setAnswer({ questionId, value }));
     }
