@@ -448,7 +448,8 @@
         card.dataset.idx = idx;
 
         var colType = data.type || 'text';
-        var showSuboptions = colType === 'select';
+        var typesWithSuboptions = ['select', 'checkbox'];
+        var showSuboptions = typesWithSuboptions.indexOf(colType) !== -1;
         var suboptionsHtml = '';
         if (data.options && data.options.length) {
             data.options.forEach(function(opt) {
@@ -484,6 +485,8 @@
                         '<option value="number"' + (colType === 'number' ? ' selected' : '') + '>Number</option>' +
                         '<option value="date"' + (colType === 'date' ? ' selected' : '') + '>Date</option>' +
                         '<option value="select"' + (colType === 'select' ? ' selected' : '') + '>Select</option>' +
+                        '<option value="checkbox"' + (colType === 'checkbox' ? ' selected' : '') + '>Checkbox</option>' +
+                        '<option value="file"' + (colType === 'file' ? ' selected' : '') + '>File</option>' +
                     '</select>' +
                 '</div>' +
                 '<div class="col-md-2">' +
@@ -516,7 +519,8 @@
         if (data.key) keyInput.dataset.manual = '1';
 
         card.querySelector('.col-type').addEventListener('change', function() {
-            card.querySelector('.col-suboptions-wrapper').style.display = this.value === 'select' ? '' : 'none';
+            card.querySelector('.col-suboptions-wrapper').style.display =
+                typesWithSuboptions.indexOf(this.value) !== -1 ? '' : 'none';
         });
 
         card.querySelector('.remove-column-btn').addEventListener('click', function() {
@@ -578,7 +582,7 @@
                     required: card.querySelector('.col-required').checked,
                     placeholder: card.querySelector('.col-placeholder').value.trim()
                 };
-                if (col.type === 'select') {
+                if (col.type === 'select' || col.type === 'checkbox') {
                     col.options = [];
                     card.querySelectorAll('.suboption-row').forEach(function(row) {
                         var l = row.querySelector('.subopt-label').value.trim();
