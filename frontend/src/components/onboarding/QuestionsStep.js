@@ -334,16 +334,20 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       onBack();
       return;
     }
-    // Persist any pending edits in the current group so they aren't dropped
-    // when we refresh, then refresh from the backend so previously saved
-    // answers (e.g. uploaded table-cell files with their signed URLs)
-    // repopulate the fields.
-    await handleSave();
-    setActiveGroupIndex((prev) => prev - 1);
     setTableCellErrors({});
     setValidationErrors({});
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 1) Persist any pending edits in the current group so they aren't
+    //    dropped on refresh. We do this even if the save is empty/invalid;
+    //    the user explicitly asked to navigate back, so don't block them.
+    await handleSave();
+    setSubmitError(null);
+    // 2) Refresh from the backend BEFORE switching groups so the previous
+    //    group renders with up-to-date answers and uploaded files (signed
+    //    URLs, question.files, etc.) instead of briefly showing stale
+    //    state while the network request resolves.
     await dispatch(fetchQuestions());
+    setActiveGroupIndex((prev) => Math.max(prev - 1, 0));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitAll = async () => {
@@ -484,8 +488,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
 
       <div className="ob-card-footer">
         {!(isFirstStep && isFirstGroup) ? (
-          <button className="btn-secondary-custom" onClick={handlePrevGroup}>
-            &#8592; Back
+          <button
+            className="btn-secondary-custom"
+            onClick={handlePrevGroup}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : '← Back'}
           </button>
         ) : <div />}
 
