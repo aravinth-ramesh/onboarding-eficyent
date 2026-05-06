@@ -1,6 +1,21 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 
+// Resolve the effective min/max for a date input by combining the explicit
+// `min_date`/`max_date` rules with the `allow_past` / `allow_future` flags.
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const dateBound = (rules, edge) => {
+  if (!rules) return undefined;
+  if (edge === 'min') {
+    if (rules.min_date) return rules.min_date;
+    if (rules.allow_past === false) return todayIso();
+    return undefined;
+  }
+  if (rules.max_date) return rules.max_date;
+  if (rules.allow_future === false) return todayIso();
+  return undefined;
+};
+
 function TableFileCell({ column, value, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
@@ -109,7 +124,12 @@ function TableFileCell({ column, value, onChange }) {
 
 function TableField({ question, value, onChange, cellErrors }) {
   const errorMap = cellErrors || {};
-  const hasCellError = (rowIndex, columnKey) => Boolean(errorMap[`${rowIndex}_${columnKey}`]);
+  // `errorMap` values may be either booleans (legacy) or message strings.
+  const getCellError = (rowIndex, columnKey) => {
+    const v = errorMap[`${rowIndex}_${columnKey}`];
+    if (!v) return null;
+    return typeof v === 'string' ? v : 'This field is required.';
+  };
   const tableConfig = useMemo(() => {
     const opts = question.options || {};
     return {
@@ -182,6 +202,7 @@ function TableField({ question, value, onChange, cellErrors }) {
 
   const renderCellInput = (column, rowValue, rowIndex) => {
     const cellValue = rowValue || '';
+    const v = column.validation || {};
 
     switch (column.type) {
       case 'number':
@@ -191,6 +212,8 @@ function TableField({ question, value, onChange, cellErrors }) {
             className="form-control form-control-sm table-field-input"
             placeholder={column.placeholder || ''}
             value={cellValue}
+            min={v.min ?? undefined}
+            max={v.max ?? undefined}
             onChange={(e) => handleCellChange(rowIndex, column.key, e.target.value)}
           />
         );
@@ -201,6 +224,8 @@ function TableField({ question, value, onChange, cellErrors }) {
             type="date"
             className="form-control form-control-sm table-field-input"
             value={cellValue}
+            min={dateBound(v, 'min')}
+            max={dateBound(v, 'max')}
             onChange={(e) => handleCellChange(rowIndex, column.key, e.target.value)}
           />
         );
@@ -262,6 +287,7 @@ function TableField({ question, value, onChange, cellErrors }) {
             className="form-control form-control-sm table-field-input"
             placeholder={column.placeholder || ''}
             value={cellValue}
+            maxLength={v.max_length ?? undefined}
             onChange={(e) => handleCellChange(rowIndex, column.key, e.target.value)}
           />
         );
@@ -298,19 +324,19 @@ function TableField({ question, value, onChange, cellErrors }) {
             <div className="table-field-card-grid">
               {tableConfig.columns.map((col) => {
                 const wide = col.type === 'checkbox' || col.type === 'file';
-                const invalid = hasCellError(rowIndex, col.key);
+                const errorMsg = getCellError(rowIndex, col.key);
                 return (
                   <div
                     key={col.key}
-                    className={`table-field-card-field${wide ? ' full-width' : ''}${invalid ? ' has-error' : ''}`}
+                    className={`table-field-card-field${wide ? ' full-width' : ''}${errorMsg ? ' has-error' : ''}`}
                   >
                     <label className="table-field-card-label">
                       {col.label}
                       {col.required && <span className="required">*</span>}
                     </label>
                     {renderCellInput(col, row[col.key], rowIndex)}
-                    {invalid && (
-                      <div className="table-field-cell-error">This field is required.</div>
+                    {errorMsg && (
+                      <div className="table-field-cell-error">{errorMsg}</div>
                     )}
                   </div>
                 );

@@ -8,6 +8,7 @@ import {
   fetchOnboardingStatus,
 } from '../../store/slices/onboardingSlice';
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
+import { validateByType, validateTableCell } from '../../utils/validation';
 import QuestionField from './QuestionField';
 
 function QuestionsStep({ step, onBack, isFirstStep }) {
@@ -151,6 +152,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   };
 
   // Returns { message, cells } when invalid, otherwise null.
+  // `cells` maps `${rowIndex}_${columnKey}` -> error message string.
   const validateTableQuestion = (question) => {
     const columns = (question.options && question.options.columns) || [];
     const rows = getTableRows(answers[question.id]);
@@ -171,16 +173,28 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     // in the answer store until the first edit).
     if (requiredAndEmpty) {
       requiredColumns.forEach((col) => {
-        cells[`0_${col.key}`] = true;
+        cells[`0_${col.key}`] = 'This field is required.';
       });
     }
 
     rows.forEach((row, rowIndex) => {
       // Skip wholly empty trailing rows when not required; always validate the first row.
-      if (isRowEmpty(row) && rowIndex !== 0) return;
-      requiredColumns.forEach((col) => {
-        if (!isCellFilled(row?.[col.key])) {
-          cells[`${rowIndex}_${col.key}`] = true;
+      const rowEmpty = isRowEmpty(row);
+      if (rowEmpty && rowIndex !== 0) return;
+
+      columns.forEach((col) => {
+        const cellValue = row?.[col.key];
+        // Required check first (handled per row).
+        if (col.required && !isCellFilled(cellValue)) {
+          cells[`${rowIndex}_${col.key}`] = 'This field is required.';
+          return;
+        }
+        // Skip type-level validation when the cell is empty and not required —
+        // empty optional cells should never produce an error.
+        if (!isCellFilled(cellValue)) return;
+        const error = validateTableCell(col, cellValue);
+        if (error) {
+          cells[`${rowIndex}_${col.key}`] = error;
         }
       });
     });
@@ -189,7 +203,15 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       return { message: 'This field is required.', cells };
     }
     if (Object.keys(cells).length > 0) {
-      return { message: 'Please fill all required fields in the table.', cells };
+      const anyTypeError = Object.values(cells).some(
+        (msg) => msg && msg !== 'This field is required.'
+      );
+      return {
+        message: anyTypeError
+          ? 'Please correct the highlighted fields in the table.'
+          : 'Please fill all required fields in the table.',
+        cells,
+      };
     }
     return null;
   };
@@ -230,6 +252,15 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       }
       if (question.is_required && isAnswerEmpty(question)) {
         errors[question.id] = 'This field is required.';
+        return;
+      }
+      // File-type required-ness is handled above; per-question type rules
+      // (regex/min/max/date) only apply when there's a value to check.
+      if (question.type === 'file') return;
+      const value = answers[question.id];
+      const typeError = validateByType(question.type, value, question.validation_rules);
+      if (typeError) {
+        errors[question.id] = typeError;
       }
     });
     return { errors, cellErrors };
