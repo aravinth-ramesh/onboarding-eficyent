@@ -49,7 +49,7 @@ function HomePage() {
     }
 
     return (
-      <AppLayout pageTitle="Onboarding Complete">
+      <AppLayout pageTitle="Client Onboarding">
         <div className="ob-card">
           <div className="ob-card-body">
             <div className="completion-screen">
