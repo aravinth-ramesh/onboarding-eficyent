@@ -183,6 +183,7 @@
                                         <option value="url" data-pattern="^(https?://)[^\s/$.?#].[^\s]*$" data-message="Enter a valid URL (http:// or https://).">URL</option>
                                         <option value="alpha" data-pattern="^[A-Za-z ]+$" data-message="Only letters and spaces are allowed.">Alphabetic only</option>
                                         <option value="alphanumeric" data-pattern="^[A-Za-z0-9 ]+$" data-message="Only letters, numbers and spaces are allowed.">Alphanumeric</option>
+                                        <option value="alphanumeric_special" data-pattern="^[A-Za-z0-9 .,\-_&amp;'/()]+$" data-message="Only letters, numbers, spaces and . , - _ &amp; ' / ( ) are allowed.">Alphanumeric + common special chars</option>
                                         <option value="pan" data-pattern="^[A-Z]{5}[0-9]{4}[A-Z]$" data-message="Enter a valid PAN (e.g. ABCDE1234F).">PAN (India)</option>
                                         <option value="aadhaar" data-pattern="^[2-9][0-9]{11}$" data-message="Enter a valid 12-digit Aadhaar number.">Aadhaar (India)</option>
                                         <option value="gstin" data-pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$" data-message="Enter a valid GSTIN.">GSTIN (India)</option>
@@ -580,6 +581,7 @@
         { value: 'url',          label: 'URL',                         pattern: '^(https?://)[^\\s/$.?#].[^\\s]*$',                    message: 'Enter a valid URL (http:// or https://).' },
         { value: 'alpha',        label: 'Alphabetic only',             pattern: '^[A-Za-z ]+$',                                       message: 'Only letters and spaces are allowed.' },
         { value: 'alphanumeric', label: 'Alphanumeric',                pattern: '^[A-Za-z0-9 ]+$',                                    message: 'Only letters, numbers and spaces are allowed.' },
+        { value: 'alphanumeric_special', label: 'Alphanumeric + common special chars', pattern: "^[A-Za-z0-9 .,\\-_&'/()]+$",      message: "Only letters, numbers, spaces and . , - _ & ' / ( ) are allowed." },
         { value: 'pan',          label: 'PAN (India)',                 pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$',                            message: 'Enter a valid PAN (e.g. ABCDE1234F).' },
         { value: 'aadhaar',      label: 'Aadhaar (India)',             pattern: '^[2-9][0-9]{11}$',                                   message: 'Enter a valid 12-digit Aadhaar number.' },
         { value: 'gstin',        label: 'GSTIN (India)',               pattern: '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$',  message: 'Enter a valid GSTIN.' },
