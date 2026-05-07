@@ -42,26 +42,12 @@ class QuestionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'question_group_id' => ['required', 'exists:question_groups,id'],
-            'label' => ['required', 'string', 'max:500'],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file', 'table'])],
-            'options' => ['nullable', 'string'],
-            'is_required' => ['boolean'],
-            'placeholder' => ['nullable', 'string', 'max:255'],
-            'help_text' => ['nullable', 'string', 'max:500'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $this->validatePayload($request);
 
         $validated['is_required'] = $request->boolean('is_required');
         $validated['is_active'] = $request->boolean('is_active');
-
-        if (!empty($validated['options'])) {
-            $validated['options'] = json_decode($validated['options'], true);
-        } else {
-            $validated['options'] = null;
-        }
+        $validated['options'] = $this->decodeJsonField($validated['options'] ?? null);
+        $validated['validation_rules'] = $this->decodeJsonField($validated['validation_rules'] ?? null);
 
         $question = DB::transaction(function () use ($validated) {
             return Question::create($validated);
@@ -84,26 +70,12 @@ class QuestionController extends Controller
 
     public function update(Request $request, Question $question): RedirectResponse
     {
-        $validated = $request->validate([
-            'question_group_id' => ['required', 'exists:question_groups,id'],
-            'label' => ['required', 'string', 'max:500'],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file', 'table'])],
-            'options' => ['nullable', 'string'],
-            'is_required' => ['boolean'],
-            'placeholder' => ['nullable', 'string', 'max:255'],
-            'help_text' => ['nullable', 'string', 'max:500'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $this->validatePayload($request);
 
         $validated['is_required'] = $request->boolean('is_required');
         $validated['is_active'] = $request->boolean('is_active');
-
-        if (!empty($validated['options'])) {
-            $validated['options'] = json_decode($validated['options'], true);
-        } else {
-            $validated['options'] = null;
-        }
+        $validated['options'] = $this->decodeJsonField($validated['options'] ?? null);
+        $validated['validation_rules'] = $this->decodeJsonField($validated['validation_rules'] ?? null);
 
         $question->update($validated);
 
@@ -111,6 +83,42 @@ class QuestionController extends Controller
 
         return redirect()->route('admin.questions.index')
             ->with('success', 'Question updated successfully.');
+    }
+
+    /**
+     * Shared validation rules for store/update. `options` and
+     * `validation_rules` arrive as JSON strings from the form's hidden inputs.
+     */
+    private function validatePayload(Request $request): array
+    {
+        return $request->validate([
+            'question_group_id' => ['required', 'exists:question_groups,id'],
+            'label' => ['required', 'string', 'max:500'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file', 'table'])],
+            'options' => ['nullable', 'string'],
+            'validation_rules' => ['nullable', 'string'],
+            'is_required' => ['boolean'],
+            'placeholder' => ['nullable', 'string', 'max:255'],
+            'help_text' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['boolean'],
+        ]);
+    }
+
+    /**
+     * Decode a hidden-field JSON blob — empty string / `{}` / non-json all
+     * collapse to `null` so the column stays clean rather than `"[]"`.
+     */
+    private function decodeJsonField(?string $raw): ?array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return null;
+        }
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded) || count($decoded) === 0) {
+            return null;
+        }
+        return $decoded;
     }
 
     public function destroy(Question $question): RedirectResponse

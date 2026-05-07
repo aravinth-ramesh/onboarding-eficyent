@@ -163,6 +163,122 @@
                         @enderror
                     </div>
 
+                    {{-- Validation Rules (text/textarea/number/date) --}}
+                    <div class="mb-3" id="validationRulesBuilder" style="display: none;">
+                        <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em;">Validation Rules</h6>
+                        <div class="form-text mb-2">
+                            Field-level checks applied on the client. Leave blank to skip a rule.
+                        </div>
+
+                        {{-- Text / Textarea rules --}}
+                        <div class="vr-block" data-vr-types="text,textarea">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Pattern Preset</label>
+                                    <select class="form-select form-select-sm" id="vrPatternPreset">
+                                        <option value="">— None / Custom —</option>
+                                        <option value="email" data-pattern="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$" data-message="Enter a valid email address.">Email</option>
+                                        <option value="phone_in" data-pattern="^[6-9][0-9]{9}$" data-message="Enter a 10-digit Indian mobile number.">Phone (IN, 10 digits)</option>
+                                        <option value="phone_intl" data-pattern="^\+?[1-9][0-9]{7,14}$" data-message="Enter a valid international phone number.">Phone (international)</option>
+                                        <option value="url" data-pattern="^(https?://)[^\s/$.?#].[^\s]*$" data-message="Enter a valid URL (http:// or https://).">URL</option>
+                                        <option value="alpha" data-pattern="^[A-Za-z ]+$" data-message="Only letters and spaces are allowed.">Alphabetic only</option>
+                                        <option value="alphanumeric" data-pattern="^[A-Za-z0-9 ]+$" data-message="Only letters, numbers and spaces are allowed.">Alphanumeric</option>
+                                        <option value="pan" data-pattern="^[A-Z]{5}[0-9]{4}[A-Z]$" data-message="Enter a valid PAN (e.g. ABCDE1234F).">PAN (India)</option>
+                                        <option value="aadhaar" data-pattern="^[2-9][0-9]{11}$" data-message="Enter a valid 12-digit Aadhaar number.">Aadhaar (India)</option>
+                                        <option value="gstin" data-pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$" data-message="Enter a valid GSTIN.">GSTIN (India)</option>
+                                        <option value="pincode" data-pattern="^[1-9][0-9]{5}$" data-message="Enter a valid 6-digit PIN code.">PIN code (India, 6 digits)</option>
+                                        <option value="zip_us" data-pattern="^[0-9]{5}(-[0-9]{4})?$" data-message="Enter a valid US ZIP code.">ZIP (US)</option>
+                                        <option value="ifsc" data-pattern="^[A-Z]{4}0[A-Z0-9]{6}$" data-message="Enter a valid IFSC code.">IFSC (India)</option>
+                                        <option value="custom" data-pattern="" data-message="">Custom regex…</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Pattern (regex)</label>
+                                    <input type="text" class="form-control form-control-sm" id="vrPattern" placeholder="e.g. ^[A-Za-z]+$">
+                                    <div class="form-text">Anchored automatically — the entire value must match.</div>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Pattern Message Preset</label>
+                                    <select class="form-select form-select-sm mb-1" id="vrMessagePreset">
+                                        <option value="">— Choose a preset or type your own —</option>
+                                        <option>Enter a valid email address.</option>
+                                        <option>Enter a 10-digit phone number.</option>
+                                        <option>Enter a valid URL.</option>
+                                        <option>Only letters and spaces are allowed.</option>
+                                        <option>Only letters, numbers and spaces are allowed.</option>
+                                        <option>Value does not match the required format.</option>
+                                    </select>
+                                    <input type="text" class="form-control form-control-sm" id="vrPatternMessage" placeholder="Shown when the value doesn't match the pattern">
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Min Length</label>
+                                    <input type="number" min="0" class="form-control form-control-sm" id="vrMinLength" placeholder="e.g. 2">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Max Length</label>
+                                    <input type="number" min="0" class="form-control form-control-sm" id="vrMaxLength" placeholder="e.g. 100">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Number rules --}}
+                        <div class="vr-block" data-vr-types="number" style="display: none;">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Minimum Value</label>
+                                    <input type="number" step="any" class="form-control form-control-sm" id="vrMin" placeholder="e.g. 0">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Maximum Value</label>
+                                    <input type="number" step="any" class="form-control form-control-sm" id="vrMax" placeholder="e.g. 100">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Date rules --}}
+                        <div class="vr-block" data-vr-types="date" style="display: none;">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="vrAllowPast" checked>
+                                        <label class="form-check-label" for="vrAllowPast">Allow past dates</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="vrAllowFuture" checked>
+                                        <label class="form-check-label" for="vrAllowFuture">Allow future dates</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="vrAllowToday" checked>
+                                        <label class="form-check-label" for="vrAllowToday">Allow today's date</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Min Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="vrMinDate">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Max Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="vrMaxDate">
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="validation_rules" id="validationRulesJson">
+                        @error('validation_rules')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="row mb-3">
                         <div class="col-md-6 d-flex align-items-end">
                             <div class="form-check">
@@ -349,7 +465,10 @@
     var tableBuilder = document.getElementById('tableColumnsBuilder');
     var optionsHidden = document.getElementById('optionsHidden');
     var tableOptionsJson = document.getElementById('tableOptionsJson');
+    var validationBuilder = document.getElementById('validationRulesBuilder');
+    var validationRulesJson = document.getElementById('validationRulesJson');
     var typesWithOptions = ['select', 'multi_select', 'radio'];
+    var typesWithValidation = ['text', 'textarea', 'number', 'date'];
 
     // === Toggle sections based on type ===
     function toggleOptions() {
@@ -369,6 +488,20 @@
             tableBuilder.style.display = 'none';
             optionsHidden.disabled = true;
             tableOptionsJson.disabled = true;
+        }
+
+        // Validation rules block — visible for text/textarea/number/date,
+        // and the inner sub-blocks switch to match the chosen type.
+        if (typesWithValidation.indexOf(val) !== -1) {
+            validationBuilder.style.display = 'block';
+            validationRulesJson.disabled = false;
+            validationBuilder.querySelectorAll('.vr-block').forEach(function (block) {
+                var supported = (block.dataset.vrTypes || '').split(',');
+                block.style.display = supported.indexOf(val) !== -1 ? '' : 'none';
+            });
+        } else {
+            validationBuilder.style.display = 'none';
+            validationRulesJson.disabled = true;
         }
     }
 
@@ -556,9 +689,90 @@
         createColumnCard();
     });
 
+    // === Validation Rules: presets + serialization ===
+    var vrPatternPreset = document.getElementById('vrPatternPreset');
+    var vrPattern = document.getElementById('vrPattern');
+    var vrPatternMessage = document.getElementById('vrPatternMessage');
+    var vrMessagePreset = document.getElementById('vrMessagePreset');
+
+    vrPatternPreset.addEventListener('change', function () {
+        var opt = this.options[this.selectedIndex];
+        if (!opt || !opt.value) return;
+        if (opt.value === 'custom') {
+            vrPattern.value = '';
+            vrPatternMessage.value = '';
+            vrPattern.focus();
+            return;
+        }
+        vrPattern.value = opt.dataset.pattern || '';
+        if (!vrPatternMessage.value) {
+            vrPatternMessage.value = opt.dataset.message || '';
+        }
+    });
+
+    vrMessagePreset.addEventListener('change', function () {
+        if (this.value) vrPatternMessage.value = this.value;
+    });
+
+    // Pre-fill the validation rules block when editing.
+    @if($question && $question->validation_rules)
+    (function () {
+        var rules = @json($question->validation_rules);
+        if (!rules || typeof rules !== 'object') return;
+        if (rules.pattern != null) vrPattern.value = rules.pattern;
+        if (rules.pattern_message != null) vrPatternMessage.value = rules.pattern_message;
+        if (rules.min_length != null) document.getElementById('vrMinLength').value = rules.min_length;
+        if (rules.max_length != null) document.getElementById('vrMaxLength').value = rules.max_length;
+        if (rules.min != null) document.getElementById('vrMin').value = rules.min;
+        if (rules.max != null) document.getElementById('vrMax').value = rules.max;
+        if (rules.allow_past === false) document.getElementById('vrAllowPast').checked = false;
+        if (rules.allow_future === false) document.getElementById('vrAllowFuture').checked = false;
+        if (rules.allow_today === false) document.getElementById('vrAllowToday').checked = false;
+        if (rules.min_date) document.getElementById('vrMinDate').value = rules.min_date;
+        if (rules.max_date) document.getElementById('vrMaxDate').value = rules.max_date;
+    })();
+    @endif
+
+    function serializeValidationRules(type) {
+        if (typesWithValidation.indexOf(type) === -1) return null;
+        var rules = {};
+
+        if (type === 'text' || type === 'textarea') {
+            var pattern = vrPattern.value.trim();
+            if (pattern) rules.pattern = pattern;
+            var msg = vrPatternMessage.value.trim();
+            if (msg) rules.pattern_message = msg;
+            var minL = document.getElementById('vrMinLength').value;
+            var maxL = document.getElementById('vrMaxLength').value;
+            if (minL !== '') rules.min_length = parseInt(minL, 10);
+            if (maxL !== '') rules.max_length = parseInt(maxL, 10);
+        } else if (type === 'number') {
+            var min = document.getElementById('vrMin').value;
+            var max = document.getElementById('vrMax').value;
+            if (min !== '') rules.min = Number(min);
+            if (max !== '') rules.max = Number(max);
+        } else if (type === 'date') {
+            // Only emit the boolean flags when the admin disables the default
+            // (allow). Keeps stored JSON minimal.
+            if (!document.getElementById('vrAllowPast').checked) rules.allow_past = false;
+            if (!document.getElementById('vrAllowFuture').checked) rules.allow_future = false;
+            if (!document.getElementById('vrAllowToday').checked) rules.allow_today = false;
+            var mind = document.getElementById('vrMinDate').value;
+            var maxd = document.getElementById('vrMaxDate').value;
+            if (mind) rules.min_date = mind;
+            if (maxd) rules.max_date = maxd;
+        }
+        return rules;
+    }
+
     // === Serialize data on form submit ===
     document.getElementById('questionForm').addEventListener('submit', function() {
         var val = typeSelect.value;
+
+        var vrules = serializeValidationRules(val);
+        validationRulesJson.value = (vrules && Object.keys(vrules).length > 0)
+            ? JSON.stringify(vrules)
+            : '';
 
         // Serialize options builder for radio/select/multi_select
         if (typesWithOptions.includes(val)) {
