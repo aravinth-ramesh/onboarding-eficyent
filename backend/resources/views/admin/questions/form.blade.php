@@ -569,6 +569,208 @@
     var tableColumnsList = document.getElementById('tableColumnsList');
     var columnCounter = 0;
 
+    // Shared regex / message presets used by both the top-level validation
+    // dropdowns above and the per-column validation block built below. The
+    // top-level dropdowns hard-code the same list in Blade; this JS copy is
+    // only consumed when rendering column-level validation fields.
+    var PATTERN_PRESETS = [
+        { value: 'email',        label: 'Email',                       pattern: '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$', message: 'Enter a valid email address.' },
+        { value: 'phone_in',     label: 'Phone (IN, 10 digits)',       pattern: '^[6-9][0-9]{9}$',                                    message: 'Enter a 10-digit Indian mobile number.' },
+        { value: 'phone_intl',   label: 'Phone (international)',       pattern: '^\\+?[1-9][0-9]{7,14}$',                              message: 'Enter a valid international phone number.' },
+        { value: 'url',          label: 'URL',                         pattern: '^(https?://)[^\\s/$.?#].[^\\s]*$',                    message: 'Enter a valid URL (http:// or https://).' },
+        { value: 'alpha',        label: 'Alphabetic only',             pattern: '^[A-Za-z ]+$',                                       message: 'Only letters and spaces are allowed.' },
+        { value: 'alphanumeric', label: 'Alphanumeric',                pattern: '^[A-Za-z0-9 ]+$',                                    message: 'Only letters, numbers and spaces are allowed.' },
+        { value: 'pan',          label: 'PAN (India)',                 pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$',                            message: 'Enter a valid PAN (e.g. ABCDE1234F).' },
+        { value: 'aadhaar',      label: 'Aadhaar (India)',             pattern: '^[2-9][0-9]{11}$',                                   message: 'Enter a valid 12-digit Aadhaar number.' },
+        { value: 'gstin',        label: 'GSTIN (India)',               pattern: '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$',  message: 'Enter a valid GSTIN.' },
+        { value: 'pincode',      label: 'PIN code (India, 6 digits)',  pattern: '^[1-9][0-9]{5}$',                                    message: 'Enter a valid 6-digit PIN code.' },
+        { value: 'zip_us',       label: 'ZIP (US)',                    pattern: '^[0-9]{5}(-[0-9]{4})?$',                             message: 'Enter a valid US ZIP code.' },
+        { value: 'ifsc',         label: 'IFSC (India)',                pattern: '^[A-Z]{4}0[A-Z0-9]{6}$',                             message: 'Enter a valid IFSC code.' }
+    ];
+
+    var MESSAGE_PRESETS = [
+        'Enter a valid email address.',
+        'Enter a 10-digit phone number.',
+        'Enter a valid URL.',
+        'Only letters and spaces are allowed.',
+        'Only letters, numbers and spaces are allowed.',
+        'Value does not match the required format.'
+    ];
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Build the inputs for a column's `validation` block. `colType` decides
+    // which fields show; `existing` pre-populates them when editing.
+    function renderColumnValidationFields(card, colType, existing) {
+        var wrapper = card.querySelector('.col-validation-wrapper');
+        var fieldsHost = card.querySelector('.col-validation-fields');
+        var typesWithValidation = ['text', 'textarea', 'number', 'date'];
+        if (typesWithValidation.indexOf(colType) === -1) {
+            wrapper.style.display = 'none';
+            fieldsHost.innerHTML = '';
+            return;
+        }
+        wrapper.style.display = '';
+        existing = existing || {};
+
+        var html = '';
+
+        if (colType === 'text' || colType === 'textarea') {
+            var presetOpts = '<option value="">— None / Custom —</option>';
+            PATTERN_PRESETS.forEach(function (p) {
+                presetOpts += '<option value="' + escapeHtml(p.value)
+                    + '" data-pattern="' + escapeHtml(p.pattern)
+                    + '" data-message="' + escapeHtml(p.message) + '">'
+                    + escapeHtml(p.label) + '</option>';
+            });
+            presetOpts += '<option value="custom" data-pattern="" data-message="">Custom regex…</option>';
+
+            var msgOpts = '<option value="">— Choose a preset or type your own —</option>';
+            MESSAGE_PRESETS.forEach(function (m) {
+                msgOpts += '<option>' + escapeHtml(m) + '</option>';
+            });
+
+            html =
+                '<div class="row g-2 mb-2">' +
+                    '<div class="col-md-4">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Pattern Preset</label>' +
+                        '<select class="form-select form-select-sm cv-pattern-preset">' + presetOpts + '</select>' +
+                    '</div>' +
+                    '<div class="col-md-8">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Pattern (regex)</label>' +
+                        '<input type="text" class="form-control form-control-sm cv-pattern" placeholder="e.g. ^[A-Za-z]+$" value="' + escapeHtml(existing.pattern || '') + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="row g-2 mb-2">' +
+                    '<div class="col-md-12">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Pattern Message Preset</label>' +
+                        '<select class="form-select form-select-sm cv-message-preset mb-1">' + msgOpts + '</select>' +
+                        '<input type="text" class="form-control form-control-sm cv-pattern-message" placeholder="Shown when the value doesn\'t match" value="' + escapeHtml(existing.pattern_message || '') + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="row g-2">' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Min Length</label>' +
+                        '<input type="number" min="0" class="form-control form-control-sm cv-min-length" value="' + (existing.min_length != null ? existing.min_length : '') + '">' +
+                    '</div>' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Max Length</label>' +
+                        '<input type="number" min="0" class="form-control form-control-sm cv-max-length" value="' + (existing.max_length != null ? existing.max_length : '') + '">' +
+                    '</div>' +
+                '</div>';
+        } else if (colType === 'number') {
+            html =
+                '<div class="row g-2">' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Minimum Value</label>' +
+                        '<input type="number" step="any" class="form-control form-control-sm cv-min" value="' + (existing.min != null ? existing.min : '') + '">' +
+                    '</div>' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Maximum Value</label>' +
+                        '<input type="number" step="any" class="form-control form-control-sm cv-max" value="' + (existing.max != null ? existing.max : '') + '">' +
+                    '</div>' +
+                '</div>';
+        } else if (colType === 'date') {
+            html =
+                '<div class="row g-2 mb-2">' +
+                    '<div class="col-md-4">' +
+                        '<div class="form-check">' +
+                            '<input type="checkbox" class="form-check-input cv-allow-past"' + (existing.allow_past === false ? '' : ' checked') + '>' +
+                            '<label class="form-check-label" style="font-size:0.78rem;">Allow past dates</label>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-4">' +
+                        '<div class="form-check">' +
+                            '<input type="checkbox" class="form-check-input cv-allow-future"' + (existing.allow_future === false ? '' : ' checked') + '>' +
+                            '<label class="form-check-label" style="font-size:0.78rem;">Allow future dates</label>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-md-4">' +
+                        '<div class="form-check">' +
+                            '<input type="checkbox" class="form-check-input cv-allow-today"' + (existing.allow_today === false ? '' : ' checked') + '>' +
+                            '<label class="form-check-label" style="font-size:0.78rem;">Allow today</label>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="row g-2">' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Min Date</label>' +
+                        '<input type="date" class="form-control form-control-sm cv-min-date" value="' + escapeHtml(existing.min_date || '') + '">' +
+                    '</div>' +
+                    '<div class="col-md-6">' +
+                        '<label class="form-label" style="font-size:0.78rem;">Max Date</label>' +
+                        '<input type="date" class="form-control form-control-sm cv-max-date" value="' + escapeHtml(existing.max_date || '') + '">' +
+                    '</div>' +
+                '</div>';
+        }
+
+        fieldsHost.innerHTML = html;
+
+        // Wire pattern/message preset behaviour for text/textarea blocks.
+        var patternPreset = fieldsHost.querySelector('.cv-pattern-preset');
+        var patternInput = fieldsHost.querySelector('.cv-pattern');
+        var messagePreset = fieldsHost.querySelector('.cv-message-preset');
+        var messageInput = fieldsHost.querySelector('.cv-pattern-message');
+        if (patternPreset) {
+            patternPreset.addEventListener('change', function () {
+                var opt = this.options[this.selectedIndex];
+                if (!opt || !opt.value) return;
+                if (opt.value === 'custom') {
+                    patternInput.value = '';
+                    messageInput.value = '';
+                    patternInput.focus();
+                    return;
+                }
+                patternInput.value = opt.dataset.pattern || '';
+                if (!messageInput.value) messageInput.value = opt.dataset.message || '';
+            });
+        }
+        if (messagePreset) {
+            messagePreset.addEventListener('change', function () {
+                if (this.value) messageInput.value = this.value;
+            });
+        }
+    }
+
+    // Read the visible column-validation inputs back into a plain object.
+    function serializeColumnValidation(card, colType) {
+        var rules = {};
+        var fields = card.querySelector('.col-validation-fields');
+        if (!fields) return rules;
+
+        if (colType === 'text' || colType === 'textarea') {
+            var pattern = (fields.querySelector('.cv-pattern') || {}).value || '';
+            if (pattern.trim()) rules.pattern = pattern.trim();
+            var msg = (fields.querySelector('.cv-pattern-message') || {}).value || '';
+            if (msg.trim()) rules.pattern_message = msg.trim();
+            var minL = (fields.querySelector('.cv-min-length') || {}).value;
+            var maxL = (fields.querySelector('.cv-max-length') || {}).value;
+            if (minL !== '' && minL != null) rules.min_length = parseInt(minL, 10);
+            if (maxL !== '' && maxL != null) rules.max_length = parseInt(maxL, 10);
+        } else if (colType === 'number') {
+            var mn = (fields.querySelector('.cv-min') || {}).value;
+            var mx = (fields.querySelector('.cv-max') || {}).value;
+            if (mn !== '' && mn != null) rules.min = Number(mn);
+            if (mx !== '' && mx != null) rules.max = Number(mx);
+        } else if (colType === 'date') {
+            var ap = fields.querySelector('.cv-allow-past');
+            var af = fields.querySelector('.cv-allow-future');
+            var at = fields.querySelector('.cv-allow-today');
+            if (ap && !ap.checked) rules.allow_past = false;
+            if (af && !af.checked) rules.allow_future = false;
+            if (at && !at.checked) rules.allow_today = false;
+            var md = (fields.querySelector('.cv-min-date') || {}).value;
+            var xd = (fields.querySelector('.cv-max-date') || {}).value;
+            if (md) rules.min_date = md;
+            if (xd) rules.max_date = xd;
+        }
+        return rules;
+    }
+
     function slugify(text) {
         return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
     }
@@ -639,6 +841,12 @@
                     '<div class="suboptions-list">' + suboptionsHtml + '</div>' +
                     '<button type="button" class="btn btn-sm btn-outline-secondary add-subopt-btn mt-1"><i class="bi bi-plus"></i> Add Option</button>' +
                 '</div>' +
+            '</div>' +
+            '<div class="col-validation-wrapper" style="display:none;">' +
+                '<div class="table-column-suboptions mt-2">' +
+                    '<div class="form-label" style="font-size:0.75rem;font-weight:600;">Validation Rules</div>' +
+                    '<div class="col-validation-fields"></div>' +
+                '</div>' +
             '</div>';
 
         var labelInput = card.querySelector('.col-label');
@@ -654,7 +862,14 @@
         card.querySelector('.col-type').addEventListener('change', function() {
             card.querySelector('.col-suboptions-wrapper').style.display =
                 typesWithSuboptions.indexOf(this.value) !== -1 ? '' : 'none';
+            // Re-render validation fields against the new type. Any values
+            // entered for the previous type are intentionally dropped — they
+            // wouldn't apply to the new column type anyway.
+            renderColumnValidationFields(card, this.value, {});
         });
+
+        // Initial render of validation fields based on the column's type.
+        renderColumnValidationFields(card, colType, data.validation || {});
 
         card.querySelector('.remove-column-btn').addEventListener('click', function() {
             card.remove();
@@ -803,6 +1018,10 @@
                         var v = row.querySelector('.subopt-value').value.trim();
                         if (l && v) col.options.push({ label: l, value: v });
                     });
+                }
+                var colValidation = serializeColumnValidation(card, col.type);
+                if (colValidation && Object.keys(colValidation).length > 0) {
+                    col.validation = colValidation;
                 }
                 if (col.label) columns.push(col);
             });
