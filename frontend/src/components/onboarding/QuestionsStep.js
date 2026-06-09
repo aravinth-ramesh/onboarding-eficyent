@@ -449,9 +449,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       <div className="ob-card-header">
         <h5>{activeGroup ? activeGroup.name : 'Onboarding Questions'}</h5>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="group-counter">
+          {/* <span className="group-counter">
             {activeGroupIndex + 1} of {visibleGroups.length}
-          </span>
+          </span> */}
           <button className="btn-outline-custom" onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save Draft'}
           </button>
@@ -459,7 +459,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       </div>
 
       {/* Group Stepper */}
-      {visibleGroups.length > 1 && (
+      {/* {visibleGroups.length > 1 && (
         <div className="group-stepper">
           {visibleGroups.map((group, index) => {
             let status = 'pending';
@@ -487,7 +487,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             />
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="ob-card-body">
         {submitError && (
