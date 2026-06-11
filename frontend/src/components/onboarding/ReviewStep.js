@@ -14,11 +14,14 @@ function ReviewStep({ step, onBack, isFirstStep }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Always refetch on mount so the review reflects the latest server state,
+  // including files uploaded during the questions step. The questionGroups
+  // already in Redux are from the initial fetch (before any upload), so
+  // question.files would be stale and the uploaded document links would
+  // render as a hyphen until a manual page refresh.
   useEffect(() => {
-    if (questionGroups.length === 0) {
-      dispatch(fetchQuestions());
-    }
-  }, [dispatch, questionGroups.length]);
+    dispatch(fetchQuestions());
+  }, [dispatch]);
 
   const formatAnswer = (question, value) => {
     if (!value) return '\u2014';
