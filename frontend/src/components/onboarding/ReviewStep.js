@@ -11,8 +11,10 @@ import TableAnswerView from './TableAnswerView';
 function ReviewStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
   const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
+  const user = useSelector((state) => state.auth.user);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Always refetch on mount so the review reflects the latest server state,
   // including files uploaded during the questions step. The questionGroups
@@ -107,6 +109,50 @@ function ReviewStep({ step, onBack, isFirstStep }) {
     );
   }
 
+  // Final confirmation: verify the Name and Position before submitting.
+  if (confirming) {
+    return (
+      <div className="ob-card">
+        <div className="ob-card-header">
+          <h5>Confirm Your Details</h5>
+        </div>
+        <div className="ob-card-body">
+          <p style={{ marginBottom: 16 }}>
+            Please verify the details below before submitting your application.
+          </p>
+          <table className="review-table">
+            <tbody>
+              <tr>
+                <td className="review-label">Name</td>
+                <td className="review-value">{user?.name || '\u2014'}</td>
+              </tr>
+              <tr>
+                <td className="review-label">Position / Designation</td>
+                <td className="review-value">{user?.position || '\u2014'}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="alert-corporate warning" style={{ marginTop: 16 }}>
+            Note: The Name and Position cannot be updated after submission. Please ensure
+            the information is correct before proceeding.
+          </div>
+        </div>
+        <div className="ob-card-footer">
+          <button
+            className="btn-secondary-custom"
+            onClick={() => setConfirming(false)}
+            disabled={submitting}
+          >
+            &#8592; Back
+          </button>
+          <button className="btn-success-custom" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Submitting...' : '\u2713 Confirm & Submit'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ob-card">
       <div className="ob-card-header">
@@ -151,8 +197,12 @@ function ReviewStep({ step, onBack, isFirstStep }) {
             &#8592; Back
           </button>
         ) : <div />}
-        <button className="btn-success-custom" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? 'Submitting...' : '\u2713 Submit Application'}
+        <button
+          className="btn-success-custom"
+          onClick={() => setConfirming(true)}
+          disabled={submitting}
+        >
+          {'\u2713 Submit Application'}
         </button>
       </div>
     </div>

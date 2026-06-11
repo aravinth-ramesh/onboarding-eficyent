@@ -9,5 +9,8 @@ export const verifyOtp = (email, code) =>
 export const getMe = () =>
   client.get('/auth/me');
 
+export const updateProfile = (name, position) =>
+  client.post('/auth/profile', { name, position });
+
 export const logout = () =>
   client.post('/auth/logout');

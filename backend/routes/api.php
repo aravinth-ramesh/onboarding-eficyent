@@ -22,6 +22,7 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get('/auth/me', [Api\AuthController::class, 'me']);
+    Route::post('/auth/profile', [Api\AuthController::class, 'updateProfile']);
     Route::post('/auth/logout', [Api\AuthController::class, 'logout']);
 
     // User Types (public list for onboarding)

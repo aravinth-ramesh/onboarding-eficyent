@@ -5,6 +5,7 @@ import AppLayout from '../components/layout/AppLayout';
 import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
 import SubmittedAnswersView from '../components/onboarding/SubmittedAnswersView';
+import ProfileSetup from '../components/onboarding/ProfileSetup';
 import appConfig from '../appConfig';
 
 function HomePage() {
@@ -12,11 +13,17 @@ function HomePage() {
   const { steps, currentStep, status, loading, error } = useSelector(
     (state) => state.onboarding
   );
+  const user = useSelector((state) => state.auth.user);
+  const profileCompleted = !!(user && user.profile_completed);
   const [viewingAnswers, setViewingAnswers] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchOnboardingStatus());
-  }, [dispatch]);
+    // Only start/fetch onboarding once the user's name and position are on
+    // file. Until then we show the one-time profile setup screen.
+    if (profileCompleted) {
+      dispatch(fetchOnboardingStatus());
+    }
+  }, [dispatch, profileCompleted]);
 
   const handleBack = () => {
     if (currentStep) {
@@ -27,6 +34,15 @@ function HomePage() {
   };
 
   const isFirstStep = currentStep && steps.length > 0 && steps[0].id === currentStep.id;
+
+  // Gate: collect the user's name and position once, before any onboarding step.
+  if (!profileCompleted) {
+    return (
+      <AppLayout pageTitle="Client Onboarding">
+        <ProfileSetup />
+      </AppLayout>
+    );
+  }
 
   if (loading && steps.length === 0) {
     return (
