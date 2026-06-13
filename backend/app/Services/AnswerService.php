@@ -192,11 +192,12 @@ class AnswerService
                 }
 
                 $rows[$rowIndex][$columnKey] = [
-                    'path' => $meta['s3_path'],
-                    'filename' => $meta['original_filename'],
-                    'mime' => $meta['mime_type'],
-                    'size' => $meta['file_size'],
-                    'disk' => $meta['disk'],
+                    'url' => $meta['url'] ?? '',
+                    'path' => $meta['s3_path'] ?? '',
+                    'filename' => $meta['original_filename'] ?? '',
+                    'mime' => $meta['mime_type'] ?? '',
+                    'size' => $meta['file_size'] ?? '',
+                    'disk' => $meta['disk'] ?? '',
                 ];
             }
 
