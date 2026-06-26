@@ -410,8 +410,8 @@
         transition: border-color 0.15s;
     }
     .type-mapping-card.active {
-        border-color: #2e86de;
-        background: #f8fbff;
+        border-color: var(--color-accent, #6366F1);
+        background: var(--color-accent-soft, rgba(99, 102, 241, 0.06));
     }
     .table-column-card {
         border: 1px solid #e1e5eb;

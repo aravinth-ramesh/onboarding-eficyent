@@ -10,22 +10,51 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* ================================================================
+           AURORA — Modern SaaS Theme (admin panel)
+           Matches the React client app: indigo→purple gradients, soft
+           layered shadows, 10–20px radii, glassy surfaces.
+           ================================================================ */
         :root {
             --sidebar-width: 260px;
             --topbar-height: 56px;
-            --color-primary: #1a3a5c;
-            --color-primary-dark: #0f2440;
-            --color-accent: #2e86de;
-            --color-success: #27ae60;
-            --color-warning: #f39c12;
-            --color-danger: #e74c3c;
+            --color-primary: #6366F1;
+            --color-primary-dark: #4F46E5;
+            --color-primary-light: #8B5CF6;
+            --color-accent: #6366F1;
+            --color-accent-hover: #5B5BD6;
+            --color-accent-soft: rgba(99, 102, 241, 0.10);
+            --color-success: #10B981;
+            --color-warning: #F59E0B;
+            --color-danger: #EF4444;
+            --color-text-primary: #0F172A;
+            --color-text-secondary: #64748B;
+            --color-text-muted: #94A3B8;
+            --color-border: #E2E8F0;
+            --color-border-light: #F1F5F9;
+
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+
+            --gradient-primary: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            --gradient-primary-soft: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.12) 100%);
+            --gradient-page: linear-gradient(135deg, #EEF2FF 0%, #FDF4FF 50%, #FAE8FF 100%);
+
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+            --shadow-md: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(99, 102, 241, 0.06);
+            --shadow-lg: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px rgba(99, 102, 241, 0.10);
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f0f2f5;
+            background: var(--gradient-page) fixed;
+            color: var(--color-text-primary);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         /* Sidebar */
@@ -35,12 +64,13 @@
             left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background: var(--color-primary);
+            background: var(--gradient-primary);
             color: #fff;
             z-index: 1000;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.18);
         }
 
         .sidebar-brand {
@@ -109,8 +139,9 @@
 
         .sidebar-link.active {
             color: #fff;
-            background: rgba(255,255,255,0.12);
-            border-left-color: var(--color-accent);
+            background: rgba(255,255,255,0.16);
+            border-left-color: #fff;
+            font-weight: 600;
         }
 
         .sidebar-link i {
@@ -133,7 +164,8 @@
         .sidebar-user-avatar {
             width: 32px;
             height: 32px;
-            background: var(--color-accent);
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.25);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -168,8 +200,10 @@
 
         .admin-topbar {
             height: var(--topbar-height);
-            background: #fff;
-            border-bottom: 1px solid #e1e5eb;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -181,9 +215,10 @@
 
         .admin-topbar h1 {
             font-size: 1.1rem;
-            font-weight: 600;
+            font-weight: 700;
             margin: 0;
-            color: #2c3e50;
+            color: var(--color-text-primary);
+            letter-spacing: -0.02em;
         }
 
         .admin-content {
@@ -194,31 +229,67 @@
             padding: 1rem 1.5rem;
             text-align: center;
             font-size: 0.8rem;
-            color: #95a5a6;
-            border-top: 1px solid #e1e5eb;
+            color: var(--color-text-muted);
+            border-top: 1px solid var(--color-border);
         }
 
         /* Cards */
         .card {
-            border: 1px solid #e1e5eb;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            background: var(--color-bg-card, #fff);
         }
 
         .card-header {
-            background: #fff;
-            border-bottom: 1px solid #e1e5eb;
-            font-weight: 600;
+            background: linear-gradient(135deg, rgba(99,102,241,0.04), rgba(139,92,246,0.02));
+            border-bottom: 1px solid var(--color-border-light);
+            font-weight: 700;
+            letter-spacing: -0.01em;
             padding: 0.875rem 1.25rem;
+        }
+
+        /* Buttons & links — align Bootstrap primary with Aurora */
+        .btn-primary {
+            background: var(--gradient-primary);
+            border: none;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.22);
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus,
+        .btn-primary:active {
+            background: linear-gradient(135deg, #5B5BD6 0%, #7C4DEF 100%);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.30);
+        }
+
+        .btn-outline-primary {
+            color: var(--color-accent);
+            border-color: var(--color-accent);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+        }
+
+        a { color: var(--color-accent); }
+        a:hover { color: var(--color-accent-hover); }
+        .text-primary { color: var(--color-accent) !important; }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
         }
 
         /* Tables */
         .table th {
             font-size: 0.8rem;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: #6c757d;
+            letter-spacing: 0.04em;
+            color: var(--color-accent);
             border-bottom-width: 1px;
         }
 
@@ -260,28 +331,36 @@
 
         /* Stat Cards */
         .stat-card {
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             padding: 1.25rem;
             background: #fff;
-            border: 1px solid #e1e5eb;
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-md);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         .stat-card .stat-value {
             font-size: 1.75rem;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--color-primary);
         }
 
         .stat-card .stat-label {
             font-size: 0.8rem;
-            color: #6c757d;
+            color: var(--color-text-secondary);
             margin-top: 0.25rem;
         }
 
         .stat-card .stat-icon {
             width: 40px;
             height: 40px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
