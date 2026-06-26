@@ -39,4 +39,9 @@ class UserAnswer extends Model
     {
         return $this->hasMany(AnswerFile::class);
     }
+
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(AdminNotification::class);
+    }
 }

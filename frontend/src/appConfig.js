@@ -8,8 +8,8 @@ const appConfig = {
   // ── Branding ──────────────────────────────────────────────
   siteName: 'Eficyent',
   siteTagline: 'Client Onboarding Portal',
-  logoUrl: null, // Set to a URL or import path, e.g. '/logo.png'
-  faviconUrl: '/favicon.ico',
+  logoUrl: "/favicon.png", // Set to a URL or import path, e.g. '/logo.png'
+  faviconUrl: '/favicon.png',
   supportEmail: 'support@eficyent.com',
   copyrightText: '\u00a9 2026 Eficyent. All rights reserved.',
 

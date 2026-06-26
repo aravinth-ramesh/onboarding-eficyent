@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchQuestions } from '../../store/slices/onboardingSlice';
+import TableAnswerView from './TableAnswerView';
 
 /**
  * Read-only view of submitted answers.
@@ -60,6 +61,10 @@ function SubmittedAnswersView({ onBack }) {
       return opt ? opt.label : value;
     }
 
+    if (question.type === 'table') {
+      return <TableAnswerView question={question} value={value} />;
+    }
+
     return value;
   };
 
@@ -96,12 +101,24 @@ function SubmittedAnswersView({ onBack }) {
               <p className="section-label">{group.name}</p>
               <table className="review-table">
                 <tbody>
-                  {answeredQuestions.map((question) => (
-                    <tr key={question.id}>
-                      <td className="review-label">{question.label}</td>
-                      <td className="review-value">{formatAnswer(question, answers[question.id])}</td>
-                    </tr>
-                  ))}
+                  {answeredQuestions.map((question) => {
+                    if (question.type === 'table') {
+                      return (
+                        <tr key={question.id} className="review-table-row-fullwidth">
+                          <td colSpan={2} className="review-table-fullwidth">
+                            <div className="review-table-block-label">{question.label}</div>
+                            <TableAnswerView question={question} value={answers[question.id]} />
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={question.id}>
+                        <td className="review-label">{question.label}</td>
+                        <td className="review-value">{formatAnswer(question, answers[question.id])}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

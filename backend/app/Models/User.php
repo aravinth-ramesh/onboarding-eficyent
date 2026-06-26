@@ -17,6 +17,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'position',
         'email',
         'is_admin',
         'status',
@@ -47,5 +48,15 @@ class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AnswerAuditLog::class);
+    }
+
+    public function adminNotifications(): HasMany
+    {
+        return $this->hasMany(AdminNotification::class);
+    }
+
+    public function adminQuestions(): HasMany
+    {
+        return $this->hasMany(AdminQuestion::class);
     }
 }

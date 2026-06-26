@@ -17,7 +17,11 @@ return new class extends Migration
             $table->json('options')->nullable(); // For radio, select, multi_select
             $table->boolean('is_required')->default(false);
             $table->integer('order')->default(0);
-            $table->json('validation_rules')->nullable(); // e.g. {"min": 1, "max": 100, "pattern": "..."}
+            // Field-level validation metadata. Supported keys:
+            //   text/textarea: pattern, pattern_message, min_length, max_length
+            //   number:        min, max
+            //   date:          allow_past, allow_future, allow_today, min_date, max_date
+            $table->json('validation_rules')->nullable();
             $table->string('placeholder')->nullable();
             $table->string('help_text')->nullable();
             $table->boolean('is_active')->default(true);

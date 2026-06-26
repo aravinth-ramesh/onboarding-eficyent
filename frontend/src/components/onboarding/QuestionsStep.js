@@ -8,6 +8,7 @@ import {
   fetchOnboardingStatus,
 } from '../../store/slices/onboardingSlice';
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
+import { validateByType, validateTableCell } from '../../utils/validation';
 import QuestionField from './QuestionField';
 
 function QuestionsStep({ step, onBack, isFirstStep }) {
@@ -15,6 +16,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
+  const [tableCellErrors, setTableCellErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
 
   // File answers stored outside Redux (File objects are not serializable)
@@ -31,6 +33,49 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     return evaluateConditionalRules(question.conditional_rules, answers);
   };
 
+  // Reorder a group's questions so any conditional child is emitted directly
+  // after the parent referenced by its rule (when the parent lives in the
+  // same group). Children whose parent lives elsewhere keep their natural
+  // backend order.
+  const reorderQuestionsWithChildren = (questions) => {
+    if (!Array.isArray(questions) || questions.length === 0) return [];
+
+    const byId = new Map(questions.map((q) => [q.id, q]));
+    const childrenByParent = new Map();
+    const anchored = new Set();
+
+    questions.forEach((q) => {
+      const rule = q.conditional_rules && q.conditional_rules[0];
+      if (rule && byId.has(rule.parent_question_id)) {
+        const parentId = rule.parent_question_id;
+        if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+        childrenByParent.get(parentId).push(q);
+        anchored.add(q.id);
+      }
+    });
+
+    const result = [];
+    const seen = new Set();
+
+    const emit = (q) => {
+      if (seen.has(q.id)) return;
+      seen.add(q.id);
+      result.push(q);
+      const kids = childrenByParent.get(q.id);
+      if (kids && kids.length) {
+        const sorted = [...kids].sort((a, b) => (a.order || 0) - (b.order || 0));
+        sorted.forEach(emit);
+      }
+    };
+
+    questions.forEach((q) => {
+      if (anchored.has(q.id)) return;
+      emit(q);
+    });
+
+    return result;
+  };
+
   // Filter out groups that have no visible questions
   const visibleGroups = useMemo(() => {
     return questionGroups.filter((group) =>
@@ -40,9 +85,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   }, [questionGroups, answers]);
 
   const activeGroup = visibleGroups[activeGroupIndex];
-  const activeQuestions = activeGroup
-    ? activeGroup.questions.filter(isQuestionVisible)
-    : [];
+  const activeQuestions = useMemo(() => {
+    if (!activeGroup) return [];
+    return reorderQuestionsWithChildren(activeGroup.questions).filter(isQuestionVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGroup, answers]);
   const isLastGroup = activeGroupIndex === visibleGroups.length - 1;
   const isFirstGroup = activeGroupIndex === 0;
 
@@ -61,8 +108,17 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     if (fileQuestionIds.has(questionId)) {
       // Store File objects in ref (not Redux)
       fileAnswersRef.current[questionId] = value;
-      // Store a marker in Redux for validation
-      dispatch(setAnswer({ questionId, value: Array.isArray(value) && value.length > 0 ? '__files__' : '' }));
+      // Marker dispatched to Redux must change whenever the selection
+      // changes, otherwise Immer/useSelector skip the update and the
+      // re-render that surfaces the new ref value never happens. Encode
+      // the file count + each file's name/size so add, remove, and
+      // replace all yield a different marker string.
+      let marker = '';
+      if (Array.isArray(value) && value.length > 0) {
+        const sig = value.map((f) => `${f?.name ?? ''}|${f?.size ?? ''}`).join(',');
+        marker = `__files__:${value.length}:${sig}`;
+      }
+      dispatch(setAnswer({ questionId, value: marker }));
     } else {
       dispatch(setAnswer({ questionId, value }));
     }
@@ -73,7 +129,92 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
         return next;
       });
     }
+    setTableCellErrors((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
   }, [dispatch, fileQuestionIds, validationErrors]);
+
+  const isCellFilled = (v) => {
+    if (v === null || v === undefined || v === '') return false;
+    if (Array.isArray(v) && v.length === 0) return false;
+    return true;
+  };
+
+  const getTableRows = (val) => {
+    let rows = val;
+    if (typeof rows === 'string') {
+      try { rows = JSON.parse(rows); } catch { rows = []; }
+    }
+    return Array.isArray(rows) ? rows : [];
+  };
+
+  // Returns { message, cells } when invalid, otherwise null.
+  // `cells` maps `${rowIndex}_${columnKey}` -> error message string.
+  const validateTableQuestion = (question) => {
+    const columns = (question.options && question.options.columns) || [];
+    const rows = getTableRows(answers[question.id]);
+    const requiredColumns = columns.filter((c) => c.required);
+    const isRowEmpty = (row) => !columns.some((col) => isCellFilled(row?.[col.key]));
+    const filledRows = rows.filter((r) => !isRowEmpty(r));
+    // Treat the table as required when EITHER the question itself is
+    // marked required OR any column is required. Otherwise a conditional
+    // table with required columns but an unticked "Required" checkbox
+    // lets users advance past an empty table without filling anything.
+    const mustBeFilled = question.is_required || requiredColumns.length > 0;
+    const requiredAndEmpty = mustBeFilled && filledRows.length === 0;
+
+    const cells = {};
+
+    // Ensure the first row's required cells are flagged when the question is
+    // required but the user hasn't filled anything yet (rows may not even exist
+    // in the answer store until the first edit).
+    if (requiredAndEmpty) {
+      requiredColumns.forEach((col) => {
+        cells[`0_${col.key}`] = 'This field is required.';
+      });
+    }
+
+    rows.forEach((row, rowIndex) => {
+      // Skip wholly empty trailing rows when not required; always validate the first row.
+      const rowEmpty = isRowEmpty(row);
+      if (rowEmpty && rowIndex !== 0) return;
+
+      columns.forEach((col) => {
+        const cellValue = row?.[col.key];
+        // Required check first (handled per row).
+        if (col.required && !isCellFilled(cellValue)) {
+          cells[`${rowIndex}_${col.key}`] = 'This field is required.';
+          return;
+        }
+        // Skip type-level validation when the cell is empty and not required —
+        // empty optional cells should never produce an error.
+        if (!isCellFilled(cellValue)) return;
+        const error = validateTableCell(col, cellValue);
+        if (error) {
+          cells[`${rowIndex}_${col.key}`] = error;
+        }
+      });
+    });
+
+    if (requiredAndEmpty) {
+      return { message: 'This field is required.', cells };
+    }
+    if (Object.keys(cells).length > 0) {
+      const anyTypeError = Object.values(cells).some(
+        (msg) => msg && msg !== 'This field is required.'
+      );
+      return {
+        message: anyTypeError
+          ? 'Please correct the highlighted fields in the table.'
+          : 'Please fill all required fields in the table.',
+        cells,
+      };
+    }
+    return null;
+  };
 
   const isAnswerEmpty = (question) => {
     // For file questions, check if new files selected or existing server files present
@@ -81,45 +222,119 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       const newFiles = fileAnswersRef.current[question.id];
       if (Array.isArray(newFiles) && newFiles.length > 0) return false;
       if (question.files && question.files.length > 0) return false;
+      // After a successful save the ref is cleared and Redux's
+      // state.questionGroups isn't refreshed (we only refetch on Back),
+      // so question.files stays stale even though the file is actually
+      // saved server-side. Trust the marker we kept in state.answers as
+      // a non-empty signal so validation across pages doesn't bounce
+      // the user back to a page whose file already uploaded.
+      const stored = answers[question.id];
+      if (typeof stored === 'string' && stored.startsWith('__files__')) return false;
       return true;
     }
     const val = answers[question.id];
     return val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
   };
 
-  const validateCurrentGroup = () => {
+  const collectErrors = (questions) => {
     const errors = {};
-    activeQuestions.forEach((question) => {
+    const cellErrors = {};
+    questions.forEach((question) => {
+      if (question.type === 'table') {
+        const result = validateTableQuestion(question);
+        if (result) {
+          errors[question.id] = result.message;
+          if (Object.keys(result.cells).length > 0) {
+            cellErrors[question.id] = result.cells;
+          }
+        }
+        return;
+      }
       if (question.is_required && isAnswerEmpty(question)) {
         errors[question.id] = 'This field is required.';
+        return;
+      }
+      // File-type required-ness is handled above; per-question type rules
+      // (regex/min/max/date) only apply when there's a value to check.
+      if (question.type === 'file') return;
+      const value = answers[question.id];
+      const typeError = validateByType(question.type, value, question.validation_rules);
+      if (typeError) {
+        errors[question.id] = typeError;
       }
     });
-    return errors;
+    return { errors, cellErrors };
   };
 
+  const validateCurrentGroup = () => collectErrors(activeQuestions);
+
   const validateAllGroups = () => {
-    const errors = {};
+    const allQuestions = [];
     visibleGroups.forEach((group) => {
       group.questions.forEach((question) => {
-        if (!isQuestionVisible(question)) return;
-        if (question.is_required && isAnswerEmpty(question)) {
-          errors[question.id] = 'This field is required.';
-        }
+        if (isQuestionVisible(question)) allQuestions.push(question);
       });
     });
-    return errors;
+    return collectErrors(allQuestions);
   };
+
+  // Map of table-question id -> question (for column-type lookups during save).
+  const tableQuestionMap = useMemo(() => {
+    const map = {};
+    questionGroups.forEach((g) =>
+      g.questions.forEach((q) => {
+        if (q.type === 'table') map[q.id] = q;
+      })
+    );
+    return map;
+  }, [questionGroups]);
 
   const handleSave = async () => {
     setSubmitError(null);
 
-    // Separate non-file answers from file answers
+    const tableFilePayload = [];
+
+    // Separate non-file answers from file answers, extracting any File objects
+    // that were dropped into table cells so they can be uploaded as multipart.
     const answersPayload = Object.entries(answers)
       .filter(([questionId]) => !fileQuestionIds.has(parseInt(questionId)))
-      .map(([questionId, value]) => ({
-        question_id: parseInt(questionId),
-        value,
-      }));
+      .map(([questionId, value]) => {
+        const qid = parseInt(questionId);
+        const question = tableQuestionMap[qid];
+        if (!question) {
+          return { question_id: qid, value };
+        }
+
+        let rows = value;
+        if (typeof rows === 'string') {
+          try { rows = JSON.parse(rows); } catch { rows = []; }
+        }
+        if (!Array.isArray(rows)) {
+          return { question_id: qid, value };
+        }
+
+        const fileColumnKeys = ((question.options && question.options.columns) || [])
+          .filter((c) => c.type === 'file')
+          .map((c) => c.key);
+
+        if (fileColumnKeys.length === 0) {
+          return { question_id: qid, value: rows };
+        }
+
+        const cleanedRows = rows.map((row, rowIndex) => {
+          const cleaned = { ...(row || {}) };
+          fileColumnKeys.forEach((columnKey) => {
+            const cellValue = cleaned[columnKey];
+            if (cellValue instanceof File) {
+              tableFilePayload.push({ questionId: qid, rowIndex, columnKey, file: cellValue });
+              cleaned[columnKey] = '';
+            }
+          });
+          return cleaned;
+        });
+
+        return { question_id: qid, value: cleanedRows };
+      });
 
     // Collect file answers (only those with actual File objects)
     const filePayload = {};
@@ -129,7 +344,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       }
     });
 
-    const result = await dispatch(submitAnswers({ answers: answersPayload, fileAnswers: filePayload }));
+    const result = await dispatch(submitAnswers({
+      answers: answersPayload,
+      fileAnswers: filePayload,
+      tableFileAnswers: tableFilePayload,
+    }));
     if (!result.error) {
       // Clear file ref after successful upload
       fileAnswersRef.current = {};
@@ -140,11 +359,13 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   };
 
   const handleNextGroup = async () => {
-    const errors = validateCurrentGroup();
+    const { errors, cellErrors } = validateCurrentGroup();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      setTableCellErrors(cellErrors);
       return;
     }
+    setTableCellErrors({});
 
     // Auto-save on group navigation
     await handleSave();
@@ -152,25 +373,38 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handlePrevGroup = () => {
+  const handlePrevGroup = async () => {
     if (isFirstGroup) {
       onBack();
-    } else {
-      setActiveGroupIndex((prev) => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
+    setTableCellErrors({});
+    setValidationErrors({});
+    // 1) Persist any pending edits in the current group so they aren't
+    //    dropped on refresh. We do this even if the save is empty/invalid;
+    //    the user explicitly asked to navigate back, so don't block them.
+    await handleSave();
+    setSubmitError(null);
+    // 2) Refresh from the backend BEFORE switching groups so the previous
+    //    group renders with up-to-date answers and uploaded files (signed
+    //    URLs, question.files, etc.) instead of briefly showing stale
+    //    state while the network request resolves.
+    await dispatch(fetchQuestions());
+    setActiveGroupIndex((prev) => Math.max(prev - 1, 0));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitAll = async () => {
     // Validate current group first
-    const currentErrors = validateCurrentGroup();
+    const { errors: currentErrors, cellErrors: currentCellErrors } = validateCurrentGroup();
     if (Object.keys(currentErrors).length > 0) {
       setValidationErrors(currentErrors);
+      setTableCellErrors(currentCellErrors);
       return;
     }
 
     // Validate all groups
-    const allErrors = validateAllGroups();
+    const { errors: allErrors, cellErrors: allCellErrors } = validateAllGroups();
     if (Object.keys(allErrors).length > 0) {
       // Find the first group with errors and navigate to it
       for (let i = 0; i < visibleGroups.length; i++) {
@@ -180,10 +414,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
         if (groupHasError) {
           setActiveGroupIndex(i);
           setValidationErrors(allErrors);
+          setTableCellErrors(allCellErrors);
           return;
         }
       }
     }
+    setTableCellErrors({});
 
     const saved = await handleSave();
     if (saved) {
@@ -213,9 +449,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       <div className="ob-card-header">
         <h5>{activeGroup ? activeGroup.name : 'Onboarding Questions'}</h5>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="group-counter">
+          {/* <span className="group-counter">
             {activeGroupIndex + 1} of {visibleGroups.length}
-          </span>
+          </span> */}
           <button className="btn-outline-custom" onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save Draft'}
           </button>
@@ -223,7 +459,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       </div>
 
       {/* Group Stepper */}
-      {visibleGroups.length > 1 && (
+      {/* {visibleGroups.length > 1 && (
         <div className="group-stepper">
           {visibleGroups.map((group, index) => {
             let status = 'pending';
@@ -251,7 +487,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             />
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="ob-card-body">
         {submitError && (
@@ -275,8 +511,17 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             )}
             <QuestionField
               question={question}
-              value={answers[question.id]}
+              value={
+                // File questions store File objects outside Redux (in
+                // fileAnswersRef) and only put a '__files__' marker into
+                // state. Surface the actual array so FileUploadField can
+                // preview the selection before submit.
+                question.type === 'file'
+                  ? (fileAnswersRef.current[question.id] || [])
+                  : answers[question.id]
+              }
               onChange={handleAnswerChange}
+              cellErrors={tableCellErrors[question.id]}
             />
             {validationErrors[question.id] && (
               <div className="question-error">{validationErrors[question.id]}</div>
@@ -287,8 +532,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
 
       <div className="ob-card-footer">
         {!(isFirstStep && isFirstGroup) ? (
-          <button className="btn-secondary-custom" onClick={handlePrevGroup}>
-            &#8592; Back
+          <button
+            className="btn-secondary-custom"
+            onClick={handlePrevGroup}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : '← Back'}
           </button>
         ) : <div />}
 

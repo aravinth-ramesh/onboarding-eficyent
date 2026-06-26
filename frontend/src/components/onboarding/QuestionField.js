@@ -1,10 +1,30 @@
 import React from 'react';
 import FileUploadField from './FileUploadField';
+import TableField from './TableField';
 
-function QuestionField({ question, value, onChange }) {
+// Resolve a date input's `min`/`max` HTML attribute by combining the explicit
+// `min_date`/`max_date` rules with `allow_past`/`allow_future` flags. This is
+// progressive enhancement — JS validation in `utils/validation.js` is
+// authoritative.
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const dateBound = (rules, edge) => {
+  if (!rules) return undefined;
+  if (edge === 'min') {
+    if (rules.min_date) return rules.min_date;
+    if (rules.allow_past === false) return todayIso();
+    return undefined;
+  }
+  if (rules.max_date) return rules.max_date;
+  if (rules.allow_future === false) return todayIso();
+  return undefined;
+};
+
+function QuestionField({ question, value, onChange, cellErrors }) {
   const handleChange = (newValue) => {
     onChange(question.id, newValue);
   };
+
+  const v = question.validation_rules || {};
 
   switch (question.type) {
     case 'text':
@@ -14,6 +34,7 @@ function QuestionField({ question, value, onChange }) {
           className="form-control"
           placeholder={question.placeholder || ''}
           value={value || ''}
+          maxLength={v.max_length ?? undefined}
           onChange={(e) => handleChange(e.target.value)}
         />
       );
@@ -25,6 +46,7 @@ function QuestionField({ question, value, onChange }) {
           rows={3}
           placeholder={question.placeholder || ''}
           value={value || ''}
+          maxLength={v.max_length ?? undefined}
           onChange={(e) => handleChange(e.target.value)}
         />
       );
@@ -36,6 +58,8 @@ function QuestionField({ question, value, onChange }) {
           className="form-control"
           placeholder={question.placeholder || ''}
           value={value || ''}
+          min={v.min ?? undefined}
+          max={v.max ?? undefined}
           onChange={(e) => handleChange(e.target.value)}
         />
       );
@@ -46,6 +70,8 @@ function QuestionField({ question, value, onChange }) {
           type="date"
           className="form-control"
           value={value || ''}
+          min={dateBound(v, 'min')}
+          max={dateBound(v, 'max')}
           onChange={(e) => handleChange(e.target.value)}
         />
       );
@@ -143,6 +169,16 @@ function QuestionField({ question, value, onChange }) {
           value={value}
           onChange={onChange}
           existingFiles={question.files}
+        />
+      );
+
+    case 'table':
+      return (
+        <TableField
+          question={question}
+          value={value}
+          onChange={onChange}
+          cellErrors={cellErrors}
         />
       );
 

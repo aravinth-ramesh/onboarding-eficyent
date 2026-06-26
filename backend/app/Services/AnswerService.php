@@ -146,6 +146,89 @@ class AnswerService
     }
 
     /**
+     * Upload files for individual cells of a table-type answer and merge the
+     * resulting metadata back into the answer's JSON value.
+     *
+     * Each entry must contain row_index, column_key, and an UploadedFile.
+     */
+    public function saveTableCellFiles(
+        User $user,
+        UserOnboarding $onboarding,
+        int $questionId,
+        array $entries,
+        ?User $editedBy = null,
+    ): UserAnswer {
+        $editedBy = $editedBy ?? $user;
+
+        return DB::transaction(function () use ($user, $onboarding, $questionId, $entries, $editedBy) {
+            $existing = UserAnswer::where('user_id', $user->id)
+                ->where('question_id', $questionId)
+                ->where('user_onboarding_id', $onboarding->id)
+                ->first();
+
+            $rows = [];
+            $oldValue = null;
+            if ($existing) {
+                $oldValue = $existing->value;
+                $decoded = json_decode((string) $existing->value, true);
+                if (is_array($decoded)) {
+                    $rows = $decoded;
+                }
+            }
+
+            foreach ($entries as $entry) {
+                $rowIndex = (int) $entry['row_index'];
+                $columnKey = (string) $entry['column_key'];
+                /** @var UploadedFile $file */
+                $file = $entry['file'];
+
+                $meta = $this->fileUploadService->upload($file, $user->id);
+
+                while (count($rows) <= $rowIndex) {
+                    $rows[] = [];
+                }
+                if (! is_array($rows[$rowIndex])) {
+                    $rows[$rowIndex] = [];
+                }
+
+                $rows[$rowIndex][$columnKey] = [
+                    'url' => $meta['url'] ?? '',
+                    'path' => $meta['s3_path'] ?? '',
+                    'filename' => $meta['original_filename'] ?? '',
+                    'mime' => $meta['mime_type'] ?? '',
+                    'size' => $meta['file_size'] ?? '',
+                    'disk' => $meta['disk'] ?? '',
+                ];
+            }
+
+            $newValue = json_encode($rows);
+
+            if ($existing) {
+                if ($oldValue !== $newValue) {
+                    AnswerAuditLog::create([
+                        'user_answer_id' => $existing->id,
+                        'question_id' => $questionId,
+                        'user_id' => $user->id,
+                        'edited_by' => $editedBy->id,
+                        'old_value' => $oldValue,
+                        'new_value' => $newValue,
+                        'edited_at' => now(),
+                    ]);
+                    $existing->update(['value' => $newValue]);
+                }
+                return $existing;
+            }
+
+            return UserAnswer::create([
+                'user_id' => $user->id,
+                'question_id' => $questionId,
+                'user_onboarding_id' => $onboarding->id,
+                'value' => $newValue,
+            ]);
+        });
+    }
+
+    /**
      * Save multiple answers at once (non-file types only).
      */
     public function saveBulkAnswers(

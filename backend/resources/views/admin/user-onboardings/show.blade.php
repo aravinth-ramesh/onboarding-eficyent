@@ -31,7 +31,7 @@
         font-size: 0.875rem;
     }
     .submitted-answers-label {
-        width: 40%;
+        width: 35%;
         color: #6c757d;
         font-weight: 500;
     }
@@ -55,10 +55,11 @@
     .submitted-answers-file-link i {
         font-size: 0.9rem;
     }
-    .submitted-answers-action {
-        width: 50px;
-        text-align: center;
+    .submitted-answers-actions {
+        width: 100px;
+        text-align: right;
         vertical-align: middle !important;
+        white-space: nowrap;
     }
     .submitted-answers-history-link {
         display: inline-flex;
@@ -90,13 +91,54 @@
         text-align: center;
         padding: 0 4px;
     }
+    .btn-request-change {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        color: #6c757d;
+        transition: all 0.15s;
+        text-decoration: none;
+        border: none;
+        background: none;
+        cursor: pointer;
+        padding: 0;
+    }
+    .btn-request-change:hover {
+        background: #fff3cd;
+        color: var(--color-warning, #f39c12);
+    }
+    .btn-request-change.has-pending {
+        color: var(--color-warning, #f39c12);
+    }
+    .notification-status-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+    .notification-status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .notification-status-badge.resolved {
+        background: #d4edda;
+        color: #155724;
+    }
 </style>
 @endpush
 
 @section('actions')
-    <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Back
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.user-onboardings.new-question', $userOnboarding) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus-circle"></i> New Question
+        </a>
+        <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
 @endsection
 
 @section('content')
@@ -204,7 +246,7 @@
 </div>
 
 {{-- Answers --}}
-<div class="card">
+<div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Submitted Answers</span>
         <span class="badge badge-{{ $userOnboarding->status }}">
@@ -234,9 +276,15 @@
                                 $type = $question->type ?? 'text';
                                 $options = $question->options ?? [];
                                 $val = $answer->value;
+                                $hasPendingRequest = in_array($answer->id, $pendingChangeRequestAnswerIds);
                             @endphp
                             <tr>
-                                <td class="submitted-answers-label">{{ $question->label ?? 'N/A' }}</td>
+                                <td class="submitted-answers-label">
+                                    {{ $question->label ?? 'N/A' }}
+                                    @if($hasPendingRequest)
+                                        <span class="notification-status-badge pending ms-1">Change Requested</span>
+                                    @endif
+                                </td>
                                 <td class="submitted-answers-value">
                                     @if($type === 'file' && $answer->files->count())
                                         <div class="d-flex flex-column gap-1">
@@ -272,11 +320,94 @@
                                             $opt = collect($options)->firstWhere('value', $val);
                                         @endphp
                                         {{ $opt['label'] ?? $val ?? '—' }}
+                                    @elseif($type === 'table')
+                                        @php
+                                            $tableRows = is_string($val) ? json_decode($val, true) : ($val ?? []);
+                                            $columns = $options['columns'] ?? [];
+                                        @endphp
+                                        @if(!empty($tableRows) && !empty($columns))
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-0" style="font-size: 0.82rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th style="width: 40px;">#</th>
+                                                            @foreach($columns as $col)
+                                                                <th>{{ $col['label'] }}</th>
+                                                            @endforeach
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($tableRows as $rowIdx => $row)
+                                                            <tr>
+                                                                <td class="text-muted">{{ $rowIdx + 1 }}</td>
+                                                                @foreach($columns as $col)
+                                                                    <td>
+                                                                        @php $cellVal = $row[$col['key']] ?? ''; @endphp
+                                                                        @if(($col['type'] ?? null) === 'file')
+                                                                            @if(is_array($cellVal) && (!empty($cellVal['filename']) || !empty($cellVal['path'])))
+                                                                                @php $cellName = $cellVal['filename'] ?? 'Uploaded file'; @endphp
+                                                                                @if(!empty($cellVal['url']))
+                                                                                    <a href="{{ $cellVal['url'] }}" target="_blank" class="submitted-answers-file-link">
+                                                                                        <i class="bi bi-paperclip"></i> {{ $cellName }}
+                                                                                    </a>
+                                                                                @else
+                                                                                    <span><i class="bi bi-paperclip"></i> {{ $cellName }}</span>
+                                                                                @endif
+                                                                            @else
+                                                                                <span class="text-muted">&mdash;</span>
+                                                                            @endif
+                                                                        @elseif(($col['type'] ?? null) === 'checkbox')
+                                                                            @php
+                                                                                $cellArr = is_array($cellVal) ? $cellVal : [];
+                                                                                $cellLabels = collect($cellArr)->map(function ($v) use ($col) {
+                                                                                    $opt = collect($col['options'] ?? [])->firstWhere('value', $v);
+                                                                                    return $opt['label'] ?? $v;
+                                                                                });
+                                                                            @endphp
+                                                                            @if($cellLabels->count())
+                                                                                <div class="d-flex flex-wrap gap-1">
+                                                                                    @foreach($cellLabels as $label)
+                                                                                        <span class="badge bg-light text-dark border">{{ $label }}</span>
+                                                                                    @endforeach
+                                                                                </div>
+                                                                            @else
+                                                                                <span class="text-muted">&mdash;</span>
+                                                                            @endif
+                                                                        @elseif(($col['type'] ?? null) === 'select' && !empty($col['options']))
+                                                                            @php
+                                                                                $cellOpt = collect($col['options'])->firstWhere('value', $cellVal);
+                                                                                $cellText = $cellOpt['label'] ?? (is_scalar($cellVal) ? (string) $cellVal : '');
+                                                                            @endphp
+                                                                            {{ $cellText !== '' ? $cellText : '—' }}
+                                                                        @else
+                                                                            @php $cellText = is_scalar($cellVal) ? (string) $cellVal : ''; @endphp
+                                                                            {{ $cellText !== '' ? $cellText : '—' }}
+                                                                        @endif
+                                                                    </td>
+                                                                @endforeach
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @else
+                                            <span class="text-muted">&mdash;</span>
+                                        @endif
                                     @else
                                         {{ $val ?: '—' }}
                                     @endif
                                 </td>
-                                <td class="submitted-answers-action">
+                                <td class="submitted-answers-actions">
+                                    <button type="button"
+                                        class="btn-request-change {{ $hasPendingRequest ? 'has-pending' : '' }}"
+                                        title="{{ $hasPendingRequest ? 'Change already requested' : 'Request change' }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#requestChangeModal"
+                                        data-answer-id="{{ $answer->id }}"
+                                        data-question-label="{{ $question->label }}"
+                                        data-action-url="{{ route('admin.user-onboardings.answers.request-change', [$userOnboarding, $answer]) }}">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
                                     @if(($answer->audit_logs_count ?? 0) > 0)
                                         <a href="{{ route('admin.user-onboardings.answers.history', [$userOnboarding, $answer]) }}"
                                            class="submitted-answers-history-link"
@@ -299,4 +430,211 @@
         @endforelse
     </div>
 </div>
+
+{{-- Admin Notifications & Questions Section --}}
+@if($notifications->count() > 0 || $adminQuestions->count() > 0)
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Admin Actions & Notifications</span>
+        <span class="badge bg-secondary">{{ $notifications->count() }} notification(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th>Admin Message</th>
+                        <th>User Response</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($notifications as $notif)
+                        <tr>
+                            <td>
+                                @if($notif->type === 'change_request')
+                                    <span class="badge bg-warning text-dark">Change Request</span>
+                                @else
+                                    <span class="badge bg-info text-dark">New Question</span>
+                                @endif
+                            </td>
+                            <td style="max-width: 200px;">
+                                @if($notif->type === 'change_request' && $notif->userAnswer && $notif->userAnswer->question)
+                                    <strong>{{ $notif->userAnswer->question->label }}</strong>
+                                @elseif($notif->type === 'new_question' && $notif->adminQuestion)
+                                    <strong>{{ $notif->adminQuestion->label }}</strong>
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            </td>
+                            <td style="max-width: 250px;">
+                                <small>{{ Str::limit($notif->message, 100) }}</small>
+                            </td>
+                            <td style="max-width: 200px;">
+                                @if($notif->status === 'resolved')
+                                    @if($notif->type === 'change_request' && $notif->userAnswer)
+                                        <small class="text-success">{{ Str::limit($notif->userAnswer->value, 80) }}</small>
+                                    @elseif($notif->type === 'new_question' && $notif->adminQuestion && $notif->adminQuestion->answer)
+                                        <small class="text-success">{{ Str::limit($notif->adminQuestion->answer->value, 80) }}</small>
+                                    @endif
+                                @else
+                                    <small class="text-muted">Awaiting response</small>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="notification-status-badge {{ $notif->status }}">
+                                    {{ ucfirst($notif->status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>{{ $notif->created_at->format('M d, H:i') }}</small>
+                                <br><small class="text-muted">by {{ $notif->admin->name ?? $notif->admin->email }}</small>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-action"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#sendEmailModal"
+                                    data-user-id="{{ $notif->user_id }}"
+                                    data-notification-id="{{ $notif->id }}"
+                                    data-email-type="{{ $notif->type }}"
+                                    data-question-label="{{ $notif->type === 'change_request' ? ($notif->userAnswer->question->label ?? '') : ($notif->adminQuestion->label ?? '') }}"
+                                    title="Send email to user">
+                                    <i class="bi bi-envelope"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Request Change Modal --}}
+<div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="requestChangeForm" method="POST" action="">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="requestChangeModalLabel">Request Change</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Requesting change for: <strong id="rcQuestionLabel"></strong>
+                    </p>
+                    <div class="mb-3">
+                        <label for="rcMessage" class="form-label">Message to User <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rcMessage" name="message" rows="4" required
+                            placeholder="Explain what needs to be changed..."></textarea>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="rcSendEmail" name="send_email" value="1">
+                        <label class="form-check-label" for="rcSendEmail">Also send email notification</label>
+                    </div>
+                    <div id="rcEmailFields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="rcEmailSubject" class="form-label">Email Subject</label>
+                            <input type="text" class="form-control" id="rcEmailSubject" name="email_subject">
+                        </div>
+                        <div class="mb-3">
+                            <label for="rcEmailBody" class="form-label">Email Body</label>
+                            <textarea class="form-control" id="rcEmailBody" name="email_body" rows="5"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Send Request</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Send Email Modal --}}
+<div class="modal fade" id="sendEmailModal" tabindex="-1" aria-labelledby="sendEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="POST" action="{{ route('admin.send-email') }}">
+            @csrf
+            <input type="hidden" name="user_id" id="seUserId">
+            <input type="hidden" name="notification_id" id="seNotificationId">
+            <input type="hidden" name="redirect_to" value="{{ route('admin.user-onboardings.show', $userOnboarding) }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sendEmailModalLabel">Send Email to User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="seSubject" class="form-label">Subject <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="seSubject" name="subject" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="seBody" class="form-label">Body <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="seBody" name="body" rows="8" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Send Email</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+    // Request Change Modal
+    document.getElementById('requestChangeModal').addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var answerId = button.getAttribute('data-answer-id');
+        var questionLabel = button.getAttribute('data-question-label');
+        var actionUrl = button.getAttribute('data-action-url');
+
+        document.getElementById('rcQuestionLabel').textContent = questionLabel;
+        document.getElementById('requestChangeForm').action = actionUrl;
+        document.getElementById('rcMessage').value = '';
+        document.getElementById('rcSendEmail').checked = false;
+        document.getElementById('rcEmailFields').style.display = 'none';
+    });
+
+    // Toggle email fields visibility
+    document.getElementById('rcSendEmail').addEventListener('change', function () {
+        document.getElementById('rcEmailFields').style.display = this.checked ? 'block' : 'none';
+        if (this.checked) {
+            var questionLabel = document.getElementById('rcQuestionLabel').textContent;
+            document.getElementById('rcEmailSubject').value = 'Action Required: Please Update Your Response - ' + questionLabel;
+            document.getElementById('rcEmailBody').value = 'Hello,\n\nWe have reviewed your onboarding submission and require some changes to one of your answers.\n\nQuestion: ' + questionLabel + '\n\nPlease log in to your account to review the details and submit your updated response.\n\nThank you,\nEficyent Team';
+        }
+    });
+
+    // Send Email Modal
+    document.getElementById('sendEmailModal').addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var userId = button.getAttribute('data-user-id');
+        var notificationId = button.getAttribute('data-notification-id');
+        var emailType = button.getAttribute('data-email-type');
+        var questionLabel = button.getAttribute('data-question-label');
+
+        document.getElementById('seUserId').value = userId;
+        document.getElementById('seNotificationId').value = notificationId || '';
+
+        if (emailType === 'change_request') {
+            document.getElementById('seSubject').value = 'Action Required: Please Update Your Response - ' + questionLabel;
+            document.getElementById('seBody').value = 'Hello,\n\nWe have reviewed your onboarding submission and require some changes to one of your answers.\n\nQuestion: ' + questionLabel + '\n\nPlease log in to your account to review the details and submit your updated response.\n\nThank you,\nEficyent Team';
+        } else {
+            document.getElementById('seSubject').value = 'New Question Assigned to You - ' + questionLabel;
+            document.getElementById('seBody').value = 'Hello,\n\nA new question has been assigned to you that requires your response.\n\nQuestion: ' + questionLabel + '\n\nPlease log in to your account to provide your answer.\n\nThank you,\nEficyent Team';
+        }
+    });
+</script>
+@endpush

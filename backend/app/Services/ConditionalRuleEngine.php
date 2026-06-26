@@ -56,17 +56,79 @@ class ConditionalRuleEngine
         $triggerValue = $rule->trigger_value;
 
         return match ($rule->comparison_type) {
-            'equals' => (string) $parentAnswer === (string) $triggerValue,
-            'not_equals' => (string) $parentAnswer !== (string) $triggerValue,
-            'contains' => str_contains((string) $parentAnswer, (string) $triggerValue),
-            'not_contains' => !str_contains((string) $parentAnswer, (string) $triggerValue),
+            'equals' => $this->valueEquals($parentAnswer, $triggerValue),
+            'not_equals' => !$this->valueEquals($parentAnswer, $triggerValue),
+            'contains' => $this->valueContains($parentAnswer, $triggerValue),
+            'not_contains' => !$this->valueContains($parentAnswer, $triggerValue),
             'greater_than' => (float) $parentAnswer > (float) $triggerValue,
             'less_than' => (float) $parentAnswer < (float) $triggerValue,
-            'in' => in_array($parentAnswer, json_decode($triggerValue, true) ?? []),
-            'not_in' => !in_array($parentAnswer, json_decode($triggerValue, true) ?? []),
-            'is_empty' => empty($parentAnswer),
-            'is_not_empty' => !empty($parentAnswer),
+            'in' => $this->valueInList($parentAnswer, json_decode($triggerValue ?? '', true) ?? []),
+            'not_in' => !$this->valueInList($parentAnswer, json_decode($triggerValue ?? '', true) ?? []),
+            'is_empty' => $this->valueIsEmpty($parentAnswer),
+            'is_not_empty' => !$this->valueIsEmpty($parentAnswer),
             default => true,
         };
+    }
+
+    /**
+     * Decode answer values that may be stored as JSON arrays (multi_select /
+     * checkbox) into a list of comparable scalars.
+     */
+    private function parseAnswerArray(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+            return [$value];
+        }
+        if ($value === null) {
+            return [];
+        }
+        return [(string) $value];
+    }
+
+    private function valueEquals(mixed $parentAnswer, ?string $triggerValue): bool
+    {
+        foreach ($this->parseAnswerArray($parentAnswer) as $v) {
+            if ((string) $v === (string) $triggerValue) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function valueContains(mixed $parentAnswer, ?string $triggerValue): bool
+    {
+        foreach ($this->parseAnswerArray($parentAnswer) as $v) {
+            if (str_contains((string) $v, (string) $triggerValue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function valueInList(mixed $parentAnswer, array $values): bool
+    {
+        $stringValues = array_map('strval', $values);
+        foreach ($this->parseAnswerArray($parentAnswer) as $v) {
+            if (in_array((string) $v, $stringValues, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function valueIsEmpty(mixed $parentAnswer): bool
+    {
+        if ($parentAnswer === null || $parentAnswer === '') {
+            return true;
+        }
+        $arr = $this->parseAnswerArray($parentAnswer);
+        return count($arr) === 0;
     }
 }

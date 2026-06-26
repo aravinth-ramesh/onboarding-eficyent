@@ -30,6 +30,18 @@ export const verifyOtp = createAsyncThunk('auth/verifyOtp', async ({ email, code
   }
 });
 
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async ({ name, position }, { rejectWithValue }) => {
+    try {
+      const response = await authApi.updateProfile(name, position);
+      return response.data.data.user;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to save your details');
+    }
+  }
+);
+
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   try {
     await authApi.logout();
@@ -108,6 +120,15 @@ const authSlice = createSlice({
       })
       .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+      // Update Profile (name + position). Avoid toggling the shared `loading`
+      // flag so the App-level full-page spinner doesn't flash mid-save.
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.error = null;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
         state.error = action.payload;
       })
       // Logout

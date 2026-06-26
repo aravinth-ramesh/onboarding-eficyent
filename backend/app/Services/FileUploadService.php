@@ -24,7 +24,10 @@ class FileUploadService
 
         Storage::disk($disk)->putFileAs($directory, $file, $originalFilename);
 
+        $url = Storage::disk($disk)->url($path);
+
         return [
+            'url' => $url,
             's3_path' => $path,
             'original_filename' => $originalFilename,
             'mime_type' => $file->getClientMimeType(),

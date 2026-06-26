@@ -15,6 +15,7 @@ use App\Services\AnswerService;
 use App\Services\ConditionalRuleEngine;
 use App\Services\OnboardingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class OnboardingController extends Controller
 {
@@ -183,6 +184,14 @@ class OnboardingController extends Controller
                     $questionData['files'] = [];
                 }
 
+                // Inject signed URLs into table cells that hold an uploaded file
+                if ($question->type === 'table' && ! empty($questionData['answer'])) {
+                    $questionData['answer'] = $this->hydrateTableAnswerFileUrls(
+                        $questionData['answer'],
+                        $question->options['columns'] ?? []
+                    );
+                }
+
                 return $questionData;
             })->sortBy('order')->values();
 
@@ -240,6 +249,27 @@ class OnboardingController extends Controller
                         $onboarding,
                         $questionId,
                         $files,
+                    );
+                }
+            }
+        }
+
+        // Save per-cell files for table-type answers (grouped by question_id)
+        $tableFileAnswers = $request->validated('table_file_answers') ?? [];
+        if (!empty($tableFileAnswers)) {
+            $grouped = [];
+            foreach ($tableFileAnswers as $entry) {
+                $grouped[(int) $entry['question_id']][] = $entry;
+            }
+
+            foreach ($grouped as $questionId => $entries) {
+                $question = Question::find($questionId);
+                if ($question && $question->type === 'table') {
+                    $this->answerService->saveTableCellFiles(
+                        $user,
+                        $onboarding,
+                        $questionId,
+                        $entries,
                     );
                 }
             }
@@ -331,5 +361,57 @@ class OnboardingController extends Controller
             'message' => 'Returned to previous step.',
             'data' => $this->formatOnboardingResponse($onboarding),
         ]);
+    }
+
+    /**
+     * Walk a table-type answer's rows and add a temporary signed `url` to any
+     * cell whose column type is `file` and whose value is a stored-file
+     * metadata object (has `path` and `disk`).
+     *
+     * @param  string|array|null  $answer  raw value from UserAnswer (JSON string or already decoded)
+     * @param  array<int, array<string, mixed>>  $columns
+     * @return string  re-encoded JSON answer with urls injected
+     */
+    private function hydrateTableAnswerFileUrls(mixed $answer, array $columns): mixed
+    {
+        $rows = is_string($answer) ? json_decode($answer, true) : $answer;
+        if (! is_array($rows)) {
+            return $answer;
+        }
+
+        $fileColumnKeys = [];
+        foreach ($columns as $column) {
+            if (($column['type'] ?? null) === 'file' && ! empty($column['key'])) {
+                $fileColumnKeys[] = $column['key'];
+            }
+        }
+        if (empty($fileColumnKeys)) {
+            return $answer;
+        }
+
+        $expiry = now()->addMinutes((int) config('onboarding_uploads.url_expiry_minutes', 60));
+
+        foreach ($rows as $rowIndex => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            foreach ($fileColumnKeys as $key) {
+                $cell = $row[$key] ?? null;
+                if (! is_array($cell) || empty($cell['path']) || empty($cell['disk'])) {
+                    continue;
+                }
+                try {
+                    $disk = Storage::disk($cell['disk']);
+                    $url = $cell['disk'] === 's3'
+                        ? $disk->temporaryUrl($cell['path'], $expiry)
+                        : $disk->url($cell['path']);
+                    $rows[$rowIndex][$key]['url'] = $url;
+                } catch (\Throwable $e) {
+                    // Leave the cell without a url if URL generation fails.
+                }
+            }
+        }
+
+        return is_string($answer) ? json_encode($rows) : $rows;
     }
 }

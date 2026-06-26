@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Eficyent</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -93,7 +94,7 @@
             <div class="mb-3">
                 <label class="form-label fw-semibold" style="font-size: 0.875rem;">Email Address</label>
                 <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}" placeholder="admin@eficyent.com" required autofocus>
+                    value="{{ old('email') }}" placeholder="Enter your email" required autofocus>
                 @error('email')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
