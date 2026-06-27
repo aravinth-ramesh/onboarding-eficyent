@@ -1,5 +1,6 @@
 import React from 'react';
 import SelectTypeStep from './SelectTypeStep';
+import RegistrationStep from './RegistrationStep';
 import QuestionsStep from './QuestionsStep';
 import KycStep from './KycStep';
 import ReviewStep from './ReviewStep';
@@ -10,6 +11,7 @@ import ReviewStep from './ReviewStep';
  */
 const STEP_COMPONENTS = {
   select_type: SelectTypeStep,
+  registration: RegistrationStep,
   questions: QuestionsStep,
   kyc: KycStep,
   review: ReviewStep,

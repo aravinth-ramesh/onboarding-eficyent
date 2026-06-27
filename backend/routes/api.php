@@ -43,6 +43,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/status', [Api\OnboardingController::class, 'status']);
         Route::post('/set-type', [Api\OnboardingController::class, 'setUserType']);
         Route::get('/questions', [Api\OnboardingController::class, 'questions']);
+        Route::get('/registration', [Api\OnboardingController::class, 'registrationCatalog']);
+        Route::post('/registration', [Api\OnboardingController::class, 'saveRegistration']);
         Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
         Route::post('/steps/{step}/complete', [Api\OnboardingController::class, 'completeStep']);

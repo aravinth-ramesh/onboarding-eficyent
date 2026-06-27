@@ -300,9 +300,10 @@ class OnboardingDataSeeder extends Seeder
     private function seedOnboardingSteps(): void
     {
         OnboardingStep::create(['name' => 'Select Type', 'slug' => 'select-type', 'description' => 'Choose your organization type.', 'component_key' => 'select_type', 'order' => 1]);
-        OnboardingStep::create(['name' => 'Questions', 'slug' => 'questions', 'description' => 'Answer onboarding questions.', 'component_key' => 'questions', 'order' => 2]);
-        OnboardingStep::create(['name' => 'KYC', 'slug' => 'kyc', 'description' => 'Upload KYC documents.', 'component_key' => 'kyc', 'order' => 3]);
-        OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'description' => 'Review and submit your application.', 'component_key' => 'review', 'order' => 4]);
+        OnboardingStep::create(['name' => 'Registration', 'slug' => 'registration', 'description' => 'Country of incorporation and registration details.', 'component_key' => 'registration', 'order' => 2]);
+        OnboardingStep::create(['name' => 'Questions', 'slug' => 'questions', 'description' => 'Answer onboarding questions.', 'component_key' => 'questions', 'order' => 3]);
+        OnboardingStep::create(['name' => 'KYC', 'slug' => 'kyc', 'description' => 'Upload KYC documents.', 'component_key' => 'kyc', 'order' => 4]);
+        OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'description' => 'Review and submit your application.', 'component_key' => 'review', 'order' => 5]);
     }
 
     private function createQuestion(QuestionGroup $group, array $data): Question

@@ -13,8 +13,10 @@ use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
 use App\Services\AnswerService;
 use App\Services\ConditionalRuleEngine;
+use App\Services\CountryRegistrationService;
 use App\Services\OnboardingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class OnboardingController extends Controller
@@ -23,6 +25,7 @@ class OnboardingController extends Controller
         private OnboardingService $onboardingService,
         private AnswerService $answerService,
         private ConditionalRuleEngine $ruleEngine,
+        private CountryRegistrationService $registrationService,
     ) {}
 
     /**
@@ -51,12 +54,121 @@ class OnboardingController extends Controller
             'status' => $onboarding->status,
             'user_type' => $onboarding->userType,
             'subcategory' => $onboarding->subcategory,
+            'country_code' => $onboarding->country_code,
+            'registration_details' => $onboarding->registration_details,
             'template_version' => $onboarding->template_version,
             'current_step' => $steps->firstWhere('id', $onboarding->current_step_id),
             'steps' => $steps,
             'started_at' => $onboarding->started_at,
             'completed_at' => $onboarding->completed_at,
         ];
+    }
+
+    /**
+     * Country registration catalog for the user's organization category,
+     * plus any previously saved selection.
+     */
+    public function registrationCatalog(): JsonResponse
+    {
+        /**@disregard */
+        $user = auth()->user();
+        $onboarding = $user->onboarding;
+
+        if (!$onboarding) {
+            return response()->json(['message' => 'Onboarding not initialized.'], 404);
+        }
+
+        $category = $this->registrationService->categoryForType($onboarding->userType);
+        $catalog = $this->registrationService->catalogForCategory($category);
+
+        return response()->json(['data' => [
+            'countries' => $this->registrationService->countries(),
+            'category' => $category,
+            'default_fields' => $catalog['default_fields'],
+            'overrides' => $catalog['overrides'],
+            'selected' => [
+                'country_code' => $onboarding->country_code,
+                'values' => $this->extractRegistrationValues($onboarding->registration_details),
+            ],
+        ]]);
+    }
+
+    /**
+     * Save the country of incorporation and its registration identifiers.
+     * Enforces required fields and per-field format patterns server-side.
+     */
+    public function saveRegistration(Request $request): JsonResponse
+    {
+        /**@disregard */
+        $user = auth()->user();
+        $onboarding = $user->onboarding;
+
+        if (!$onboarding) {
+            return response()->json(['message' => 'Onboarding not initialized.'], 404);
+        }
+
+        $validated = $request->validate([
+            'country_code' => ['required', 'string', 'size:2'],
+            'values' => ['array'],
+        ]);
+
+        $countryCode = strtoupper($validated['country_code']);
+        if (!array_key_exists($countryCode, config('country_registrations.countries', []))) {
+            return response()->json(['message' => 'Unknown country.'], 422);
+        }
+
+        $category = $this->registrationService->categoryForType($onboarding->userType);
+        $fields = $this->registrationService->fieldsFor($countryCode, $category);
+        $values = $validated['values'] ?? [];
+
+        $errors = [];
+        $stored = [];
+        foreach ($fields as $field) {
+            $value = trim((string) ($values[$field['key']] ?? ''));
+
+            if (($field['required'] ?? false) && $value === '') {
+                $errors["values.{$field['key']}"] = ["{$field['label']} is required."];
+                continue;
+            }
+
+            if ($value !== '' && !empty($field['pattern'])) {
+                if (preg_match('#' . $field['pattern'] . '#u', $value) !== 1) {
+                    $errors["values.{$field['key']}"] = [$field['pattern_message'] ?? "{$field['label']} format is invalid."];
+                    continue;
+                }
+            }
+
+            if ($value !== '') {
+                $stored[$field['key']] = ['label' => $field['label'], 'value' => $value];
+            }
+        }
+
+        if (!empty($errors)) {
+            return response()->json(['message' => 'Please correct the highlighted fields.', 'errors' => $errors], 422);
+        }
+
+        $onboarding->update([
+            'country_code' => $countryCode,
+            'registration_details' => $stored,
+        ]);
+
+        return response()->json([
+            'message' => 'Registration details saved.',
+            'data' => $this->formatOnboardingResponse($onboarding->fresh()),
+        ]);
+    }
+
+    /**
+     * Flatten stored registration details ({key:{label,value}}) to {key:value}.
+     */
+    private function extractRegistrationValues(?array $details): array
+    {
+        $out = [];
+        foreach ($details ?? [] as $key => $entry) {
+            $out[$key] = is_array($entry) ? ($entry['value'] ?? '') : $entry;
+        }
+
+        return $out;
     }
 
     /**

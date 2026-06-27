@@ -67,3 +67,9 @@ export const previousStep = (stepId) =>
 
 export const gotoStep = (stepId) =>
   client.post(`/onboarding/steps/${stepId}/goto`);
+
+export const getRegistrationCatalog = () =>
+  client.get('/onboarding/registration');
+
+export const saveRegistration = (countryCode, values) =>
+  client.post('/onboarding/registration', { country_code: countryCode, values });

@@ -15,6 +15,7 @@ export const REQUIRED_KYC_DOCUMENTS = [
 // show an "~X min left" hint in the sidebar progress widget.
 export const STEP_TIME_ESTIMATES = {
   select_type: 1,
+  registration: 2,
   questions: 6,
   kyc: 4,
   review: 2,

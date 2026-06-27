@@ -12,6 +12,8 @@ class UserOnboarding extends Model
         'user_id',
         'user_type_id',
         'user_type_subcategory_id',
+        'country_code',
+        'registration_details',
         'status',
         'current_step_id',
         'template_version',
@@ -22,6 +24,7 @@ class UserOnboarding extends Model
     protected function casts(): array
     {
         return [
+            'registration_details' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
