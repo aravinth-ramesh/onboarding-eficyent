@@ -10,6 +10,7 @@ import {
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
 import { validateByType, validateTableCell } from '../../utils/validation';
 import QuestionField from './QuestionField';
+import HelpTip from '../common/HelpTip';
 
 function QuestionsStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
@@ -505,6 +506,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             <label className="question-label">
               {question.label}
               {question.is_required && <span className="required">*</span>}
+              <HelpTip content={question.description} label={`More about: ${question.label}`} />
             </label>
             {question.help_text && (
               <div className="question-help">{question.help_text}</div>

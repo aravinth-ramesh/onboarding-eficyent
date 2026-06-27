@@ -65,7 +65,8 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Description</label>
                         <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                            rows="2">{{ old('description', $question?->description) }}</textarea>
+                            rows="2" placeholder="Explain what this question means or why you ask it.">{{ old('description', $question?->description) }}</textarea>
+                        <div class="form-text"><i class="bi bi-info-circle"></i> Shown in an info tooltip next to the question. Use it to clarify anything a client might not understand.</div>
                         @error('description')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -90,6 +91,7 @@
                             <label class="form-label fw-semibold">Placeholder</label>
                             <input type="text" name="placeholder" class="form-control @error('placeholder') is-invalid @enderror"
                                 value="{{ old('placeholder', $question?->placeholder) }}">
+                            <div class="form-text">Faint example text inside the field.</div>
                             @error('placeholder')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -106,7 +108,9 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Help Text</label>
                         <input type="text" name="help_text" class="form-control @error('help_text') is-invalid @enderror"
-                            value="{{ old('help_text', $question?->help_text) }}">
+                            value="{{ old('help_text', $question?->help_text) }}"
+                            placeholder="e.g. Enter the name exactly as registered.">
+                        <div class="form-text">Short hint shown directly under the question (good for format or examples).</div>
                         @error('help_text')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
