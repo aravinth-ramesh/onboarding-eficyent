@@ -17,6 +17,7 @@ class CountryRegistration extends Model
         'applies_to',
         'pattern',
         'pattern_message',
+        'checksum',
         'placeholder',
         'help',
         'order',
@@ -42,6 +43,7 @@ class CountryRegistration extends Model
             'required' => (bool) $this->required,
             'pattern' => $this->pattern,
             'pattern_message' => $this->pattern_message,
+            'checksum' => $this->checksum,
             'placeholder' => $this->placeholder,
             'help' => $this->help,
         ];

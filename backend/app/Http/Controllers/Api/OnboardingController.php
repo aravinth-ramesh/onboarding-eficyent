@@ -12,6 +12,7 @@ use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
 use App\Services\AnswerService;
+use App\Services\ChecksumValidator;
 use App\Services\ConditionalRuleEngine;
 use App\Services\CountryRegistrationService;
 use App\Services\OnboardingService;
@@ -26,6 +27,7 @@ class OnboardingController extends Controller
         private AnswerService $answerService,
         private ConditionalRuleEngine $ruleEngine,
         private CountryRegistrationService $registrationService,
+        private ChecksumValidator $checksumValidator,
     ) {}
 
     /**
@@ -134,6 +136,13 @@ class OnboardingController extends Controller
             if ($value !== '' && !empty($field['pattern'])) {
                 if (preg_match('#' . $field['pattern'] . '#u', $value) !== 1) {
                     $errors["values.{$field['key']}"] = [$field['pattern_message'] ?? "{$field['label']} format is invalid."];
+                    continue;
+                }
+            }
+
+            if ($value !== '' && !empty($field['checksum'])) {
+                if (!$this->checksumValidator->isValid($field['checksum'], $value)) {
+                    $errors["values.{$field['key']}"] = ["{$field['label']} failed the check-digit validation. Please re-check the number."];
                     continue;
                 }
             }

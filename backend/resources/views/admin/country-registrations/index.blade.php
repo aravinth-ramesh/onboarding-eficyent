@@ -71,6 +71,9 @@
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
+                                @if($reg->checksum)
+                                    <div><span class="badge badge-completed" title="Check-digit validated"><i class="bi bi-shield-check"></i> {{ strtoupper($reg->checksum) }}</span></div>
+                                @endif
                             </td>
                             <td>
                                 <span class="badge {{ $reg->is_active ? 'badge-active' : 'badge-inactive' }}">

@@ -78,6 +78,18 @@
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Check-digit Validation</label>
+                        <select name="checksum" class="form-select @error('checksum') is-invalid @enderror">
+                            <option value="">None</option>
+                            @foreach(['gstin' => 'India GSTIN', 'abn' => 'Australia ABN', 'cnpj' => 'Brazil CNPJ'] as $val => $text)
+                                <option value="{{ $val }}" {{ old('checksum', $registration?->checksum) === $val ? 'selected' : '' }}>{{ $text }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Optional. Validates the actual check digit beyond the format pattern — catches typos and transposed digits.</div>
+                        @error('checksum')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Placeholder</label>

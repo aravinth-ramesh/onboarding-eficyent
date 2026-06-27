@@ -32,6 +32,7 @@ class CountryRegistrationSeeder extends Seeder
                     'applies_to' => $this->appliesTo($field['types'] ?? ['fi', 'corporate']),
                     'pattern' => $field['pattern'] ?? null,
                     'pattern_message' => $field['pattern_message'] ?? null,
+                    'checksum' => $field['checksum'] ?? null,
                     'placeholder' => $field['placeholder'] ?? null,
                     'help' => $field['help'] ?? null,
                     'order' => $index,

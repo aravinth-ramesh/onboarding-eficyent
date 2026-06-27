@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { completeOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
 import * as onboardingApi from '../../api/onboarding';
 import HelpTip from '../common/HelpTip';
+import { isChecksumValid } from '../../utils/checksum';
 
 // Anchored pattern test mirroring the backend / utils/validation semantics.
 const matchesPattern = (pattern, value) => {
@@ -79,6 +80,10 @@ function RegistrationStep({ step, onBack, isFirstStep }) {
       }
       if (val !== '' && f.pattern && !matchesPattern(f.pattern, val)) {
         next[f.key] = f.pattern_message || `${f.label} format is invalid.`;
+        return;
+      }
+      if (val !== '' && f.checksum && !isChecksumValid(f.checksum, val)) {
+        next[f.key] = `${f.label} failed the check-digit validation. Please re-check the number.`;
       }
     });
     return next;

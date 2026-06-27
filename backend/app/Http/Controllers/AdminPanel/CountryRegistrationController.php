@@ -86,6 +86,7 @@ class CountryRegistrationController extends Controller
             'applies_to' => ['required', 'in:both,fi,corporate'],
             'pattern' => ['nullable', 'string', 'max:255'],
             'pattern_message' => ['nullable', 'string', 'max:255'],
+            'checksum' => ['nullable', 'in:gstin,abn,cnpj'],
             'placeholder' => ['nullable', 'string', 'max:255'],
             'help' => ['nullable', 'string', 'max:1000'],
             'order' => ['nullable', 'integer', 'min:0'],

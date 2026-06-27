@@ -38,7 +38,7 @@ return [
     'overrides' => [
 
         'IN' => [
-            ['key' => 'gstin', 'label' => 'GSTIN', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$', 'pattern_message' => 'Enter a valid 15-character GSTIN.', 'placeholder' => '22AAAAA0000A1Z5', 'help' => '15-digit Goods & Services Tax Identification Number. GST registration is per state.'],
+            ['key' => 'gstin', 'label' => 'GSTIN', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$', 'pattern_message' => 'Enter a valid 15-character GSTIN.', 'checksum' => 'gstin', 'placeholder' => '27AAPFU0939F1ZV', 'help' => '15-digit Goods & Services Tax Identification Number. GST registration is per state.'],
             ['key' => 'pan', 'label' => 'PAN', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[A-Z]{5}[0-9]{4}[A-Z]$', 'pattern_message' => 'Enter a valid 10-character PAN.', 'placeholder' => 'AAAAA0000A', 'help' => 'Permanent Account Number issued by the Income Tax Department.'],
             ['key' => 'cin', 'label' => 'CIN', 'required' => true, 'types' => ['corporate'], 'pattern' => '^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$', 'pattern_message' => 'Enter a valid 21-character CIN.', 'placeholder' => 'U12345MH2010PLC000000', 'help' => 'Corporate Identification Number issued by the MCA / Registrar of Companies.'],
             ['key' => 'rbi_reg', 'label' => 'RBI Registration Number', 'required' => true, 'types' => ['fi'], 'pattern' => null, 'pattern_message' => null, 'placeholder' => '', 'help' => 'Certificate of Registration number issued by the Reserve Bank of India.'],
@@ -69,7 +69,7 @@ return [
         ],
 
         'AU' => [
-            ['key' => 'abn', 'label' => 'ABN', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{3}\\s?[0-9]{3}$', 'pattern_message' => 'Enter a valid 11-digit ABN.', 'placeholder' => '12 345 678 901', 'help' => 'Australian Business Number.'],
+            ['key' => 'abn', 'label' => 'ABN', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{3}\\s?[0-9]{3}$', 'pattern_message' => 'Enter a valid 11-digit ABN.', 'checksum' => 'abn', 'placeholder' => '51 824 753 556', 'help' => 'Australian Business Number.'],
             ['key' => 'acn', 'label' => 'ACN', 'required' => true, 'types' => ['corporate'], 'pattern' => '^[0-9]{3}\\s?[0-9]{3}\\s?[0-9]{3}$', 'pattern_message' => 'Enter a valid 9-digit ACN.', 'placeholder' => '123 456 789', 'help' => 'Australian Company Number issued by ASIC.'],
             ['key' => 'afsl', 'label' => 'AFSL Number', 'required' => true, 'types' => ['fi'], 'pattern' => null, 'pattern_message' => null, 'placeholder' => '', 'help' => 'Australian Financial Services Licence number.'],
         ],
@@ -121,7 +121,7 @@ return [
         ],
 
         'BR' => [
-            ['key' => 'cnpj', 'label' => 'CNPJ', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}\\.?[0-9]{3}\\.?[0-9]{3}/?[0-9]{4}-?[0-9]{2}$', 'pattern_message' => 'Enter a valid 14-digit CNPJ.', 'placeholder' => '12.345.678/0001-95', 'help' => 'Cadastro Nacional da Pessoa Jurídica.'],
+            ['key' => 'cnpj', 'label' => 'CNPJ', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^[0-9]{2}\\.?[0-9]{3}\\.?[0-9]{3}/?[0-9]{4}-?[0-9]{2}$', 'pattern_message' => 'Enter a valid 14-digit CNPJ.', 'checksum' => 'cnpj', 'placeholder' => '11.444.777/0001-61', 'help' => 'Cadastro Nacional da Pessoa Jurídica.'],
         ],
 
         'ZA' => [
