@@ -19,5 +19,6 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(OnboardingDataSeeder::class);
+        $this->call(CountryRegistrationSeeder::class);
     }
 }

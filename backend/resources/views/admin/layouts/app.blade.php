@@ -428,6 +428,10 @@
                 <i class="bi bi-list-ol"></i> Onboarding Steps
             </a>
 
+            <a href="{{ route('admin.country-registrations.index') }}" class="sidebar-link {{ request()->routeIs('admin.country-registrations.*') ? 'active' : '' }}">
+                <i class="bi bi-globe2"></i> Country Registrations
+            </a>
+
             <div class="sidebar-heading">Monitoring</div>
 
             <a href="{{ route('admin.user-onboardings.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-onboardings.*') ? 'active' : '' }}">

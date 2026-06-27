@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminPanel\AuthController;
 use App\Http\Controllers\AdminPanel\ConditionalRuleController;
+use App\Http\Controllers\AdminPanel\CountryRegistrationController;
 use App\Http\Controllers\AdminPanel\DashboardController;
 use App\Http\Controllers\AdminPanel\OnboardingStepController;
 use App\Http\Controllers\AdminPanel\QuestionController;
@@ -40,6 +41,9 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
 
     // Onboarding Steps
     Route::resource('onboarding-steps', OnboardingStepController::class)->except(['show']);
+
+    // Country Registrations
+    Route::resource('country-registrations', CountryRegistrationController::class)->except(['show']);
 
     // User Onboardings
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');

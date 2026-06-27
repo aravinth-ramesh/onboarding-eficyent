@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\CountryRegistration;
 use App\Models\UserType;
+use Illuminate\Support\Collection;
 
 class CountryRegistrationService
 {
     /**
-     * Sorted list of countries for the selector.
+     * Sorted list of countries for the selector (static ISO data from config).
      *
      * @return array<int, array{code: string, name: string}>
      */
@@ -39,40 +41,92 @@ class CountryRegistrationService
     }
 
     /**
-     * Registration fields for a single country + category. Falls back to the
-     * generic default set when the country has no specific override.
+     * Registration fields for a single country + category. Reads the editable
+     * catalog (DB), falling back to the country's '*' default, then to the
+     * config catalog when the table has not been seeded yet.
      */
     public function fieldsFor(string $countryCode, string $category): array
     {
-        $overrides = config('country_registrations.overrides', []);
-        $source = $overrides[$countryCode] ?? config('country_registrations.default_fields', []);
+        if (!CountryRegistration::query()->exists()) {
+            return $this->configFieldsFor($countryCode, $category);
+        }
 
-        return $this->filterByCategory($source, $category);
+        $rows = $this->activeRowsFor($countryCode);
+        if ($rows->isEmpty()) {
+            $rows = $this->activeRowsFor('*');
+        }
+
+        return $rows->filter(fn (CountryRegistration $r) => $r->appliesToCategory($category))
+            ->map(fn (CountryRegistration $r) => $r->toField())
+            ->values()
+            ->all();
     }
 
     /**
-     * The full catalog payload for a category: the generic default plus only
-     * the countries that have a specific override (keeps the response small).
+     * Full catalog payload for a category: the generic default plus only the
+     * countries that have specific fields.
      *
      * @return array{default_fields: array, overrides: array}
      */
     public function catalogForCategory(string $category): array
     {
+        if (!CountryRegistration::query()->exists()) {
+            return $this->configCatalogForCategory($category);
+        }
+
+        $rows = CountryRegistration::query()
+            ->where('is_active', true)
+            ->orderBy('country_code')->orderBy('order')->orderBy('id')
+            ->get()
+            ->filter(fn (CountryRegistration $r) => $r->appliesToCategory($category));
+
+        $default = $rows->where('country_code', '*')
+            ->map(fn (CountryRegistration $r) => $r->toField())->values()->all();
+
+        $overrides = [];
+        foreach ($rows->where('country_code', '!=', '*')->groupBy('country_code') as $code => $group) {
+            $overrides[$code] = $group->map(fn (CountryRegistration $r) => $r->toField())->values()->all();
+        }
+
+        return ['default_fields' => $default, 'overrides' => $overrides];
+    }
+
+    private function activeRowsFor(string $code): Collection
+    {
+        return CountryRegistration::query()
+            ->where('is_active', true)
+            ->where('country_code', $code)
+            ->orderBy('order')->orderBy('id')
+            ->get();
+    }
+
+    // ── Config fallback (used only before the catalog table is seeded) ──
+
+    private function configFieldsFor(string $countryCode, string $category): array
+    {
+        $overrides = config('country_registrations.overrides', []);
+        $source = $overrides[$countryCode] ?? config('country_registrations.default_fields', []);
+
+        return $this->filterConfigByCategory($source, $category);
+    }
+
+    private function configCatalogForCategory(string $category): array
+    {
         $overrides = [];
         foreach (config('country_registrations.overrides', []) as $code => $fields) {
-            $filtered = $this->filterByCategory($fields, $category);
+            $filtered = $this->filterConfigByCategory($fields, $category);
             if (!empty($filtered)) {
                 $overrides[$code] = $filtered;
             }
         }
 
         return [
-            'default_fields' => $this->filterByCategory(config('country_registrations.default_fields', []), $category),
+            'default_fields' => $this->filterConfigByCategory(config('country_registrations.default_fields', []), $category),
             'overrides' => $overrides,
         ];
     }
 
-    private function filterByCategory(array $fields, string $category): array
+    private function filterConfigByCategory(array $fields, string $category): array
     {
         return array_values(array_filter(
             $fields,
