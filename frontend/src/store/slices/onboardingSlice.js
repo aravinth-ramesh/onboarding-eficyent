@@ -91,6 +91,18 @@ export const goToPreviousStep = createAsyncThunk(
   }
 );
 
+export const goToOnboardingStep = createAsyncThunk(
+  'onboarding/goToStep',
+  async (stepId, { rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.gotoStep(stepId);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to navigate to step');
+    }
+  }
+);
+
 const onboardingSlice = createSlice({
   name: 'onboarding',
   initialState: {
@@ -104,6 +116,7 @@ const onboardingSlice = createSlice({
     userTypes: [],
     questionGroups: [],
     answers: {},
+    kycDocStatus: {},
     loading: false,
     error: null,
   },
@@ -111,6 +124,10 @@ const onboardingSlice = createSlice({
     setAnswer: (state, action) => {
       const { questionId, value } = action.payload;
       state.answers[questionId] = value;
+    },
+    setKycDocStatus: (state, action) => {
+      const { key, present } = action.payload;
+      state.kycDocStatus[key] = present;
     },
     clearOnboarding: (state) => {
       state.status = null;
@@ -200,6 +217,12 @@ const onboardingSlice = createSlice({
         state.steps = action.payload.steps;
         state.currentStep = action.payload.current_step;
       })
+      // Jump to an earlier step
+      .addCase(goToOnboardingStep.fulfilled, (state, action) => {
+        state.status = action.payload.status;
+        state.steps = action.payload.steps;
+        state.currentStep = action.payload.current_step;
+      })
       // Clear onboarding state on logout (sync clearAuth or async logoutUser.fulfilled)
       .addCase(clearAuth, (state) => {
         state.status = null;
@@ -212,6 +235,7 @@ const onboardingSlice = createSlice({
         state.userTypes = [];
         state.questionGroups = [];
         state.answers = {};
+        state.kycDocStatus = {};
         state.loading = false;
         state.error = null;
       })
@@ -226,11 +250,12 @@ const onboardingSlice = createSlice({
         state.userTypes = [];
         state.questionGroups = [];
         state.answers = {};
+        state.kycDocStatus = {};
         state.loading = false;
         state.error = null;
       });
   },
 });
 
-export const { setAnswer, clearOnboarding } = onboardingSlice.actions;
+export const { setAnswer, setKycDocStatus, clearOnboarding } = onboardingSlice.actions;
 export default onboardingSlice.reducer;

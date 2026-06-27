@@ -64,3 +64,6 @@ export const completeStep = (stepId) =>
 
 export const previousStep = (stepId) =>
   client.post(`/onboarding/steps/${stepId}/previous`);
+
+export const gotoStep = (stepId) =>
+  client.post(`/onboarding/steps/${stepId}/goto`);

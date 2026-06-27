@@ -128,6 +128,47 @@ class OnboardingService
         return $onboarding->fresh('steps');
     }
 
+    /**
+     * Jump directly to an earlier step (e.g. from the sidebar tracker).
+     *
+     * Only allows navigating to a step at or before the current one. Every
+     * non-skipped step after the target is demoted back to pending so the
+     * user re-advances through them — this keeps later steps consistent when
+     * an earlier answer (and its conditional logic) may have changed.
+     */
+    public function goToStep(UserOnboarding $onboarding, UserOnboardingStep $targetStep): UserOnboarding
+    {
+        $current = $onboarding->steps()
+            ->where('id', $onboarding->current_step_id)
+            ->first();
+
+        // Never allow skipping forward past the current step.
+        if ($current && $targetStep->order > $current->order) {
+            return $onboarding->fresh('steps');
+        }
+
+        // Demote everything after the target back to pending.
+        $onboarding->steps()
+            ->where('order', '>', $targetStep->order)
+            ->where('status', '!=', 'skipped')
+            ->update(['status' => 'pending', 'started_at' => null, 'completed_at' => null]);
+
+        // Re-open the target step.
+        $targetStep->update([
+            'status' => 'in_progress',
+            'completed_at' => null,
+            'started_at' => $targetStep->started_at ?? now(),
+        ]);
+
+        $onboarding->update([
+            'status' => 'in_progress',
+            'completed_at' => null,
+            'current_step_id' => $targetStep->id,
+        ]);
+
+        return $onboarding->fresh('steps');
+    }
+
     private function getCurrentTemplateVersion(): int
     {
         return OnboardingStep::max('version') ?? 1;

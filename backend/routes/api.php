@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
         Route::post('/steps/{step}/complete', [Api\OnboardingController::class, 'completeStep']);
         Route::post('/steps/{step}/previous', [Api\OnboardingController::class, 'previousStep']);
+        Route::post('/steps/{step}/goto', [Api\OnboardingController::class, 'goToStep']);
     });
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { completeOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
+import { completeOnboardingStep, fetchOnboardingStatus, setKycDocStatus } from '../../store/slices/onboardingSlice';
+import { REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
 
 const formatFileSize = (bytes) => {
   if (bytes === undefined || bytes === null) return '';
@@ -130,11 +131,7 @@ function KycStep({ step, onBack, isFirstStep }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const requiredDocuments = [
-    { key: 'id_proof', label: 'Government ID Proof', hint: 'Passport, National ID, or Driver\'s License' },
-    { key: 'address_proof', label: 'Address Proof', hint: 'Utility bill or bank statement (last 3 months)' },
-    { key: 'incorporation_cert', label: 'Certificate of Incorporation', hint: 'Official registration document' },
-  ];
+  const requiredDocuments = REQUIRED_KYC_DOCUMENTS;
 
   const handleFileChange = (key, file) => {
     setFiles((prev) => {
@@ -142,6 +139,8 @@ function KycStep({ step, onBack, isFirstStep }) {
       if (file) next[key] = file; else delete next[key];
       return next;
     });
+    // Mirror selection state into Redux so the sidebar checklist ticks off.
+    dispatch(setKycDocStatus({ key, present: !!file }));
     setError(null);
   };
 

@@ -1,9 +1,11 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, clearAuth } from '../../store/slices/authSlice';
+import { goToOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
 import { useNavigate } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
+import { STEP_TIME_ESTIMATES, DEFAULT_STEP_MINUTES, REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
 
 // Friendly date like "Jun 20, 2026"; returns null on bad/empty input.
 function formatDate(value) {
@@ -31,7 +33,7 @@ function AppLayout({ children, pageTitle }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { steps, currentStep, userType, status, onboardingId, startedAt } = useSelector(
+  const { steps, currentStep, userType, status, onboardingId, startedAt, kycDocStatus } = useSelector(
     (state) => state.onboarding
   );
 
@@ -39,6 +41,15 @@ function AppLayout({ children, pageTitle }) {
     dispatch(clearAuth());
     dispatch(logoutUser());
     navigate('/login');
+  };
+
+  // Jump back to an already-completed step from the tracker.
+  const handleStepClick = (step) => {
+    if (step.status !== 'completed') return;
+    if (currentStep && step.id === currentStep.id) return;
+    dispatch(goToOnboardingStep(step.id)).then((result) => {
+      if (!result.error) dispatch(fetchOnboardingStatus());
+    });
   };
 
   const userInitial = (user?.name || user?.email || '?').charAt(0).toUpperCase();
@@ -54,6 +65,13 @@ function AppLayout({ children, pageTitle }) {
   const startedLabel = formatDate(startedAt);
   const statusLabel = humanizeStatus(status);
   const statusClass = status === 'completed' ? 'success' : 'progress';
+
+  // Estimated time remaining from steps not yet completed.
+  const minutesLeft = steps
+    .filter((s) => s.status !== 'completed' && s.status !== 'skipped')
+    .reduce((sum, s) => sum + (STEP_TIME_ESTIMATES[s.component_key] ?? DEFAULT_STEP_MINUTES), 0);
+
+  const onKycStep = currentStep?.component_key === 'kyc';
 
   return (
     <div className="app-wrapper">
@@ -94,15 +112,31 @@ function AppLayout({ children, pageTitle }) {
                   {steps.map((step, index) => {
                     const isCompleted = step.status === 'completed';
                     const isActive = currentStep && step.id === currentStep.id;
-                    const cls = isCompleted ? 'done' : isActive ? 'active' : '';
+                    const clickable = isCompleted && !isActive;
+                    const cls = `${isCompleted ? 'done' : isActive ? 'active' : ''}${clickable ? ' clickable' : ''}`.trim();
                     return (
-                      <li key={step.id} className={cls}>
+                      <li
+                        key={step.id}
+                        className={cls}
+                        onClick={clickable ? () => handleStepClick(step) : undefined}
+                        role={clickable ? 'button' : undefined}
+                        tabIndex={clickable ? 0 : undefined}
+                        onKeyDown={clickable ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleStepClick(step); }
+                        } : undefined}
+                        title={clickable ? `Go back to ${step.name}` : undefined}
+                      >
                         <span className="sb-dot">{isCompleted ? '✓' : index + 1}</span>
                         {step.name}
+                        {clickable && <span className="sb-step-jump">{'↩'}</span>}
                       </li>
                     );
                   })}
                 </ul>
+
+                {minutesLeft > 0 && status !== 'completed' && (
+                  <div className="sb-eta">{'⏱'} About {minutesLeft} min remaining</div>
+                )}
 
                 <div className="sb-autosave">
                   <span className="sb-autosave-dot" />
@@ -138,6 +172,24 @@ function AppLayout({ children, pageTitle }) {
                   </div>
                 )}
               </div>
+
+              {/* KYC document checklist (only while on the KYC step) */}
+              {onKycStep && (
+                <div className="sb-card">
+                  <div className="sb-card-label">Documents needed</div>
+                  <ul className="sb-checklist">
+                    {REQUIRED_KYC_DOCUMENTS.map((doc) => {
+                      const done = !!kycDocStatus[doc.key];
+                      return (
+                        <li key={doc.key} className={done ? 'done' : ''}>
+                          <span className="sb-check">{done ? '✓' : ''}</span>
+                          {doc.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </>
           ) : (
             <div className="sb-card">
