@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOnboardingStatus, goToPreviousStep } from '../store/slices/onboardingSlice';
 import AppLayout from '../components/layout/AppLayout';
+import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
 import SubmittedAnswersView from '../components/onboarding/SubmittedAnswersView';
 import ProfileSetup from '../components/onboarding/ProfileSetup';
@@ -89,6 +90,10 @@ function HomePage() {
     <AppLayout pageTitle="Client Onboarding">
       {error && (
         <div className="alert-corporate danger" style={{ marginBottom: 16 }}>{error}</div>
+      )}
+
+      {steps.length > 0 && (
+        <StepIndicator steps={steps} currentStepId={currentStep?.id} />
       )}
 
       {currentStep ? (
