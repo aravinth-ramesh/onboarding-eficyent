@@ -77,13 +77,23 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     return result;
   };
 
-  // Filter out groups that have no visible questions
+  // A section step may scope itself to specific question groups (by slug) via
+  // step.config.groups; otherwise all groups are shown.
+  const sectionSlugs = step?.config?.groups;
+
+  // Filter out groups that have no visible questions; restrict + order by the
+  // section's configured groups when present.
   const visibleGroups = useMemo(() => {
-    return questionGroups.filter((group) =>
-      group.questions.some((q) => isQuestionVisible(q))
-    );
+    let groups = questionGroups;
+    if (Array.isArray(sectionSlugs) && sectionSlugs.length > 0) {
+      const orderBySlug = new Map(sectionSlugs.map((slug, i) => [slug, i]));
+      groups = questionGroups
+        .filter((g) => orderBySlug.has(g.slug))
+        .sort((a, b) => orderBySlug.get(a.slug) - orderBySlug.get(b.slug));
+    }
+    return groups.filter((group) => group.questions.some((q) => isQuestionVisible(q)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionGroups, answers]);
+  }, [questionGroups, answers, sectionSlugs]);
 
   const activeGroup = visibleGroups[activeGroupIndex];
   const activeQuestions = useMemo(() => {

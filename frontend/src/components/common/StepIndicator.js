@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 function StepIndicator({ steps, currentStepId }) {
+  const activeRef = useRef(null);
+
+  // Keep the active step in view when the flow has many steps (KYB).
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }
+  }, [currentStepId]);
+
   return (
     <div className="step-indicator">
       {steps.map((step, index) => {
@@ -8,12 +17,12 @@ function StepIndicator({ steps, currentStepId }) {
         const isCompleted = step.status === 'completed';
 
         return (
-          <div key={step.id} className="step-item">
+          <div key={step.id} className="step-item" ref={isCurrent ? activeRef : undefined}>
             <div className="step-item-content">
               <div
                 className={`step-circle ${isCompleted ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
               >
-                {isCompleted ? '\u2713' : index + 1}
+                {isCompleted ? '✓' : index + 1}
               </div>
               <span
                 className={`step-label ${isCompleted ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}

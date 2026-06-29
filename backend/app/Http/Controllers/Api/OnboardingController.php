@@ -332,6 +332,7 @@ class OnboardingController extends Controller
 
             return [
                 'id' => $group->id,
+                'slug' => $group->slug,
                 'name' => $group->name,
                 'description' => $group->description,
                 'order' => $group->order,

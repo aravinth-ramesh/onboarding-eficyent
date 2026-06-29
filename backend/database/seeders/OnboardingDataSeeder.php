@@ -38,6 +38,7 @@ class OnboardingDataSeeder extends Seeder
         $this->clean();
         $this->seedUserTypes();
         $this->seedQuestionGroups();
+        $this->seedKybSections();
         $this->seedOnboardingSteps();
     }
 
@@ -297,13 +298,85 @@ class OnboardingDataSeeder extends Seeder
         ];
     }
 
+    /**
+     * KYB-specific sections rendered by their own steps: industry (MCC),
+     * business addresses, and authorized signatories.
+     */
+    private function seedKybSections(): void
+    {
+        $industry = QuestionGroup::create([
+            'name' => 'Industry Classification', 'slug' => 'industry-classification',
+            'description' => 'Tell us about your business sector.', 'order' => 12, 'is_active' => true,
+        ]);
+        $this->mapToAll($this->createQuestion($industry, [
+            'label' => 'Industry Classification (MCC)', 'type' => 'mcc', 'is_required' => true, 'order' => 1,
+            'description' => 'Select the Merchant Category Code that best describes your primary business activity.',
+        ]));
+
+        $address = QuestionGroup::create([
+            'name' => 'Business Addresses', 'slug' => 'business-addresses',
+            'description' => 'Your registered and operating addresses.', 'order' => 13, 'is_active' => true,
+        ]);
+        $this->mapToAll($this->createQuestion($address, [
+            'label' => 'Registered Address', 'type' => 'address', 'is_required' => true, 'order' => 1,
+            'description' => 'The official registered address of the company.',
+        ]));
+        $this->mapToAll($this->createQuestion($address, [
+            'label' => 'Operating Address (if different)', 'type' => 'address', 'is_required' => false, 'order' => 2,
+            'description' => 'Leave blank if the same as the registered address.',
+        ]));
+
+        $signatories = QuestionGroup::create([
+            'name' => 'Authorized Signatories', 'slug' => 'signatories',
+            'description' => 'Individuals authorized to act on behalf of the company.', 'order' => 14, 'is_active' => true,
+        ]);
+        $this->mapToAll($this->createQuestion($signatories, [
+            'label' => 'Authorized Signatories', 'type' => 'table', 'is_required' => true, 'order' => 1,
+            'description' => 'List individuals authorized to sign on behalf of the company.',
+            'options' => ['columns' => [
+                ['key' => 'full_name', 'label' => 'Full Name', 'type' => 'text', 'required' => true, 'placeholder' => ''],
+                ['key' => 'position', 'label' => 'Position', 'type' => 'text', 'required' => true, 'placeholder' => ''],
+                ['key' => 'email', 'label' => 'Email', 'type' => 'text', 'required' => true, 'placeholder' => ''],
+                ['key' => 'phone', 'label' => 'Phone', 'type' => 'text', 'required' => false, 'placeholder' => ''],
+                ['key' => 'id_number', 'label' => 'ID / Passport Number', 'type' => 'text', 'required' => true, 'placeholder' => ''],
+            ], 'min_rows' => 1, 'max_rows' => 10, 'allow_add_rows' => true],
+        ]));
+    }
+
+    /**
+     * KYB onboarding flow: each section is a top-level step that renders one or
+     * more question groups (config.groups, by slug) via the shared questions
+     * component.
+     */
     private function seedOnboardingSteps(): void
     {
         OnboardingStep::create(['name' => 'Select Type', 'slug' => 'select-type', 'description' => 'Choose your organization type.', 'component_key' => 'select_type', 'order' => 1]);
         OnboardingStep::create(['name' => 'Registration', 'slug' => 'registration', 'description' => 'Country of incorporation and registration details.', 'component_key' => 'registration', 'order' => 2]);
-        OnboardingStep::create(['name' => 'Questions', 'slug' => 'questions', 'description' => 'Answer onboarding questions.', 'component_key' => 'questions', 'order' => 3]);
-        OnboardingStep::create(['name' => 'KYC', 'slug' => 'kyc', 'description' => 'Upload KYC documents.', 'component_key' => 'kyc', 'order' => 4]);
-        OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'description' => 'Review and submit your application.', 'component_key' => 'review', 'order' => 5]);
+
+        $sections = [
+            ['name' => 'Basic Info', 'slug' => 'basic-info', 'groups' => ['company-information']],
+            ['name' => 'Industry', 'slug' => 'industry', 'groups' => ['industry-classification', 'business-model-service-structure']],
+            ['name' => 'Address', 'slug' => 'address', 'groups' => ['business-addresses']],
+            ['name' => 'Financial', 'slug' => 'financial', 'groups' => ['transaction-profile', 'primary-bank-account-information', 'licensing-registration-regulatory-oversight']],
+            ['name' => 'UBOs', 'slug' => 'ubos', 'groups' => ['ownership-structure']],
+            ['name' => 'Signatories', 'slug' => 'signatories-step', 'groups' => ['signatories']],
+            ['name' => 'Documents', 'slug' => 'documents', 'groups' => ['required-attachments-checklist']],
+            ['name' => 'AML/CFT', 'slug' => 'aml-cft', 'groups' => ['amlctf-framework', 'high-risk-factors', 'legal-enforcement-litigation-history', 'third-parties-outsourced-functions']],
+        ];
+
+        $order = 3;
+        foreach ($sections as $section) {
+            OnboardingStep::create([
+                'name' => $section['name'],
+                'slug' => $section['slug'],
+                'description' => null,
+                'component_key' => 'questions',
+                'order' => $order++,
+                'config' => ['groups' => $section['groups']],
+            ]);
+        }
+
+        OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'description' => 'Review and submit your application.', 'component_key' => 'review', 'order' => $order]);
     }
 
     private function createQuestion(QuestionGroup $group, array $data): Question
