@@ -38,9 +38,21 @@ class ConditionalRuleController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        ConditionalRule::create($this->ruleData($request));
+
+        return redirect()->route('admin.conditional-rules.index')
+            ->with('success', 'Conditional rule created successfully.');
+    }
+
+    /**
+     * Validate and normalize a rule. The parent may be a question, or the
+     * virtual "Country of Incorporation" field (sentinel "__country__").
+     */
+    private function ruleData(Request $request): array
+    {
         $validated = $request->validate([
             'question_id' => ['required', 'exists:questions,id'],
-            'parent_question_id' => ['required', 'exists:questions,id', 'different:question_id'],
+            'parent_question_id' => ['required', 'string'],
             'comparison_type' => ['required', Rule::in([
                 'equals', 'not_equals', 'contains', 'not_contains',
                 'greater_than', 'less_than', 'in', 'not_in',
@@ -52,12 +64,19 @@ class ConditionalRuleController extends Controller
             'is_active' => ['boolean'],
         ]);
 
+        if ($validated['parent_question_id'] === '__country__') {
+            $validated['parent_field'] = 'country_code';
+            $validated['parent_question_id'] = null;
+        } else {
+            $request->validate([
+                'parent_question_id' => ['exists:questions,id', 'different:question_id'],
+            ]);
+            $validated['parent_field'] = null;
+        }
+
         $validated['is_active'] = $request->boolean('is_active');
 
-        ConditionalRule::create($validated);
-
-        return redirect()->route('admin.conditional-rules.index')
-            ->with('success', 'Conditional rule created successfully.');
+        return $validated;
     }
 
     public function edit(ConditionalRule $conditionalRule): View
@@ -73,23 +92,7 @@ class ConditionalRuleController extends Controller
 
     public function update(Request $request, ConditionalRule $conditionalRule): RedirectResponse
     {
-        $validated = $request->validate([
-            'question_id' => ['required', 'exists:questions,id'],
-            'parent_question_id' => ['required', 'exists:questions,id', 'different:question_id'],
-            'comparison_type' => ['required', Rule::in([
-                'equals', 'not_equals', 'contains', 'not_contains',
-                'greater_than', 'less_than', 'in', 'not_in',
-                'is_empty', 'is_not_empty',
-            ])],
-            'trigger_value' => ['nullable', 'string'],
-            'action' => [Rule::in(['show', 'hide'])],
-            'logical_operator' => [Rule::in(['and', 'or'])],
-            'is_active' => ['boolean'],
-        ]);
-
-        $validated['is_active'] = $request->boolean('is_active');
-
-        $conditionalRule->update($validated);
+        $conditionalRule->update($this->ruleData($request));
 
         return redirect()->route('admin.conditional-rules.index')
             ->with('success', 'Conditional rule updated successfully.');

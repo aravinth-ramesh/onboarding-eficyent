@@ -52,8 +52,12 @@
                                 {{ Str::limit($rule->question->label ?? 'N/A', 40) }}
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark mb-1">{{ $rule->parentQuestion->group->name ?? 'N/A' }}</span><br>
-                                {{ Str::limit($rule->parentQuestion->label ?? 'N/A', 40) }}
+                                @if($rule->parent_field === 'country_code')
+                                    <span class="badge badge-in-progress mb-1">🌍 Country of Incorporation</span>
+                                @else
+                                    <span class="badge bg-light text-dark mb-1">{{ $rule->parentQuestion?->group?->name ?? 'N/A' }}</span><br>
+                                    {{ Str::limit($rule->parentQuestion?->label ?? 'N/A', 40) }}
+                                @endif
                             </td>
                             <td><code>{{ $rule->comparison_type }}</code></td>
                             <td>{{ Str::limit($rule->trigger_value ?? '-', 30) }}</td>

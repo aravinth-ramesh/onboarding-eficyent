@@ -31,16 +31,18 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Parent Question <span class="text-danger">*</span></label>
+                            @php $parentSelected = old('parent_question_id', $rule?->parent_field === 'country_code' ? '__country__' : $rule?->parent_question_id); @endphp
                             <select name="parent_question_id" class="form-select select2-enable @error('parent_question_id') is-invalid @enderror" required data-placeholder="Select Parent Question">
                                 <option value="">Select Parent Question</option>
+                                <option value="__country__" {{ (string) $parentSelected === '__country__' ? 'selected' : '' }}>🌍 Country of Incorporation</option>
                                 @foreach($questions as $q)
                                     <option value="{{ $q->id }}"
-                                        {{ old('parent_question_id', $rule?->parent_question_id) == $q->id ? 'selected' : '' }}>
+                                        {{ (string) $parentSelected === (string) $q->id ? 'selected' : '' }}>
                                         [{{ $q->group->name ?? 'N/A' }}] {{ Str::limit($q->label, 50) }}
                                     </option>
                                 @endforeach
                             </select>
-                            <div class="form-text">The question whose answer triggers the condition.</div>
+                            <div class="form-text">The question whose answer triggers the condition. For <strong>Country of Incorporation</strong>, set the Trigger Value to a 2-letter country code (e.g. <code>IN</code>, <code>US</code>).</div>
                             @error('parent_question_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

@@ -299,6 +299,7 @@ class OnboardingController extends Controller
                     'answer' => $answers[$question->id] ?? null,
                     'conditional_rules' => $rules->map(fn ($rule) => [
                         'parent_question_id' => $rule->parent_question_id,
+                        'parent_field' => $rule->parent_field,
                         'comparison_type' => $rule->comparison_type,
                         'trigger_value' => $rule->trigger_value,
                         'action' => $rule->action,

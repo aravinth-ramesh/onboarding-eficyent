@@ -63,7 +63,11 @@ function parseAnswerArray(value) {
 }
 
 function evaluateSingleRule(rule, answers) {
-  const parentAnswer = answers[rule.parent_question_id];
+  // A rule keys off either a parent question's answer or a virtual field
+  // (e.g. `country_code` from the registration step), injected into `answers`.
+  const parentAnswer = rule.parent_field
+    ? answers[rule.parent_field]
+    : answers[rule.parent_question_id];
   const triggerValue = rule.trigger_value;
 
   switch (rule.comparison_type) {

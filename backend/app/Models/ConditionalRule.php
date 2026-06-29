@@ -10,6 +10,7 @@ class ConditionalRule extends Model
     protected $fillable = [
         'question_id',
         'parent_question_id',
+        'parent_field',
         'comparison_type',
         'trigger_value',
         'action',

@@ -14,7 +14,7 @@ import HelpTip from '../common/HelpTip';
 
 function QuestionsStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
-  const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
+  const { questionGroups, answers, loading, countryCode } = useSelector((state) => state.onboarding);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
   const [tableCellErrors, setTableCellErrors] = useState({});
@@ -27,11 +27,18 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     dispatch(fetchQuestions());
   }, [dispatch]);
 
+  // Answers augmented with virtual fields (country of incorporation) that
+  // conditional rules can key off via parent_field.
+  const evalAnswers = useMemo(
+    () => ({ ...answers, country_code: countryCode }),
+    [answers, countryCode]
+  );
+
   const isQuestionVisible = (question) => {
     if (!question.conditional_rules || question.conditional_rules.length === 0) {
       return true;
     }
-    return evaluateConditionalRules(question.conditional_rules, answers);
+    return evaluateConditionalRules(question.conditional_rules, evalAnswers);
   };
 
   // Reorder a group's questions so any conditional child is emitted directly
