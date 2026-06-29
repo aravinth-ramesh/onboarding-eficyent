@@ -341,6 +341,15 @@ class OnboardingDataSeeder extends Seeder
                 ['key' => 'id_number', 'label' => 'ID / Passport Number', 'type' => 'text', 'required' => true, 'placeholder' => ''],
             ], 'min_rows' => 1, 'max_rows' => 10, 'allow_add_rows' => true],
         ]));
+
+        // Proper beneficial-owner module on the existing ownership group.
+        $ownership = QuestionGroup::where('slug', 'ownership-structure')->first();
+        if ($ownership) {
+            $this->mapToAll($this->createQuestion($ownership, [
+                'label' => 'Ultimate Beneficial Owners', 'type' => 'ubo', 'is_required' => true, 'order' => 0,
+                'description' => 'List all individuals who ultimately own or control 25% or more of the company.',
+            ]));
+        }
     }
 
     /**

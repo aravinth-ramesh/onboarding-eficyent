@@ -23,3 +23,20 @@ export function formatAddress(value) {
     .filter((p) => p && String(p).trim());
   return parts.length ? parts.join(', ') : '—';
 }
+
+// Beneficial owners (array of records) -> readable summary.
+export function formatUbo(value) {
+  let v = value;
+  if (typeof v === 'string') {
+    try { v = JSON.parse(v); } catch { return value || '—'; }
+  }
+  if (!Array.isArray(v) || v.length === 0) return '—';
+  return v.map((o) => {
+    const name = o.full_name || '—';
+    const bits = [
+      o.ownership_percent ? `${o.ownership_percent}%` : '',
+      COUNTRY_NAME[o.nationality] || o.nationality || '',
+    ].filter(Boolean).join(', ');
+    return bits ? `${name} (${bits})` : name;
+  }).join('; ');
+}

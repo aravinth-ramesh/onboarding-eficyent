@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     // New KYB field types added to the questions.type ENUM (MySQL only).
-    private string $withNew = "ENUM('text','radio','date','select','multi_select','textarea','number','phone','file','table','mcc','address') NOT NULL";
+    private string $withNew = "ENUM('text','radio','date','select','multi_select','textarea','number','phone','file','table','mcc','address','ubo') NOT NULL";
 
     private string $withoutNew = "ENUM('text','radio','date','select','multi_select','textarea','number','file','table') NOT NULL";
 

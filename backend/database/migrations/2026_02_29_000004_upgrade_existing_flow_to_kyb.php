@@ -45,6 +45,18 @@ return new class extends Migration
             ], 'min_rows' => 1, 'max_rows' => 10, 'allow_add_rows' => true]],
         ]);
 
+        // Add the beneficial-owner module to the existing ownership group.
+        $ownership = QuestionGroup::where('slug', 'ownership-structure')->first();
+        if ($ownership && !Question::where('question_group_id', $ownership->id)->where('type', 'ubo')->exists()) {
+            $q = Question::create([
+                'question_group_id' => $ownership->id, 'label' => 'Ultimate Beneficial Owners',
+                'type' => 'ubo', 'is_required' => true, 'is_active' => true, 'order' => 0,
+                'description' => 'List all individuals who ultimately own or control 25% or more of the company.',
+            ]);
+            QuestionTypeMapping::create(['question_id' => $q->id, 'user_type_id' => $fi->id, 'order' => 0]);
+            QuestionTypeMapping::create(['question_id' => $q->id, 'user_type_id' => $corp->id, 'order' => 0]);
+        }
+
         // Reconfigure steps only if not already on the KYB flow.
         if (!OnboardingStep::where('slug', 'basic-info')->exists()) {
             $this->rebuildSteps();

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchQuestions } from '../../store/slices/onboardingSlice';
 import TableAnswerView from './TableAnswerView';
-import { formatMcc, formatAddress } from '../../utils/answerFormat';
+import { formatMcc, formatAddress, formatUbo } from '../../utils/answerFormat';
 
 /**
  * Read-only view of submitted answers.
@@ -68,6 +68,10 @@ function SubmittedAnswersView({ onBack }) {
 
     if (question.type === 'address') {
       return formatAddress(value);
+    }
+
+    if (question.type === 'ubo') {
+      return formatUbo(value);
     }
 
     if (question.type === 'table') {

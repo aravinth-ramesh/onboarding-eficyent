@@ -4,6 +4,7 @@ import TableField from './TableField';
 import PhoneField from './PhoneField';
 import MccField from './MccField';
 import AddressField from './AddressField';
+import UboField from './UboField';
 
 // Resolve a date input's `min`/`max` HTML attribute by combining the explicit
 // `min_date`/`max_date` rules with `allow_past`/`allow_future` flags. This is
@@ -75,6 +76,9 @@ function QuestionField({ question, value, onChange, cellErrors }) {
 
     case 'address':
       return <AddressField question={question} value={value} onChange={onChange} />;
+
+    case 'ubo':
+      return <UboField question={question} value={value} onChange={onChange} />;
 
     case 'date':
       return (

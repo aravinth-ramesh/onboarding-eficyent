@@ -4,15 +4,26 @@ import {
   fetchQuestions,
   completeOnboardingStep,
   fetchOnboardingStatus,
+  goToOnboardingStep,
 } from '../../store/slices/onboardingSlice';
 import appConfig from '../../appConfig';
 import TableAnswerView from './TableAnswerView';
-import { formatMcc, formatAddress } from '../../utils/answerFormat';
+import { formatMcc, formatAddress, formatUbo } from '../../utils/answerFormat';
 
 function ReviewStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
-  const { questionGroups, answers, loading } = useSelector((state) => state.onboarding);
+  const { questionGroups, answers, loading, steps } = useSelector((state) => state.onboarding);
   const user = useSelector((state) => state.auth.user);
+
+  // Find the section step that renders a given group, so Review can jump there.
+  const stepForGroup = (slug) =>
+    steps.find((s) => Array.isArray(s.config?.groups) && s.config.groups.includes(slug));
+
+  const handleEditSection = (targetStep) => {
+    dispatch(goToOnboardingStep(targetStep.id)).then((result) => {
+      if (!result.error) dispatch(fetchOnboardingStatus());
+    });
+  };
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -78,6 +89,10 @@ function ReviewStep({ step, onBack, isFirstStep }) {
 
     if (question.type === 'address') {
       return formatAddress(value);
+    }
+
+    if (question.type === 'ubo') {
+      return formatUbo(value);
     }
 
     if (question.type === 'table') {
@@ -172,9 +187,18 @@ function ReviewStep({ step, onBack, isFirstStep }) {
           Please review all your answers before submitting. Use the Back button to make changes.
         </div>
 
-        {questionGroups.map((group) => (
+        {questionGroups.map((group) => {
+          const editStep = stepForGroup(group.slug);
+          return (
           <div key={group.id} style={{ marginBottom: 24 }}>
-            <p className="section-label">{group.name}</p>
+            <div className="review-section-head">
+              <p className="section-label" style={{ margin: 0 }}>{group.name}</p>
+              {editStep && (
+                <button type="button" className="review-edit-btn" onClick={() => handleEditSection(editStep)}>
+                  ✎ Edit
+                </button>
+              )}
+            </div>
             <table className="review-table">
               <tbody>
                 {group.questions.map((question) => {
@@ -198,7 +222,8 @@ function ReviewStep({ step, onBack, isFirstStep }) {
               </tbody>
             </table>
           </div>
-        ))}
+          );
+        })}
       </div>
       <div className="ob-card-footer">
         {!isFirstStep ? (

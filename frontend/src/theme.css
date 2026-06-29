@@ -2828,3 +2828,62 @@ a.file-preview-name:hover { text-decoration: underline; }
 @media (max-width: 560px) {
   .address-row { flex-direction: column; }
 }
+
+/* ── UBO / beneficial owners list ── */
+.ubo-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.ubo-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ubo-total {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.ubo-total strong {
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ubo-total.over strong,
+.ubo-total-warn {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* ── Edit-at-review ── */
+.review-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.review-edit-btn {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.review-edit-btn:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
