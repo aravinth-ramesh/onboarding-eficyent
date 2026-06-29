@@ -6,6 +6,42 @@ import { useNavigate } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
 import { STEP_TIME_ESTIMATES, DEFAULT_STEP_MINUTES, REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
+import { evaluateConditionalRules } from '../../utils/conditionalEngine';
+
+const hasValue = (a) => {
+  if (a === undefined || a === null || a === '') return false;
+  if (Array.isArray(a) && a.length === 0) return false;
+  return true;
+};
+
+// How far through the *current* step the user is (0–1), so the ring moves as
+// data is entered — not only when a whole step completes.
+function activeStepFraction(currentStep, questionGroups, answers, kycDocStatus) {
+  if (!currentStep) return 0;
+  const key = currentStep.component_key;
+
+  if (key === 'questions' && questionGroups.length) {
+    let total = 0;
+    let filled = 0;
+    questionGroups.forEach((g) => g.questions.forEach((q) => {
+      const visible = !q.conditional_rules || q.conditional_rules.length === 0
+        || evaluateConditionalRules(q.conditional_rules, answers);
+      if (!visible) return;
+      total += 1;
+      if (hasValue(answers[q.id])) filled += 1;
+    }));
+    return total ? filled / total : 0.5;
+  }
+
+  if (key === 'kyc') {
+    const total = REQUIRED_KYC_DOCUMENTS.length;
+    const filled = REQUIRED_KYC_DOCUMENTS.filter((d) => kycDocStatus[d.key]).length;
+    return total ? filled / total : 0.5;
+  }
+
+  // Other steps: count as half-done while active.
+  return 0.5;
+}
 
 // Friendly date like "Jun 20, 2026"; returns null on bad/empty input.
 function formatDate(value) {
@@ -33,7 +69,7 @@ function AppLayout({ children, pageTitle }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { steps, currentStep, userType, status, onboardingId, startedAt, kycDocStatus } = useSelector(
+  const { steps, currentStep, userType, status, onboardingId, startedAt, kycDocStatus, questionGroups, answers } = useSelector(
     (state) => state.onboarding
   );
 
@@ -57,7 +93,14 @@ function AppLayout({ children, pageTitle }) {
   // ── Progress derived from live onboarding state ──
   const totalSteps = steps.length;
   const completedSteps = steps.filter((s) => s.status === 'completed').length;
-  const progressPct = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0;
+  // Include partial progress through the active step so the ring responds to
+  // data entry, not just whole-step completion.
+  const activeFraction = currentStep && currentStep.status !== 'completed'
+    ? activeStepFraction(currentStep, questionGroups, answers, kycDocStatus)
+    : 0;
+  const progressPct = totalSteps
+    ? Math.min(100, Math.round(((completedSteps + activeFraction) / totalSteps) * 100))
+    : 0;
   const currentIndex = currentStep ? steps.findIndex((s) => s.id === currentStep.id) : -1;
   const hasOnboarding = totalSteps > 0;
 
