@@ -18,7 +18,7 @@ class QuestionRequest extends FormRequest
             'question_group_id' => ['required', 'exists:question_groups,id'],
             'label' => ['required', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
-            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file', 'table'])],
+            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'phone', 'file', 'table'])],
             'options' => ['nullable', 'array'],
             'is_required' => ['boolean'],
             'order' => ['integer', 'min:0'],

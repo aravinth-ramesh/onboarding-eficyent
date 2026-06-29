@@ -109,6 +109,10 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
+        if ($this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
+        }
+
         $validated = $request->validate([
             'country_code' => ['required', 'string', 'size:2'],
             'values' => ['array'],
@@ -165,6 +169,16 @@ class OnboardingController extends Controller
             'message' => 'Registration details saved.',
             'data' => $this->formatOnboardingResponse($onboarding->fresh()),
         ]);
+    }
+
+    /**
+     * Whether the application is locked from further edits. A submitted
+     * (completed) application is read-only; admin-requested changes are
+     * handled through the separate notification-resolve endpoints.
+     */
+    private function isSubmitted(UserOnboarding $onboarding): bool
+    {
+        return $onboarding->status === 'completed';
     }
 
     /**
@@ -342,6 +356,10 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
+        if ($this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
+        }
+
         // Save non-file answers
         $textAnswers = $request->validated('answers') ?? [];
         if (!empty($textAnswers)) {
@@ -411,6 +429,10 @@ class OnboardingController extends Controller
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
+        }
+
+        if ($this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
         }
 
         $question = Question::findOrFail($request->validated('question_id'));

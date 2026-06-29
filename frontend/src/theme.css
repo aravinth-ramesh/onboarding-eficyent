@@ -2782,3 +2782,25 @@ a.file-preview-name:hover { text-decoration: underline; }
   border: 6px solid transparent;
   border-bottom-color: rgba(255, 255, 255, 0.98);
 }
+
+/* ── Phone field (dial code + number) ── */
+.phone-field {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.phone-field-dial {
+  flex: 0 0 200px;
+  max-width: 200px;
+}
+
+.phone-field-number {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .phone-field { flex-direction: column; }
+  .phone-field-dial { flex-basis: auto; max-width: none; }
+}

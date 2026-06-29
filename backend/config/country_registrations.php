@@ -170,7 +170,7 @@ return [
         ],
 
         'IT' => [
-            ['key' => 'piva', 'label' => 'VAT (Partita IVA)', 'required' => true, 'types' => ['fi', 'corporate'], 'pattern' => '^(IT)?[0-9]{11}$', 'pattern_message' => 'Enter a valid 11-digit Partita IVA.', 'placeholder' => '12345678901', 'help' => 'Italian VAT number (Partita IVA).'],
+            ['key' => 'piva', 'label' => 'VAT (Partita IVA)', 'required' => false, 'types' => ['fi', 'corporate'], 'pattern' => '^(IT)?[0-9]{11}$', 'pattern_message' => 'Enter a valid 11-digit Partita IVA.', 'placeholder' => '12345678901', 'help' => 'Italian VAT number (Partita IVA).'],
             ['key' => 'rea', 'label' => 'REA Number', 'required' => false, 'types' => ['corporate'], 'pattern' => null, 'pattern_message' => null, 'placeholder' => '', 'help' => 'Economic and Administrative Index (REA) number.'],
         ],
 
