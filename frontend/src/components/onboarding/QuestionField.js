@@ -2,6 +2,8 @@ import React from 'react';
 import FileUploadField from './FileUploadField';
 import TableField from './TableField';
 import PhoneField from './PhoneField';
+import MccField from './MccField';
+import AddressField from './AddressField';
 
 // Resolve a date input's `min`/`max` HTML attribute by combining the explicit
 // `min_date`/`max_date` rules with `allow_past`/`allow_future` flags. This is
@@ -67,6 +69,12 @@ function QuestionField({ question, value, onChange, cellErrors }) {
 
     case 'phone':
       return <PhoneField question={question} value={value} onChange={onChange} />;
+
+    case 'mcc':
+      return <MccField question={question} value={value} onChange={onChange} />;
+
+    case 'address':
+      return <AddressField question={question} value={value} onChange={onChange} />;
 
     case 'date':
       return (

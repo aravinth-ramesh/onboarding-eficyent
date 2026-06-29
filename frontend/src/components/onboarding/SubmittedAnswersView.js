@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchQuestions } from '../../store/slices/onboardingSlice';
 import TableAnswerView from './TableAnswerView';
+import { formatMcc, formatAddress } from '../../utils/answerFormat';
 
 /**
  * Read-only view of submitted answers.
@@ -59,6 +60,14 @@ function SubmittedAnswersView({ onBack }) {
     if (['radio', 'select'].includes(question.type)) {
       const opt = (question.options || []).find((o) => o.value === value);
       return opt ? opt.label : value;
+    }
+
+    if (question.type === 'mcc') {
+      return formatMcc(value);
+    }
+
+    if (question.type === 'address') {
+      return formatAddress(value);
     }
 
     if (question.type === 'table') {

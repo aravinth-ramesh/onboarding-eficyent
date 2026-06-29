@@ -76,7 +76,7 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
                             <select name="type" class="form-select select2-enable @error('type') is-invalid @enderror" required id="questionType" data-placeholder="Select Type">
-                                @foreach(['text', 'textarea', 'number', 'phone', 'date', 'select', 'multi_select', 'radio', 'file', 'table'] as $type)
+                                @foreach(['text', 'textarea', 'number', 'phone', 'date', 'select', 'multi_select', 'radio', 'mcc', 'address', 'file', 'table'] as $type)
                                     <option value="{{ $type }}"
                                         {{ old('type', $question?->type) === $type ? 'selected' : '' }}>
                                         {{ ucfirst(str_replace('_', ' ', $type)) }}

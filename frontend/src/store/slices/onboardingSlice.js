@@ -183,6 +183,12 @@ const onboardingSlice = createSlice({
                 } catch {
                   state.answers[q.id] = q.answer;
                 }
+              } else if (q.type === 'address' && typeof q.answer === 'string') {
+                try {
+                  state.answers[q.id] = JSON.parse(q.answer);
+                } catch {
+                  state.answers[q.id] = q.answer;
+                }
               } else {
                 state.answers[q.id] = q.answer;
               }

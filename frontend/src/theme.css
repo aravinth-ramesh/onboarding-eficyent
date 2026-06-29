@@ -2804,3 +2804,24 @@ a.file-preview-name:hover { text-decoration: underline; }
   .phone-field { flex-direction: column; }
   .phone-field-dial { flex-basis: auto; max-width: none; }
 }
+
+/* ── Address field (street + country/state + city/postal) ── */
+.address-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.address-row {
+  display: flex;
+  gap: 10px;
+}
+
+.address-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .address-row { flex-direction: column; }
+}

@@ -7,6 +7,7 @@ import {
 } from '../../store/slices/onboardingSlice';
 import appConfig from '../../appConfig';
 import TableAnswerView from './TableAnswerView';
+import { formatMcc, formatAddress } from '../../utils/answerFormat';
 
 function ReviewStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
@@ -69,6 +70,14 @@ function ReviewStep({ step, onBack, isFirstStep }) {
     if (['radio', 'select'].includes(question.type)) {
       const opt = (question.options || []).find((o) => o.value === value);
       return opt ? opt.label : value;
+    }
+
+    if (question.type === 'mcc') {
+      return formatMcc(value);
+    }
+
+    if (question.type === 'address') {
+      return formatAddress(value);
     }
 
     if (question.type === 'table') {
