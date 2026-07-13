@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchNotificationDetail,
@@ -131,8 +132,11 @@ function NotificationDetail({ notificationId, onClose }) {
     return val;
   };
 
+  // Portal to <body>: the bell (and this modal) live inside the topbar, whose
+  // backdrop-filter makes it the containing block for position:fixed — the
+  // overlay would otherwise be sized to the topbar and clip the dialog.
   if (detailLoading) {
-    return (
+    return createPortal(
       <div className="modal-overlay" onClick={handleClose}>
         <div className="notification-detail-dialog" onClick={(e) => e.stopPropagation()}>
           <div className="spinner-corporate" style={{ padding: '3rem' }}>
@@ -140,7 +144,8 @@ function NotificationDetail({ notificationId, onClose }) {
             <p>Loading...</p>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -152,7 +157,7 @@ function NotificationDetail({ notificationId, onClose }) {
   const isChangeRequest = notification.type === 'change_request';
   const isFileType = question?.type === 'file';
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={handleClose}>
       <div className="notification-detail-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -257,7 +262,8 @@ function NotificationDetail({ notificationId, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

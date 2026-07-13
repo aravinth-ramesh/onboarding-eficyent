@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import { fetchUnreadCount } from '../../store/slices/notificationSlice';
 import NotificationDropdown from './NotificationDropdown';
 import NotificationDetail from './NotificationDetail';
@@ -10,6 +11,20 @@ function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const bellRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep link from email: /home?notification={id} opens the detail modal
+  // directly. The param is stripped so closing the modal doesn't reopen it.
+  useEffect(() => {
+    const target = Number(searchParams.get('notification'));
+    if (target) {
+      setSelectedId(target);
+      const next = new URLSearchParams(searchParams);
+      next.delete('notification');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     dispatch(fetchUnreadCount());

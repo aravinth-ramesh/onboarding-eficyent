@@ -35,10 +35,9 @@ function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          <Route
-            path="/login"
-            element={isAuthenticated ? <Navigate to="/home" replace /> : <LoginPage />}
-          />
+          {/* LoginPage handles the authenticated redirect itself so email
+              deep links (?notification=...) survive the OTP round-trip. */}
+          <Route path="/login" element={<LoginPage />} />
           <Route
             path="/home"
             element={

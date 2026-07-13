@@ -25,7 +25,12 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/logout')) {
       localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        // Carry the current location through login so deep links
+        // (e.g. /home?notification=5 from an email) survive an expired token.
+        const target = window.location.pathname + window.location.search;
+        window.location.href = '/login?redirect=' + encodeURIComponent(target);
+      }
     }
     return Promise.reject(error);
   }

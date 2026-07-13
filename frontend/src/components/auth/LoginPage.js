@@ -1,13 +1,26 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { sendOtp, verifyOtp, clearError, resetOtpState } from '../../store/slices/authSlice';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import appConfig from '../../appConfig';
+
+// Where to land after login. Sources, in order: the location ProtectedRoute
+// stashed when it bounced the user here, or a ?redirect= param set by the
+// 401 interceptor. Only same-origin paths are honoured.
+function postLoginTarget(location) {
+  const from = location.state?.from;
+  if (from?.pathname) return from.pathname + (from.search || '');
+
+  const redirect = new URLSearchParams(location.search).get('redirect');
+  if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) return redirect;
+
+  return '/home';
+}
 
 function LoginPage() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { loading, otpSent, error, email } = useSelector((state) => state.auth);
+  const location = useLocation();
+  const { isAuthenticated, loading, otpSent, error, email } = useSelector((state) => state.auth);
 
   const [emailInput, setEmailInput] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
@@ -21,10 +34,8 @@ function LoginPage() {
 
   const submitOtp = useCallback((code) => {
     dispatch(clearError());
-    dispatch(verifyOtp({ email, code })).then((result) => {
-      if (!result.error) navigate('/home');
-    });
-  }, [email, dispatch, navigate]);
+    dispatch(verifyOtp({ email, code }));
+  }, [email, dispatch]);
 
   const handleOtpChange = useCallback((index, value) => {
     if (value.length > 1) value = value.charAt(value.length - 1);
@@ -73,6 +84,10 @@ function LoginPage() {
     dispatch(resetOtpState());
     setOtpDigits(['', '', '', '', '', '']);
   };
+
+  if (isAuthenticated) {
+    return <Navigate to={postLoginTarget(location)} replace />;
+  }
 
   return (
     <div className="login-page">

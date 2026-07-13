@@ -534,9 +534,13 @@
                         <textarea class="form-control" id="rcMessage" name="message" rows="4" required
                             placeholder="Explain what needs to be changed..."></textarea>
                     </div>
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-envelope-check"></i>
+                        An email notification with a "View Review" link is sent to the user automatically.
+                    </p>
                     <div class="form-check mb-3">
-                        <input type="checkbox" class="form-check-input" id="rcSendEmail" name="send_email" value="1">
-                        <label class="form-check-label" for="rcSendEmail">Also send email notification</label>
+                        <input type="checkbox" class="form-check-input" id="rcSendEmail">
+                        <label class="form-check-label" for="rcSendEmail">Customize the email</label>
                     </div>
                     <div id="rcEmailFields" style="display: none;">
                         <div class="mb-3">
@@ -605,15 +609,20 @@
         document.getElementById('rcMessage').value = '';
         document.getElementById('rcSendEmail').checked = false;
         document.getElementById('rcEmailFields').style.display = 'none';
+        document.getElementById('rcEmailSubject').value = '';
+        document.getElementById('rcEmailBody').value = '';
     });
 
-    // Toggle email fields visibility
+    // Toggle email customization fields (empty fields = server defaults)
     document.getElementById('rcSendEmail').addEventListener('change', function () {
         document.getElementById('rcEmailFields').style.display = this.checked ? 'block' : 'none';
         if (this.checked) {
             var questionLabel = document.getElementById('rcQuestionLabel').textContent;
             document.getElementById('rcEmailSubject').value = 'Action Required: Please Update Your Response - ' + questionLabel;
             document.getElementById('rcEmailBody').value = 'Hello,\n\nWe have reviewed your onboarding submission and require some changes to one of your answers.\n\nQuestion: ' + questionLabel + '\n\nPlease log in to your account to review the details and submit your updated response.\n\nThank you,\nEficyent Team';
+        } else {
+            document.getElementById('rcEmailSubject').value = '';
+            document.getElementById('rcEmailBody').value = '';
         }
     });
 

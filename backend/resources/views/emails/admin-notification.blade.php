@@ -21,6 +21,26 @@
                             {!! nl2br(e($emailBody)) !!}
                         </td>
                     </tr>
+                    @if (!empty($actionUrl))
+                    <!-- Call to action -->
+                    <tr>
+                        <td style="padding: 0 32px 32px;" align="center">
+                            <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="background-color: #1a3a5c; border-radius: 6px;">
+                                        <a href="{{ $actionUrl }}" target="_blank" style="display: inline-block; padding: 12px 32px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none;">
+                                            {{ $actionLabel ?? 'Open Portal' }}
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin: 16px 0 0; font-size: 12px; color: #6c757d;">
+                                If the button doesn't work, copy and paste this link into your browser:<br>
+                                <a href="{{ $actionUrl }}" style="color: #1a3a5c; word-break: break-all;">{{ $actionUrl }}</a>
+                            </p>
+                        </td>
+                    </tr>
+                    @endif
                     <!-- Footer -->
                     <tr>
                         <td style="padding: 24px 32px; background-color: #f8f9fa; border-top: 1px solid #e1e5eb; font-size: 12px; color: #6c757d; text-align: center;">

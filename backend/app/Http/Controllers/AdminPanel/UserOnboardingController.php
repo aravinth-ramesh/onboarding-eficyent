@@ -137,20 +137,28 @@ class UserOnboardingController extends Controller
         $admin = Auth::guard('admin')->user();
         $notification = $this->notificationService->createChangeRequest($admin, $answer, $request->input('message'));
 
-        // Send email if requested
-        if ($request->boolean('send_email')) {
-            $user = $userOnboarding->user;
-            $questionLabel = $answer->question->label ?? '';
-            $subject = $request->input('email_subject') ?: $this->emailService->getDefaultSubject('change_request', $questionLabel);
-            $body = $request->input('email_body') ?: $this->emailService->getDefaultBody('change_request', [
-                'user_name' => $user->name ?? 'there',
-                'question_label' => $questionLabel,
-            ]);
+        // An email notification always accompanies a change request; the form
+        // may override the default subject/body. A mail failure must not undo
+        // the change request itself.
+        $user = $userOnboarding->user;
+        $questionLabel = $answer->question->label ?? '';
+        $subject = $request->input('email_subject') ?: $this->emailService->getDefaultSubject('change_request', $questionLabel);
+        $body = $request->input('email_body') ?: $this->emailService->getDefaultBody('change_request', [
+            'user_name' => $user->name ?? 'there',
+            'question_label' => $questionLabel,
+        ]);
+
+        try {
             $this->emailService->sendEmail($admin, $user, $subject, $body, $notification);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'Change request created, but the email notification could not be sent.');
         }
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
-            ->with('success', 'Change request sent to user.');
+            ->with('success', 'Change request sent to user and email notification delivered.');
     }
 
     public function createQuestion(UserOnboarding $userOnboarding): View

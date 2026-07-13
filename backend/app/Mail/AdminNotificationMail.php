@@ -18,6 +18,8 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
         public User $user,
         public string $emailSubject,
         public string $emailBody,
+        public ?string $actionUrl = null,
+        public string $actionLabel = 'Open Portal',
     ) {}
 
     public function envelope(): Envelope
@@ -34,6 +36,8 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
             with: [
                 'user' => $this->user,
                 'emailBody' => $this->emailBody,
+                'actionUrl' => $this->actionUrl,
+                'actionLabel' => $this->actionLabel,
             ],
         );
     }

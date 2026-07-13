@@ -19,7 +19,13 @@ class AdminEmailService
         ?AdminNotification $notification = null,
     ): AdminEmailLog {
         Mail::to($user->email)->send(
-            new AdminNotificationMail($user, $subject, $body)
+            new AdminNotificationMail(
+                $user,
+                $subject,
+                $body,
+                $this->actionUrlFor($notification),
+                $notification ? 'View Review' : 'Open Portal',
+            )
         );
 
         return AdminEmailLog::create([
@@ -30,6 +36,17 @@ class AdminEmailService
             'body' => $body,
             'sent_at' => now(),
         ]);
+    }
+
+    /**
+     * Deep link into the SPA: straight to the notification detail when the
+     * email relates to one, otherwise the portal home.
+     */
+    public function actionUrlFor(?AdminNotification $notification): string
+    {
+        $base = rtrim(config('app.frontend_url'), '/') . '/home';
+
+        return $notification ? "{$base}?notification={$notification->id}" : $base;
     }
 
     public function getDefaultSubject(string $type, ?string $context = null): string
