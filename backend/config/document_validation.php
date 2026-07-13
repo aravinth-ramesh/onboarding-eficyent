@@ -35,6 +35,10 @@ return [
     // Files larger than this are accepted without analysis (needs_review).
     'max_analyzable_bytes' => 10 * 1024 * 1024,
 
+    // How much of the extracted text is stored on answer_files for the admin
+    // review queue (tuning the rules dictionaries against real uploads).
+    'excerpt_chars' => 1200,
+
     /*
     | Document types the classifier may return. 'description' is shown to the
     | model to sharpen classification; 'label' is shown to users and admins.

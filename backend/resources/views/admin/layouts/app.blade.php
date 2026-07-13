@@ -438,6 +438,10 @@
                 <i class="bi bi-clipboard-check"></i> User Onboardings
             </a>
 
+            <a href="{{ route('admin.document-reviews.index') }}" class="sidebar-link {{ request()->routeIs('admin.document-reviews.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-check"></i> Document Reviews
+            </a>
+
             <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
                 <i class="bi bi-journal-text"></i> Audit Logs
             </a>

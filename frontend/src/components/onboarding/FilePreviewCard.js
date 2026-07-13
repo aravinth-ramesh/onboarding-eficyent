@@ -23,6 +23,7 @@ export const looksLikeImage = (mime) => Boolean(mime) && mime.startsWith('image/
 // 'skipped' render nothing extra; the rest get an amber "review" pill.
 const VALIDATION_LABELS = {
   passed: { label: 'Verified', tone: 'ok' },
+  reviewed: { label: 'Approved by reviewer', tone: 'ok' },
   needs_review: { label: 'Pending review', tone: 'warn' },
   type_mismatch: { label: 'Accepted with justification', tone: 'warn' },
   expired: { label: 'Expired — justified', tone: 'warn' },

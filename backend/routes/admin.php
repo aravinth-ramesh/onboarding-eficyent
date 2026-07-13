@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminPanel\AuthController;
 use App\Http\Controllers\AdminPanel\ConditionalRuleController;
 use App\Http\Controllers\AdminPanel\CountryRegistrationController;
 use App\Http\Controllers\AdminPanel\DashboardController;
+use App\Http\Controllers\AdminPanel\DocumentReviewController;
 use App\Http\Controllers\AdminPanel\OnboardingStepController;
 use App\Http\Controllers\AdminPanel\QuestionController;
 use App\Http\Controllers\AdminPanel\QuestionGroupController;
@@ -57,4 +58,8 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
 
     // Audit Logs
     Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');
+
+    // Document Reviews (AI validation queue)
+    Route::get('document-reviews', [DocumentReviewController::class, 'index'])->name('document-reviews.index');
+    Route::post('document-reviews/{file}/approve', [DocumentReviewController::class, 'approve'])->name('document-reviews.approve');
 });

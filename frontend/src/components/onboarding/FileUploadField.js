@@ -95,7 +95,7 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
               mime={file.mime_type}
               previewUrl={looksLikeImage(file.mime_type) ? file.url : null}
               downloadUrl={file.url}
-              validationStatus={file.validation_status}
+              validationStatus={file.reviewed ? 'reviewed' : file.validation_status}
               onReplace={() => inputRef.current?.click()}
             />
           ))}

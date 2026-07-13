@@ -15,6 +15,9 @@ class DocumentAnalysis
         public readonly ?CarbonImmutable $expiryDate,
         public readonly string $confidence, // low | medium | high
         public readonly string $summary,
+        // What the analyzer read (truncated) — surfaced to admins so the
+        // rules dictionaries can be tuned against real documents.
+        public readonly ?string $excerpt = null,
     ) {}
 
     public static function fromModelOutput(array $data): self

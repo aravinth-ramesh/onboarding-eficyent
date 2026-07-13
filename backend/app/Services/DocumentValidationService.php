@@ -59,6 +59,7 @@ class DocumentValidationService
                 'issue_date' => $analysis?->issueDate?->toDateString(),
                 'expiry_date' => $analysis?->expiryDate?->toDateString(),
                 'validation_summary' => $analysis?->summary,
+                'extracted_excerpt' => $analysis?->excerpt,
                 'justification' => null,
             ];
 

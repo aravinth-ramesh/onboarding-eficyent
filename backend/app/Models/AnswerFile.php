@@ -20,14 +20,27 @@ class AnswerFile extends Model
         'issue_date',
         'expiry_date',
         'validation_summary',
+        'extracted_excerpt',
         'justification',
+        'reviewed_at',
+        'reviewed_by',
     ];
+
+    protected function casts(): array
+    {
+        return ['reviewed_at' => 'datetime'];
+    }
 
     protected $appends = ['url'];
 
     public function answer(): BelongsTo
     {
         return $this->belongsTo(UserAnswer::class, 'user_answer_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'reviewed_by');
     }
 
     /**

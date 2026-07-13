@@ -322,6 +322,7 @@ class OnboardingController extends Controller
                         'issue_date' => $f->issue_date,
                         'expiry_date' => $f->expiry_date,
                         'justification' => $f->justification,
+                        'reviewed' => $f->reviewed_at !== null,
                     ])->values()->toArray();
                 } elseif ($question->type === 'file') {
                     $questionData['files'] = [];
@@ -517,6 +518,7 @@ class OnboardingController extends Controller
                     'validation_status' => $f->validation_status,
                     'detected_type' => $f->detected_type,
                     'justification' => $f->justification,
+                    'reviewed' => $f->reviewed_at !== null,
                 ])->values()->toArray(),
             ],
         ]);

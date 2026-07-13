@@ -32,6 +32,8 @@ class RulesDocumentIntelligence implements DocumentIntelligenceContract
         }
         $text = $extracted->text;
 
+        $excerpt = mb_substr($text, 0, (int) config('document_validation.excerpt_chars', 1200));
+
         // Identity documents: the MRZ carries a check-digit-verified expiry.
         $mrz = $this->mrz->read($text);
         if ($mrz !== null) {
@@ -47,6 +49,7 @@ class RulesDocumentIntelligence implements DocumentIntelligenceContract
                     $mrz->dateOfExpiry,
                     $mrz->valid ? 'valid' : 'NOT verified',
                 ),
+                excerpt: $excerpt,
             );
         }
 
@@ -85,6 +88,7 @@ class RulesDocumentIntelligence implements DocumentIntelligenceContract
             expiryDate: $expiryDate,
             confidence: $confidence,
             summary: $summary,
+            excerpt: $excerpt,
         );
     }
 }
