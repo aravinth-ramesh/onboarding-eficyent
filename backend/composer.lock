@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5bca94a29e79f754d3fe9f0308d538c5",
+    "content-hash": "8d064c14f191a3ba5499754e4359eb2f",
     "packages": [
         {
             "name": "anthropic-ai/sdk",
@@ -3572,6 +3572,73 @@
             "time": "2026-02-11T15:05:28+00:00"
         },
         {
+            "name": "rakibdevs/mrz-parser",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rakibdevs/mrz-parser.git",
+                "reference": "11e2fe6f663091c293e2f45f25845e3d7ef74bed"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rakibdevs/mrz-parser/zipball/11e2fe6f663091c293e2f45f25845e3d7ef74bed",
+                "reference": "11e2fe6f663091c293e2f45f25845e3d7ef74bed",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.64",
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "pestphp/pest": "^3.0"
+            },
+            "suggest": {
+                "illuminate/support": "Required to use the Laravel service provider and the ValidMrz validation rule."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Rakibdevs\\MrzParser\\Laravel\\MrzParserServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Rakibdevs\\MrzParser\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Md. Rakibul Islam",
+                    "email": "rakib1708@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A PHP package for MRZ (Machine Readable Zones) code parser for Passport, Visa & Travel Documents.",
+            "homepage": "https://github.com/rakibdevs/mrz-parser",
+            "keywords": [
+                "mrz-parser",
+                "rakibdevs"
+            ],
+            "support": {
+                "issues": "https://github.com/rakibdevs/mrz-parser/issues",
+                "source": "https://github.com/rakibdevs/mrz-parser/tree/v2.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/rakibdevs",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-07-01T17:36:18+00:00"
+        },
+        {
             "name": "ralouphie/getallheaders",
             "version": "3.0.3",
             "source": {
@@ -3770,6 +3837,57 @@
             "time": "2025-12-14T04:43:48+00:00"
         },
         {
+            "name": "smalot/pdfparser",
+            "version": "v2.12.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/smalot/pdfparser.git",
+                "reference": "2cfa0d92bd557875c9f52a75fde0e8392302a354"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/smalot/pdfparser/zipball/2cfa0d92bd557875c9f52a75fde0e8392302a354",
+                "reference": "2cfa0d92bd557875c9f52a75fde0e8392302a354",
+                "shasum": ""
+            },
+            "require": {
+                "ext-iconv": "*",
+                "ext-zlib": "*",
+                "php": ">=7.1",
+                "symfony/polyfill-mbstring": "^1.18"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "Smalot\\PdfParser\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Sebastien MALOT",
+                    "email": "sebastien@malot.fr"
+                }
+            ],
+            "description": "Pdf parser library. Can read and extract information from pdf file.",
+            "homepage": "https://www.pdfparser.org",
+            "keywords": [
+                "extract",
+                "parse",
+                "parser",
+                "pdf",
+                "text"
+            ],
+            "support": {
+                "issues": "https://github.com/smalot/pdfparser/issues",
+                "source": "https://github.com/smalot/pdfparser/tree/v2.12.5"
+            },
+            "time": "2026-04-17T11:37:58+00:00"
+        },
+        {
             "name": "spatie/laravel-package-tools",
             "version": "1.93.0",
             "source": {
@@ -3916,6 +4034,64 @@
                 }
             ],
             "time": "2026-02-16T22:23:26+00:00"
+        },
+        {
+            "name": "spatie/pdf-to-text",
+            "version": "1.55.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/pdf-to-text.git",
+                "reference": "c5c6c7fa8aaa34de7eb6cde42b45aec480c8afb6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/pdf-to-text/zipball/c5c6c7fa8aaa34de7eb6cde42b45aec480c8afb6",
+                "reference": "c5c6c7fa8aaa34de7eb6cde42b45aec480c8afb6",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.4",
+                "symfony/process": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.18",
+                "pestphp/pest": "^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\PdfToText\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Extract text from a pdf",
+            "homepage": "https://github.com/spatie/pdf-to-text",
+            "keywords": [
+                "pdf-to-text",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/pdf-to-text/issues",
+                "source": "https://github.com/spatie/pdf-to-text/tree/1.55.0"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                }
+            ],
+            "time": "2025-11-24T16:51:50+00:00"
         },
         {
             "name": "standard-webhooks/standard-webhooks",

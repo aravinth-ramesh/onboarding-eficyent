@@ -12,7 +12,10 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.31",
+        "rakibdevs/mrz-parser": "^2.0",
+        "smalot/pdfparser": "^2.12",
         "spatie/laravel-permission": "^7.2",
+        "spatie/pdf-to-text": "^1.55",
         "symfony/http-client": "^7.0",
         "symfony/mailgun-mailer": "^7.0"
     },

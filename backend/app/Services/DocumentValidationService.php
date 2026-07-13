@@ -91,23 +91,30 @@ class DocumentValidationService
     }
 
     /**
+     * @param  string|string[]  $expected  one acceptable type, or alternatives
+     *                                     (e.g. proof of address may be a
+     *                                     utility bill or a bank statement)
      * @return array{0: string, 1: string} [status, user-facing message]
      */
-    private function verdict($analysis, string $expected, ?int $maxAgeMonths, bool $checkExpiry): array
+    private function verdict($analysis, string|array $expected, ?int $maxAgeMonths, bool $checkExpiry): array
     {
-        $expectedLabel = config("document_validation.types.{$expected}.label", $expected);
+        $expected = (array) $expected;
+        $expectedLabel = implode(' or ', array_map(
+            fn ($type) => config("document_validation.types.{$type}.label", $type),
+            $expected,
+        ));
 
         if ($analysis === null) {
             return ['needs_review', ''];
         }
 
         // Low-confidence or unclassifiable reads go to a human instead of
-        // hard-rejecting a document the model could not make out.
+        // hard-rejecting a document the analyzer could not make out.
         if ($analysis->documentType === 'other' || $analysis->confidence === 'low') {
             return ['needs_review', ''];
         }
 
-        if ($analysis->documentType !== $expected) {
+        if (! in_array($analysis->documentType, $expected, true)) {
             $detectedLabel = config("document_validation.types.{$analysis->documentType}.label", $analysis->documentType);
 
             return ['type_mismatch', "This looks like a {$detectedLabel}, but a {$expectedLabel} is required."];

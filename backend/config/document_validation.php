@@ -22,9 +22,11 @@ return [
 
     'enabled' => env('DOCUMENT_VALIDATION_ENABLED', true),
 
-    // 'claude' calls the Anthropic API; 'fake' is a deterministic driver for
-    // local development and tests (behavior keyed off the filename).
-    'driver' => env('DOCUMENT_VALIDATION_DRIVER', 'claude'),
+    // 'rules'  — local text extraction + keyword/date heuristics; no data
+    //            leaves the server (poppler/pdfparser + MRZ parsing).
+    // 'claude' — Anthropic API (vision + classification).
+    // 'fake'   — deterministic driver for tests (keyed off the filename).
+    'driver' => env('DOCUMENT_VALIDATION_DRIVER', 'rules'),
 
     'anthropic_api_key' => env('ANTHROPIC_API_KEY'),
 
@@ -94,10 +96,168 @@ return [
     | so both stay in sync. Admin-created questions get their policy via the
     | question form instead.
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Rules driver (no AI)
+    |--------------------------------------------------------------------------
+    |
+    | The 'rules' driver extracts text locally (poppler pdftotext with a
+    | pure-PHP pdfparser fallback; DOCX via ZipArchive) and classifies the
+    | document by scoring anchor phrases. Dates are only trusted when found
+    | within `label_window` characters after a known label. Identity documents
+    | are detected via their MRZ (machine-readable zone), whose expiry date
+    | carries ICAO 9303 check digits — fully deterministic.
+    |
+    | Scanned/image documents have no text layer and fall back to
+    | needs_review in Phase 1 (no OCR).
+    |
+    */
+    'rules' => [
+        // Documents whose extracted text is shorter than this are treated as
+        // unreadable (scans/images) and routed to human review.
+        'min_text_length' => 120,
+
+        // Explicit pdftotext binary path; null = auto-detect common locations.
+        'pdftotext_path' => env('PDFTOTEXT_PATH'),
+
+        'classification' => [
+            'min_score' => 8,             // below → 'other' (needs_review)
+            'high_confidence_score' => 14, // at/above → high confidence
+        ],
+
+        // How far (in characters) after a label a date may appear.
+        'label_window' => 80,
+
+        'date_labels' => [
+            'expiry' => [
+                'date of expiry', 'expiry date', 'expiration date', 'expires on',
+                'expires', 'valid until', 'valid till', 'valid to', 'valid through',
+                'validity period ends', 'renewal due',
+            ],
+            'issue' => [
+                'date of issue', 'issue date', 'issued on', 'date of issuance',
+                'statement date', 'bill date', 'invoice date', 'period ending',
+                'as at', 'as of', 'dated this', 'dated',
+            ],
+        ],
+
+        // Anchor phrases per document type: matched on word boundaries,
+        // case-insensitive, each counted once. Negative weights let sibling
+        // documents (certificate vs articles) push each other apart.
+        'anchors' => [
+            'certificate_of_incorporation' => [
+                'certificate of incorporation' => 10,
+                'certify that' => 6,
+                'registrar of companies' => 6,
+                'is incorporated' => 5,
+                'companies act' => 4,
+                'company number' => 4,
+                'articles of association' => -10,
+                'memorandum of association' => -8,
+            ],
+            'articles_of_association' => [
+                'articles of association' => 10,
+                'memorandum of association' => 10,
+                'articles of incorporation' => 8,
+                'bylaws' => 6,
+                'share capital' => 4,
+                'objects of the company' => 4,
+                'certificate of incorporation' => -10,
+            ],
+            'proof_of_address' => [
+                'billing address' => 6,
+                'service address' => 6,
+                'amount due' => 5,
+                'kwh' => 5,
+                'utility' => 5,
+                'council tax' => 5,
+                'tenancy agreement' => 5,
+                'meter reading' => 5,
+                'account holder' => 3,
+            ],
+            'identity_document' => [
+                'passport' => 6,
+                'national id' => 6,
+                'identity card' => 6,
+                'driving licence' => 5,
+                "driver's license" => 5,
+                'date of birth' => 4,
+                'place of birth' => 4,
+                'nationality' => 3,
+            ],
+            'bank_statement' => [
+                'statement period' => 8,
+                'opening balance' => 7,
+                'closing balance' => 7,
+                'sort code' => 6,
+                'iban' => 5,
+                'statement date' => 4,
+                'account number' => 3,
+                'withdrawals' => 3,
+                'deposits' => 3,
+            ],
+            'license' => [
+                'authorised and regulated' => 8,
+                'authorized and regulated' => 8,
+                'licence number' => 7,
+                'license number' => 7,
+                'financial services' => 5,
+                'regulatory authority' => 5,
+                'permission to carry on' => 5,
+                'licence' => 3,
+                'license' => 3,
+            ],
+            'financial_statements' => [
+                'statement of financial position' => 8,
+                'balance sheet' => 8,
+                'income statement' => 7,
+                "auditor's report" => 7,
+                'profit and loss' => 6,
+                'cash flow statement' => 6,
+                'retained earnings' => 4,
+            ],
+            'register_extract' => [
+                'register of members' => 8,
+                'register of directors' => 8,
+                'share register' => 7,
+                'shareholder' => 5,
+                'beneficial owner' => 5,
+                'shareholding' => 4,
+            ],
+            'board_resolution' => [
+                'board resolution' => 10,
+                'resolved that' => 8,
+                'it was resolved' => 8,
+                'board of directors' => 5,
+                'duly convened' => 5,
+                'minutes of the meeting' => 4,
+                'quorum' => 3,
+            ],
+            'tax_certificate' => [
+                'tax residency certificate' => 10,
+                'certificate of tax' => 8,
+                'tax registration' => 7,
+                'taxpayer identification' => 6,
+                'vat registration' => 6,
+                'tax authority' => 4,
+            ],
+            'policy_document' => [
+                'anti-money laundering' => 7,
+                'aml' => 5,
+                'counter-terrorist financing' => 6,
+                'policy' => 4,
+                'procedure' => 4,
+                'compliance officer' => 4,
+                'risk assessment' => 3,
+            ],
+        ],
+    ],
+
     'question_policies' => [
         'Certificate of Incorporation' => ['expected_document' => 'certificate_of_incorporation'],
         'MOA/AOA' => ['expected_document' => 'articles_of_association'],
-        'Proof of Business Address (dated <3 months)' => ['expected_document' => 'proof_of_address', 'max_age_months' => 3],
+        // A recent utility bill or bank statement are both acceptable address proof.
+        'Proof of Business Address (dated <3 months)' => ['expected_document' => ['proof_of_address', 'bank_statement'], 'max_age_months' => 3],
         'Valid ID and address proof for Directors and UBOs' => ['expected_document' => 'identity_document'],
         'Shareholder & Director Register' => ['expected_document' => 'register_extract'],
         'Board resolution' => ['expected_document' => 'board_resolution'],
