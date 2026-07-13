@@ -11,9 +11,10 @@ use Spatie\PdfToText\Pdf as PdfToText;
  * Extracts a plain-text layer from uploaded documents, entirely locally.
  *
  * PDFs: poppler's pdftotext when available (fast, robust layout handling),
- * falling back to the pure-PHP smalot/pdfparser. DOCX: unzip + XML strip.
- * Images and scanned PDFs have no text layer and return null — Phase 1 has
- * no OCR, so those documents route to human review.
+ * falling back to the pure-PHP smalot/pdfparser. PDFs without a usable text
+ * layer (scans) and images go through the OCR branch (pdftoppm + Tesseract).
+ * DOCX: unzip + XML strip. Anything still unreadable returns null and the
+ * document routes to human review.
  */
 class TextExtractor
 {
@@ -23,17 +24,61 @@ class TextExtractor
         '/usr/bin/pdftotext',
     ];
 
-    public function extract(UploadedFile $file): ?string
+    private const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    public function __construct(
+        private OcrExtractor $ocr,
+    ) {}
+
+    public function extract(UploadedFile $file): ?ExtractedText
     {
         $mime = strtolower((string) $file->getMimeType());
         $path = $file->getRealPath();
 
-        $text = match (true) {
-            $mime === 'application/pdf' => $this->fromPdf($path),
-            str_contains($mime, 'officedocument.wordprocessingml') => $this->fromDocx($path),
-            default => null, // images etc. — no text layer without OCR
-        };
+        if ($mime === 'application/pdf') {
+            $native = $this->normalize($this->fromPdf($path));
+            if ($native !== null) {
+                return new ExtractedText($native);
+            }
 
+            return $this->fromOcr(fn () => $this->ocr->fromPdf($path));
+        }
+
+        if (in_array($mime, self::IMAGE_MIMES, true)) {
+            return $this->fromOcr(fn () => $this->ocr->fromImage($path));
+        }
+
+        if (str_contains($mime, 'officedocument.wordprocessingml')) {
+            $text = $this->normalize($this->fromDocx($path));
+
+            return $text === null ? null : new ExtractedText($text);
+        }
+
+        return null;
+    }
+
+    private function fromOcr(callable $run): ?ExtractedText
+    {
+        $result = $run();
+        if ($result === null) {
+            return null;
+        }
+
+        $text = $this->normalize($result['text']);
+        if ($text === null) {
+            return null;
+        }
+
+        // A read this shaky is more likely to mislead than to help.
+        if ($result['confidence'] < (float) config('document_validation.rules.ocr.min_mean_confidence')) {
+            return null;
+        }
+
+        return new ExtractedText($text, viaOcr: true, ocrConfidence: $result['confidence']);
+    }
+
+    private function normalize(?string $text): ?string
+    {
         if ($text === null) {
             return null;
         }

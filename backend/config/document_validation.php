@@ -120,6 +120,27 @@ return [
         // Explicit pdftotext binary path; null = auto-detect common locations.
         'pdftotext_path' => env('PDFTOTEXT_PATH'),
 
+        /*
+        | OCR branch (Phase 2): scanned PDFs and images are rasterized with
+        | poppler's pdftoppm and read with Tesseract. Disabled automatically
+        | when the binaries are missing — those documents then fall back to
+        | human review exactly as in Phase 1.
+        */
+        'ocr' => [
+            'enabled' => env('DOCUMENT_OCR_ENABLED', true),
+            'tesseract_path' => env('TESSERACT_PATH'),
+            'pdftoppm_path' => env('PDFTOPPM_PATH'),
+            'languages' => env('DOCUMENT_OCR_LANGUAGES', 'eng'),
+            'dpi' => 300,
+            'max_pages' => 3,
+            // Mean Tesseract word confidence below this → treat the document
+            // as unreadable (needs_review). At or above 'high_confidence' the
+            // OCR text is trusted like a native text layer.
+            'min_mean_confidence' => 60,
+            'high_confidence' => 80,
+            'timeout_seconds' => 60,
+        ],
+
         'classification' => [
             'min_score' => 8,             // below → 'other' (needs_review)
             'high_confidence_score' => 14, // at/above → high confidence
