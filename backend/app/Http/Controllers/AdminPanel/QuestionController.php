@@ -99,7 +99,9 @@ class QuestionController extends Controller
             'question_group_id' => ['required', 'exists:question_groups,id'],
             'label' => ['required', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
-            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'file', 'table'])],
+            // Keep in sync with Http/Requests/Admin/QuestionRequest and the
+            // type dropdown in admin/questions/form.blade.php.
+            'type' => ['required', Rule::in(['text', 'radio', 'date', 'select', 'multi_select', 'textarea', 'number', 'phone', 'mcc', 'address', 'ubo', 'file', 'table'])],
             'options' => ['nullable', 'string'],
             'validation_rules' => ['nullable', 'string'],
             'is_required' => ['boolean'],

@@ -90,6 +90,21 @@ class AdminQuestionPolicyTest extends TestCase
         $this->assertNull($question->validation_rules);
     }
 
+    public function test_admin_can_create_questions_with_kyb_types(): void
+    {
+        foreach (['phone', 'mcc', 'address', 'ubo'] as $type) {
+            $this->actingAs($this->admin, 'admin')
+                ->post(route('admin.questions.store'), $this->payload([
+                    'label' => "KYB {$type} question",
+                    'type' => $type,
+                ]))
+                ->assertSessionHasNoErrors()
+                ->assertRedirect(route('admin.questions.index'));
+        }
+
+        $this->assertSame(4, Question::whereIn('type', ['phone', 'mcc', 'address', 'ubo'])->count());
+    }
+
     public function test_updating_a_question_clamps_max_age(): void
     {
         $question = Question::create([
