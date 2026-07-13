@@ -47,7 +47,9 @@ class QuestionController extends Controller
         $validated['is_required'] = $request->boolean('is_required');
         $validated['is_active'] = $request->boolean('is_active');
         $validated['options'] = $this->decodeJsonField($validated['options'] ?? null);
-        $validated['validation_rules'] = $this->decodeJsonField($validated['validation_rules'] ?? null);
+        $validated['validation_rules'] = $this->sanitizeDocumentPolicy(
+            $this->decodeJsonField($validated['validation_rules'] ?? null)
+        );
 
         $question = DB::transaction(function () use ($validated) {
             return Question::create($validated);
@@ -75,7 +77,9 @@ class QuestionController extends Controller
         $validated['is_required'] = $request->boolean('is_required');
         $validated['is_active'] = $request->boolean('is_active');
         $validated['options'] = $this->decodeJsonField($validated['options'] ?? null);
-        $validated['validation_rules'] = $this->decodeJsonField($validated['validation_rules'] ?? null);
+        $validated['validation_rules'] = $this->sanitizeDocumentPolicy(
+            $this->decodeJsonField($validated['validation_rules'] ?? null)
+        );
 
         $question->update($validated);
 
@@ -119,6 +123,33 @@ class QuestionController extends Controller
             return null;
         }
         return $decoded;
+    }
+
+    /**
+     * Keep document-validation policy keys sane: expected_document must name
+     * known types from config/document_validation.php, and the age bound is
+     * clamped. Unknown selections are dropped rather than rejected so a stale
+     * form can't strand the admin.
+     */
+    private function sanitizeDocumentPolicy(?array $rules): ?array
+    {
+        if ($rules === null || ! array_key_exists('expected_document', $rules)) {
+            return $rules;
+        }
+
+        $known = array_keys(config('document_validation.types', []));
+        $expected = array_values(array_intersect((array) $rules['expected_document'], $known));
+
+        if ($expected === []) {
+            unset($rules['expected_document'], $rules['max_age_months'], $rules['check_expiry']);
+        } else {
+            $rules['expected_document'] = count($expected) === 1 ? $expected[0] : $expected;
+            if (isset($rules['max_age_months'])) {
+                $rules['max_age_months'] = max(1, min(120, (int) $rules['max_age_months']));
+            }
+        }
+
+        return $rules === [] ? null : $rules;
     }
 
     public function destroy(Question $question): RedirectResponse

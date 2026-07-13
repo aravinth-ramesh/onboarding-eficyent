@@ -278,6 +278,40 @@
                             </div>
                         </div>
 
+                        {{-- File / document validation policy --}}
+                        <div class="vr-block" data-vr-types="file" style="display: none;">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Expected Document Type(s)</label>
+                                    <select class="form-select form-select-sm" id="vrExpectedDocument" multiple size="4">
+                                        @foreach(collect(config('document_validation.types'))->except('other') as $key => $meta)
+                                            <option value="{{ $key }}">{{ $meta['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text">
+                                        Uploads are automatically checked against the selected type — wrong documents are
+                                        rejected unless the client justifies them. Selecting several accepts any of them.
+                                        Leave empty to skip document validation for this question.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" style="font-size: 0.85rem;">Maximum Age (months)</label>
+                                    <input type="number" min="1" max="120" class="form-control form-control-sm" id="vrMaxAgeMonths" placeholder="e.g. 3">
+                                    <div class="form-text">Reject documents issued longer ago than this (e.g. 3 for proof of address).</div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-center">
+                                    <div class="form-check mt-2">
+                                        <input type="checkbox" class="form-check-input" id="vrCheckExpiry" checked>
+                                        <label class="form-check-label" for="vrCheckExpiry" style="font-size: 0.85rem;">
+                                            Reject documents past their printed expiry date
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <input type="hidden" name="validation_rules" id="validationRulesJson">
                         @error('validation_rules')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -473,7 +507,7 @@
     var validationBuilder = document.getElementById('validationRulesBuilder');
     var validationRulesJson = document.getElementById('validationRulesJson');
     var typesWithOptions = ['select', 'multi_select', 'radio'];
-    var typesWithValidation = ['text', 'textarea', 'number', 'date'];
+    var typesWithValidation = ['text', 'textarea', 'number', 'date', 'file'];
 
     // === Toggle sections based on type ===
     function toggleOptions() {
@@ -951,6 +985,17 @@
         if (rules.allow_today === false) document.getElementById('vrAllowToday').checked = false;
         if (rules.min_date) document.getElementById('vrMinDate').value = rules.min_date;
         if (rules.max_date) document.getElementById('vrMaxDate').value = rules.max_date;
+        if (rules.expected_document != null) {
+            var expectedVals = Array.isArray(rules.expected_document)
+                ? rules.expected_document
+                : [rules.expected_document];
+            Array.prototype.forEach.call(
+                document.getElementById('vrExpectedDocument').options,
+                function (opt) { opt.selected = expectedVals.indexOf(opt.value) !== -1; }
+            );
+        }
+        if (rules.max_age_months != null) document.getElementById('vrMaxAgeMonths').value = rules.max_age_months;
+        if (rules.check_expiry === false) document.getElementById('vrCheckExpiry').checked = false;
     })();
     @endif
 
@@ -982,6 +1027,22 @@
             var maxd = document.getElementById('vrMaxDate').value;
             if (mind) rules.min_date = mind;
             if (maxd) rules.max_date = maxd;
+        } else if (type === 'file') {
+            var expected = Array.prototype.map.call(
+                document.getElementById('vrExpectedDocument').selectedOptions,
+                function (opt) { return opt.value; }
+            );
+            if (expected.length === 1) {
+                rules.expected_document = expected[0];
+            } else if (expected.length > 1) {
+                rules.expected_document = expected;
+            }
+            // Age/expiry settings only mean something with a document policy.
+            if (expected.length > 0) {
+                var months = document.getElementById('vrMaxAgeMonths').value;
+                if (months !== '') rules.max_age_months = parseInt(months, 10);
+                if (!document.getElementById('vrCheckExpiry').checked) rules.check_expiry = false;
+            }
         }
         return rules;
     }
