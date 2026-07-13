@@ -920,6 +920,30 @@ a:hover { color: var(--color-accent-hover); text-decoration: underline; }
   font-weight: 500;
 }
 
+/* ── AI document validation feedback ── */
+.doc-validation-panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 12px;
+}
+
+.doc-validation-failure {
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.doc-validation-justify-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 8px 0 6px;
+}
+
 /* ── Form Controls ── */
 .form-control,
 .form-select {
@@ -1493,6 +1517,16 @@ textarea.form-control { height: auto; min-height: 96px; padding: 12px 14px; line
 .file-preview-badge.uploaded {
   color: var(--color-success);
   background: rgba(16, 185, 129, 0.12);
+}
+
+.file-preview-badge.validation-ok {
+  color: var(--color-success);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.file-preview-badge.validation-warn {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
 }
 
 .file-preview-name {

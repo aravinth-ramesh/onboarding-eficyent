@@ -71,6 +71,7 @@ class AnswerService
      * Previous files are audit-logged but NOT deleted from S3.
      *
      * @param  UploadedFile[]  $files
+     * @param  array  $fileValidations  per-file-index AI validation columns
      */
     public function saveFileAnswer(
         User $user,
@@ -78,10 +79,11 @@ class AnswerService
         int $questionId,
         array $files,
         ?User $editedBy = null,
+        array $fileValidations = [],
     ): UserAnswer {
         $editedBy = $editedBy ?? $user;
 
-        return DB::transaction(function () use ($user, $onboarding, $questionId, $files, $editedBy) {
+        return DB::transaction(function () use ($user, $onboarding, $questionId, $files, $editedBy, $fileValidations) {
             // Upload all files first
             $uploadedMeta = $this->fileUploadService->uploadMultiple($files, $user->id);
 
@@ -130,15 +132,15 @@ class AnswerService
             }
 
             // Create new file records
-            foreach ($uploadedMeta as $meta) {
-                AnswerFile::create([
+            foreach ($uploadedMeta as $index => $meta) {
+                AnswerFile::create(array_merge([
                     'user_answer_id' => $answer->id,
                     'original_filename' => $meta['original_filename'],
                     's3_path' => $meta['s3_path'],
                     'mime_type' => $meta['mime_type'],
                     'file_size' => $meta['file_size'],
                     'disk' => $meta['disk'],
-                ]);
+                ], $fileValidations[$index] ?? []));
             }
 
             return $answer->load('files');

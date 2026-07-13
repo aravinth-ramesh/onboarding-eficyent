@@ -15,6 +15,12 @@ class AnswerFile extends Model
         'mime_type',
         'file_size',
         'disk',
+        'validation_status',
+        'detected_type',
+        'issue_date',
+        'expiry_date',
+        'validation_summary',
+        'justification',
     ];
 
     protected $appends = ['url'];

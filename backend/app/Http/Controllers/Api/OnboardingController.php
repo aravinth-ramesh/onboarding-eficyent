@@ -15,6 +15,7 @@ use App\Services\AnswerService;
 use App\Services\ChecksumValidator;
 use App\Services\ConditionalRuleEngine;
 use App\Services\CountryRegistrationService;
+use App\Services\DocumentValidationService;
 use App\Services\OnboardingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class OnboardingController extends Controller
         private ConditionalRuleEngine $ruleEngine,
         private CountryRegistrationService $registrationService,
         private ChecksumValidator $checksumValidator,
+        private DocumentValidationService $documentValidator,
     ) {}
 
     /**
@@ -315,6 +317,11 @@ class OnboardingController extends Controller
                         'mime_type' => $f->mime_type,
                         'file_size' => $f->file_size,
                         'url' => $f->url,
+                        'validation_status' => $f->validation_status,
+                        'detected_type' => $f->detected_type,
+                        'issue_date' => $f->issue_date,
+                        'expiry_date' => $f->expiry_date,
+                        'justification' => $f->justification,
                     ])->values()->toArray();
                 } elseif ($question->type === 'file') {
                     $questionData['files'] = [];
@@ -382,16 +389,46 @@ class OnboardingController extends Controller
                 $grouped[$qid][] = $entry['file'];
             }
 
+            // AI document validation runs before anything is stored so a
+            // rejected batch leaves no partial state. Justifications arrive as
+            // file_justifications[question_id].
+            $justifications = $request->input('file_justifications', []);
+            $validated = [];
+            $blockedFailures = [];
             foreach ($grouped as $questionId => $files) {
                 $question = Question::find($questionId);
-                if ($question && $question->type === 'file') {
-                    $this->answerService->saveFileAnswer(
-                        $user,
-                        $onboarding,
-                        $questionId,
-                        $files,
-                    );
+                if (! $question || $question->type !== 'file') {
+                    continue;
                 }
+                $result = $this->documentValidator->validate(
+                    $question,
+                    $files,
+                    $justifications[$questionId] ?? null,
+                );
+                if ($result['blocked']) {
+                    $blockedFailures[$questionId] = $result['failures'];
+                } else {
+                    $validated[$questionId] = [$question, $files, $result['file_meta']];
+                }
+            }
+
+            if ($blockedFailures !== []) {
+                return response()->json([
+                    'message' => 'One or more documents did not pass validation.',
+                    'code' => 'document_validation_failed',
+                    'document_validation' => $blockedFailures,
+                ], 422);
+            }
+
+            foreach ($validated as $questionId => [$question, $files, $fileMeta]) {
+                $this->answerService->saveFileAnswer(
+                    $user,
+                    $onboarding,
+                    $questionId,
+                    $files,
+                    null,
+                    $fileMeta,
+                );
             }
         }
 
@@ -443,11 +480,27 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'This question does not accept file uploads.'], 422);
         }
 
+        $result = $this->documentValidator->validate(
+            $question,
+            $request->file('files'),
+            $request->input('justification'),
+        );
+
+        if ($result['blocked']) {
+            return response()->json([
+                'message' => 'One or more documents did not pass validation.',
+                'code' => 'document_validation_failed',
+                'document_validation' => [$question->id => $result['failures']],
+            ], 422);
+        }
+
         $answer = $this->answerService->saveFileAnswer(
             $user,
             $onboarding,
             $question->id,
             $request->file('files'),
+            null,
+            $result['file_meta'],
         );
 
         return response()->json([
@@ -461,6 +514,9 @@ class OnboardingController extends Controller
                     'mime_type' => $f->mime_type,
                     'file_size' => $f->file_size,
                     'url' => $f->url,
+                    'validation_status' => $f->validation_status,
+                    'detected_type' => $f->detected_type,
+                    'justification' => $f->justification,
                 ])->values()->toArray(),
             ],
         ]);

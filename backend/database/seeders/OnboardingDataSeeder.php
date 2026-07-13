@@ -40,6 +40,24 @@ class OnboardingDataSeeder extends Seeder
         $this->seedQuestionGroups();
         $this->seedKybSections();
         $this->seedOnboardingSteps();
+        $this->applyDocumentPolicies();
+    }
+
+    /**
+     * Attach AI document-validation policies (expected type, max age) to the
+     * seeded file questions. The label→policy map lives in
+     * config/document_validation.php so the upgrade migration stays in sync.
+     */
+    private function applyDocumentPolicies(): void
+    {
+        foreach (config('document_validation.question_policies', []) as $label => $policy) {
+            Question::where('type', 'file')->where('label', $label)->get()
+                ->each(function (Question $question) use ($policy) {
+                    $question->update([
+                        'validation_rules' => array_merge($question->validation_rules ?? [], $policy),
+                    ]);
+                });
+        }
     }
 
     private function clean(): void

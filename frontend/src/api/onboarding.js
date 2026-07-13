@@ -23,8 +23,10 @@ export const saveAnswers = (answers) =>
  * @param {Array} answers - Array of { question_id, value } for non-file answers
  * @param {Object} fileAnswers - Map of questionId -> File[] for file-type answers
  * @param {Array} tableFileAnswers - Array of { questionId, rowIndex, columnKey, file } for files inside table cells
+ * @param {Object} fileJustifications - Map of questionId -> justification text for
+ *   documents that failed AI validation and the user chose to submit anyway
  */
-export const saveAnswersWithFiles = (answers, fileAnswers, tableFileAnswers) => {
+export const saveAnswersWithFiles = (answers, fileAnswers, tableFileAnswers, fileJustifications) => {
   const formData = new FormData();
 
   // Append non-file answers
@@ -52,6 +54,10 @@ export const saveAnswersWithFiles = (answers, fileAnswers, tableFileAnswers) => 
     formData.append(`table_file_answers[${index}][row_index]`, entry.rowIndex);
     formData.append(`table_file_answers[${index}][column_key]`, entry.columnKey);
     formData.append(`table_file_answers[${index}][file]`, entry.file);
+  });
+
+  Object.entries(fileJustifications || {}).forEach(([questionId, text]) => {
+    if (text) formData.append(`file_justifications[${questionId}]`, text);
   });
 
   return client.post('/onboarding/answers', formData, {

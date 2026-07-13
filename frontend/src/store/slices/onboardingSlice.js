@@ -52,17 +52,25 @@ export const fetchQuestions = createAsyncThunk(
 
 export const submitAnswers = createAsyncThunk(
   'onboarding/submitAnswers',
-  async ({ answers, fileAnswers, tableFileAnswers }, { rejectWithValue }) => {
+  async ({ answers, fileAnswers, tableFileAnswers, fileJustifications }, { rejectWithValue }) => {
     try {
       const hasFiles =
         (fileAnswers && Object.keys(fileAnswers).length > 0) ||
         (Array.isArray(tableFileAnswers) && tableFileAnswers.length > 0);
       const response = hasFiles
-        ? await onboardingApi.saveAnswersWithFiles(answers, fileAnswers, tableFileAnswers)
+        ? await onboardingApi.saveAnswersWithFiles(answers, fileAnswers, tableFileAnswers, fileJustifications)
         : await onboardingApi.saveAnswers(answers);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to save answers');
+      const data = error.response?.data;
+      return rejectWithValue({
+        message: data?.message || 'Failed to save answers',
+        // Per-question AI document validation failures (422), keyed by
+        // question id — see OnboardingController::saveAnswers.
+        documentValidation: data?.code === 'document_validation_failed'
+          ? data.document_validation
+          : null,
+      });
     }
   }
 );
@@ -211,7 +219,9 @@ const onboardingSlice = createSlice({
       })
       .addCase(submitAnswers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        // payload is { message, documentValidation } — keep the store's error
+        // a plain string; QuestionsStep reads the structured part itself.
+        state.error = action.payload?.message || 'Failed to save answers';
       })
       // Complete Step
       .addCase(completeOnboardingStep.fulfilled, (state, action) => {

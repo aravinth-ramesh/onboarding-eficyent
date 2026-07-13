@@ -19,6 +19,10 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   const [validationErrors, setValidationErrors] = useState({});
   const [tableCellErrors, setTableCellErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
+  // AI document validation: per-question failures from the last save attempt,
+  // and the user's justification texts for overriding them.
+  const [docValidationErrors, setDocValidationErrors] = useState({});
+  const [docJustifications, setDocJustifications] = useState({});
 
   // File answers stored outside Redux (File objects are not serializable)
   const fileAnswersRef = useRef({});
@@ -366,12 +370,23 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       answers: answersPayload,
       fileAnswers: filePayload,
       tableFileAnswers: tableFilePayload,
+      fileJustifications: docJustifications,
     }));
     if (!result.error) {
       // Clear file ref after successful upload
       fileAnswersRef.current = {};
+      setDocValidationErrors({});
+      setDocJustifications({});
       return true;
     }
+
+    const docFailures = result.payload?.documentValidation;
+    if (docFailures) {
+      setDocValidationErrors(docFailures);
+      setSubmitError('One or more documents did not pass validation. Review the highlighted uploads below.');
+      return false;
+    }
+
     setSubmitError('Failed to save answers. Please try again.');
     return false;
   };
@@ -544,6 +559,27 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
             />
             {validationErrors[question.id] && (
               <div className="question-error">{validationErrors[question.id]}</div>
+            )}
+            {docValidationErrors[question.id] && (
+              <div className="doc-validation-panel">
+                {docValidationErrors[question.id].map((failure, i) => (
+                  <div key={i} className="doc-validation-failure">
+                    <strong>{failure.filename}:</strong> {failure.message}
+                  </div>
+                ))}
+                <label className="doc-validation-justify-label">
+                  Upload a corrected document, or explain why this one should be accepted:
+                </label>
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  placeholder="Justification for the reviewer (optional)"
+                  value={docJustifications[question.id] || ''}
+                  onChange={(e) =>
+                    setDocJustifications((prev) => ({ ...prev, [question.id]: e.target.value }))
+                  }
+                />
+              </div>
             )}
           </div>
         ))}

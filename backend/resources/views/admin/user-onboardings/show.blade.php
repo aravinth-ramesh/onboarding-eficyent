@@ -289,11 +289,34 @@
                                     @if($type === 'file' && $answer->files->count())
                                         <div class="d-flex flex-column gap-1">
                                             @foreach($answer->files as $file)
-                                                <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
-                                                    <i class="bi bi-paperclip"></i>
-                                                    {{ $file->original_filename }}
-                                                    <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
-                                                </a>
+                                                <div>
+                                                    <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                                        <i class="bi bi-paperclip"></i>
+                                                        {{ $file->original_filename }}
+                                                        <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                                    </a>
+                                                    @switch($file->validation_status)
+                                                        @case('passed')
+                                                            <span class="badge bg-success-subtle text-success border ms-1" title="{{ $file->validation_summary }}">AI verified{{ $file->detected_type ? ': ' . config("document_validation.types.{$file->detected_type}.label", $file->detected_type) : '' }}</span>
+                                                            @break
+                                                        @case('needs_review')
+                                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">Needs review</span>
+                                                            @break
+                                                        @case('type_mismatch')
+                                                        @case('expired')
+                                                        @case('stale')
+                                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">
+                                                                {{ ['type_mismatch' => 'Wrong document type', 'expired' => 'Expired', 'stale' => 'Outdated'][$file->validation_status] }}
+                                                                — justified
+                                                            </span>
+                                                            @break
+                                                    @endswitch
+                                                    @if($file->justification)
+                                                        <div class="small text-muted fst-italic mt-1">
+                                                            <i class="bi bi-chat-quote"></i> Client justification: {{ $file->justification }}
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             @endforeach
                                         </div>
                                     @elseif($type === 'file')
