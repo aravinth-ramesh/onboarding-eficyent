@@ -193,11 +193,52 @@ class OcrExtractor
     }
 
     /**
-     * Light GD preprocessing for photos/screenshots: grayscale, contrast
-     * boost, and 2x upscale for small images (Tesseract wants ~300 DPI).
-     * Returns a temp PNG path, or null to OCR the original as-is.
+     * Preprocess photos/screenshots before OCR. ImageMagick (when installed)
+     * does the full treatment — grayscale, deskew for tilted phone photos,
+     * contrast stretch, upscale of small images. Without it, GD covers
+     * everything except deskew. Returns a temp PNG path, or null to OCR the
+     * original as-is.
      */
     private function preprocess(string $path): ?string
+    {
+        return $this->preprocessWithImageMagick($path) ?? $this->preprocessWithGd($path);
+    }
+
+    private function preprocessWithImageMagick(string $path): ?string
+    {
+        $magick = $this->imagemagickBinary();
+        if ($magick === null) {
+            return null;
+        }
+
+        $out = tempnam(sys_get_temp_dir(), 'ocr_pre_') . '.png';
+
+        try {
+            $process = new Process(array_merge($magick, [
+                $path,
+                '-colorspace', 'Gray',
+                '-deskew', '40%',
+                '+repage',
+                '-contrast-stretch', '1%x1%',
+                '-resize', '1200x<', // enlarge only when narrower than 1200px
+                $out,
+            ]));
+            $process->setTimeout((float) config('document_validation.rules.ocr.timeout_seconds'));
+            $process->run();
+
+            if ($process->isSuccessful() && is_file($out) && filesize($out) > 0) {
+                return $out;
+            }
+        } catch (\Throwable $e) {
+            Log::info('imagemagick preprocess failed', ['error' => $e->getMessage()]);
+        }
+
+        @unlink($out);
+
+        return null;
+    }
+
+    private function preprocessWithGd(string $path): ?string
     {
         if (! extension_loaded('gd')) {
             return null;
@@ -230,6 +271,27 @@ class OcrExtractor
     private function enabled(): bool
     {
         return (bool) config('document_validation.rules.ocr.enabled');
+    }
+
+    /**
+     * ImageMagick command prefix: v7 `magick`, or legacy v6 `convert`.
+     *
+     * @return string[]|null
+     */
+    private function imagemagickBinary(): ?array
+    {
+        foreach (self::BIN_DIRS as $dir) {
+            if (is_executable("{$dir}/magick")) {
+                return ["{$dir}/magick"];
+            }
+        }
+        foreach (self::BIN_DIRS as $dir) {
+            if (is_executable("{$dir}/convert")) {
+                return ["{$dir}/convert"];
+            }
+        }
+
+        return null;
     }
 
     private function binary(string $name, string $configKey): ?string

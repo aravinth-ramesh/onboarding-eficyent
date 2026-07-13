@@ -163,6 +163,56 @@ class RulesDriverValidationTest extends TestCase
             ->assertJsonPath("document_validation.{$question->id}.0.reason", 'expired');
     }
 
+    /**
+     * Fixture corpus for the remaining configured document types: each is
+     * classified correctly against its own policy AND rejected when uploaded
+     * where a certificate is expected.
+     */
+    public function test_remaining_document_types_classify_correctly(): void
+    {
+        $fixtures = [
+            'register_extract' => [
+                'REGISTER OF MEMBERS AND REGISTER OF DIRECTORS',
+                'ACME HOLDINGS LTD — statutory registers extract',
+                'Shareholder: Jane Doe, shareholding 60% of ordinary shares',
+                'Shareholder: John Roe, shareholding 40%, beneficial owner',
+            ],
+            'tax_certificate' => [
+                'TAX RESIDENCY CERTIFICATE',
+                'Issued by the National Tax Authority under the tax registration scheme',
+                'Taxpayer Identification Number: 99-8877665',
+                'VAT registration confirmed for ACME HOLDINGS LTD',
+            ],
+            'financial_statements' => [
+                'ACME HOLDINGS LTD — ANNUAL REPORT',
+                'Statement of Financial Position (Balance Sheet)',
+                'Income Statement and Cash Flow Statement for the year',
+                "Independent Auditor's Report: retained earnings of 1.2m",
+            ],
+            'policy_document' => [
+                'ANTI-MONEY LAUNDERING AND COUNTER-TERRORIST FINANCING POLICY',
+                'This policy sets out the procedure for customer due diligence.',
+                'The compliance officer performs an annual risk assessment.',
+            ],
+        ];
+
+        foreach ($fixtures as $type => $lines) {
+            $question = $this->makeQuestion(['expected_document' => $type]);
+            $this->uploadPdf($question, "{$type}.pdf", $lines)->assertOk();
+            $this->assertDatabaseHas('answer_files', [
+                'original_filename' => "{$type}.pdf",
+                'validation_status' => 'passed',
+                'detected_type' => $type,
+            ]);
+
+            // The same document against a certificate question must mismatch.
+            $certQuestion = $this->makeQuestion(['expected_document' => 'certificate_of_incorporation']);
+            $this->uploadPdf($certQuestion, "wrong-{$type}.pdf", $lines)
+                ->assertStatus(422)
+                ->assertJsonPath("document_validation.{$certQuestion->id}.0.reason", 'type_mismatch');
+        }
+    }
+
     public function test_unreadable_document_falls_open_to_needs_review(): void
     {
         $question = $this->makeQuestion(['expected_document' => 'certificate_of_incorporation']);

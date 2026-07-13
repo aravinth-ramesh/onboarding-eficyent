@@ -290,6 +290,34 @@ npm install
 npm start             # Runs on http://localhost:3000
 ```
 
+### Document Validation — server dependencies
+
+Uploaded KYC documents are validated locally (type classification, issue/expiry
+date checks, MRZ parsing for IDs) by the `rules` driver — no external API calls.
+Full coverage needs these system packages on the server:
+
+```bash
+# Debian/Ubuntu
+apt-get install poppler-utils tesseract-ocr imagemagick
+# Non-English documents: apt-get install tesseract-ocr-all   (or specific packs)
+
+# macOS (development)
+brew install poppler tesseract imagemagick
+```
+
+| Package | Used for | Without it |
+|---|---|---|
+| `poppler-utils` | PDF text extraction (`pdftotext`) + rasterizing scans (`pdftoppm`) | Pure-PHP fallback for text PDFs; scanned PDFs go to human review |
+| `tesseract-ocr` | OCR for scanned PDFs and photos | Scans/photos go to human review |
+| `imagemagick` | Deskewing tilted phone photos before OCR | GD fallback (no deskew); tilted photos more likely to need review |
+
+Config lives in `config/document_validation.php` (driver, per-question policies,
+anchor-phrase dictionaries, OCR thresholds). Env switches: `DOCUMENT_VALIDATION_ENABLED`,
+`DOCUMENT_VALIDATION_DRIVER` (`rules` | `claude` | `fake`), `DOCUMENT_OCR_LANGUAGES`.
+Flagged documents land in the admin panel under **Monitoring → Document Reviews**,
+which also shows the auto-pass rate and the extracted text used for tuning the
+phrase dictionaries.
+
 ---
 
 ## Recommended Packages

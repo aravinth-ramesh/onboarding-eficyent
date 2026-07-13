@@ -119,6 +119,36 @@ class OcrValidationTest extends TestCase
             ->assertJsonPath("document_validation.{$question->id}.0.reason", 'expired');
     }
 
+    public function test_tilted_photo_is_deskewed_and_classified(): void
+    {
+        if (! is_executable('/opt/homebrew/bin/magick') && ! is_executable('/usr/local/bin/magick')
+            && ! is_executable('/usr/bin/convert')) {
+            $this->markTestSkipped('ImageMagick not installed — deskew unavailable');
+        }
+
+        $question = $this->makeQuestion(['expected_document' => 'certificate_of_incorporation']);
+
+        // Simulate a tilted phone photo: rasterize the certificate and rotate
+        // it 8 degrees — enough to badly degrade OCR without deskew.
+        $img = imagecreatefromstring($this->rasterizePdf($this->makePdf(self::CERT_LINES)));
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $rotated = imagerotate($img, 8, $white);
+        imagedestroy($img);
+        ob_start();
+        imagepng($rotated);
+        $tilted = ob_get_clean();
+        imagedestroy($rotated);
+
+        $this->post('/api/onboarding/answers/upload', [
+            'question_id' => $question->id,
+            'files' => [UploadedFile::fake()->createWithContent('tilted-photo.png', $tilted)],
+        ])->assertOk();
+
+        $file = AnswerFile::latest('id')->first();
+        $this->assertSame('passed', $file->validation_status);
+        $this->assertSame('certificate_of_incorporation', $file->detected_type);
+    }
+
     public function test_unreadable_noise_image_falls_open_to_needs_review(): void
     {
         $question = $this->makeQuestion(['expected_document' => 'certificate_of_incorporation']);
