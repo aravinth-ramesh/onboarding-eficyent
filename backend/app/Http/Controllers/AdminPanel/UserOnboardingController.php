@@ -21,6 +21,7 @@ class UserOnboardingController extends Controller
     public function __construct(
         private NotificationService $notificationService,
         private AdminEmailService $emailService,
+        private \App\Services\OnboardingService $onboardingService,
     ) {}
 
     public function index(Request $request): View
@@ -109,6 +110,44 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $message);
+    }
+
+    public function approve(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        $validated = $request->validate(['comment' => 'nullable|string|max:2000']);
+
+        try {
+            $this->onboardingService->approve(
+                $userOnboarding,
+                Auth::guard('admin')->user(),
+                $validated['comment'] ?? null,
+            );
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Application approved — the client has been notified by email.');
+    }
+
+    public function reject(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        $validated = $request->validate(['comment' => 'required|string|max:2000']);
+
+        try {
+            $this->onboardingService->reject(
+                $userOnboarding,
+                Auth::guard('admin')->user(),
+                $validated['comment'],
+            );
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Application rejected — the client has been notified by email.');
     }
 
     public function auditLogs(Request $request): View

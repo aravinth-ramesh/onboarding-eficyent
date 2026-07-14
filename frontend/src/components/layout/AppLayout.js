@@ -107,7 +107,12 @@ function AppLayout({ children, pageTitle }) {
   const reference = formatReference(onboardingId, startedAt);
   const startedLabel = formatDate(startedAt);
   const statusLabel = humanizeStatus(status);
-  const statusClass = status === 'completed' ? 'success' : 'progress';
+  const statusClass =
+    status === 'completed' || status === 'approved'
+      ? 'success'
+      : status === 'rejected'
+        ? 'danger'
+        : 'progress';
 
   // Estimated time remaining from steps not yet completed.
   const minutesLeft = steps

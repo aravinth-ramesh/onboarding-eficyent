@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\OnboardingDecisionMail;
 use App\Mail\OnboardingSubmittedAdminMail;
 use App\Mail\OnboardingSubmittedClientMail;
 use App\Models\Admin;
@@ -99,6 +100,51 @@ class OnboardingService
         }
 
         return $onboarding->fresh('steps');
+    }
+
+    /**
+     * Approve a submitted application. Only 'completed' (submitted, not yet
+     * decided) onboardings can be approved.
+     */
+    public function approve(UserOnboarding $onboarding, Admin $admin, ?string $comment = null): UserOnboarding
+    {
+        return $this->decide($onboarding, $admin, 'approved', $comment);
+    }
+
+    /**
+     * Reject a submitted application. A reason is mandatory — it is shown to
+     * the client in the portal and the decision email.
+     */
+    public function reject(UserOnboarding $onboarding, Admin $admin, string $comment): UserOnboarding
+    {
+        return $this->decide($onboarding, $admin, 'rejected', $comment);
+    }
+
+    private function decide(UserOnboarding $onboarding, Admin $admin, string $status, ?string $comment): UserOnboarding
+    {
+        if ($onboarding->status !== 'completed') {
+            throw new \DomainException('Only submitted applications awaiting review can be approved or rejected.');
+        }
+
+        $onboarding->update([
+            'status' => $status,
+            'decided_at' => now(),
+            'decided_by' => $admin->id,
+            'decision_comment' => $comment ?: null,
+        ]);
+
+        $onboarding = $onboarding->fresh();
+        $onboarding->load(['user', 'userType']);
+
+        try {
+            if ($onboarding->user?->email) {
+                Mail::to($onboarding->user->email)->queue(new OnboardingDecisionMail($onboarding));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $onboarding;
     }
 
     /**

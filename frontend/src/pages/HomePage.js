@@ -10,7 +10,7 @@ import appConfig from '../appConfig';
 
 function HomePage() {
   const dispatch = useDispatch();
-  const { steps, currentStep, status, loading, error } = useSelector(
+  const { steps, currentStep, status, loading, error, decisionComment } = useSelector(
     (state) => state.onboarding
   );
   const user = useSelector((state) => state.auth.user);
@@ -55,7 +55,7 @@ function HomePage() {
     );
   }
 
-  if (status === 'completed') {
+  if (status === 'completed' || status === 'approved' || status === 'rejected') {
     if (viewingAnswers) {
       return (
         <AppLayout pageTitle="Submitted Answers">
@@ -64,14 +64,47 @@ function HomePage() {
       );
     }
 
+    const decision = {
+      completed: {
+        icon: '\u2713',
+        iconClass: '',
+        heading: appConfig.onboardingComplete.heading,
+        message: appConfig.onboardingComplete.message,
+      },
+      approved: {
+        icon: '\u2713',
+        iconClass: 'approved',
+        heading: 'Your application has been approved!',
+        message: 'Welcome aboard \u2014 our team has reviewed and approved your onboarding. We will be in touch with the next steps.',
+      },
+      rejected: {
+        icon: '\u2715',
+        iconClass: 'rejected',
+        heading: 'Your application was not approved',
+        message: 'We have completed the review of your application and unfortunately it was not approved at this time.',
+      },
+    }[status];
+
     return (
       <AppLayout pageTitle="Client Onboarding">
         <div className="ob-card">
           <div className="ob-card-body">
             <div className="completion-screen">
-              <div className="completion-icon">{'\u2713'}</div>
-              <h2>{appConfig.onboardingComplete.heading}</h2>
-              <p>{appConfig.onboardingComplete.message}</p>
+              <div className={`completion-icon ${decision.iconClass}`}>{decision.icon}</div>
+              <h2>{decision.heading}</h2>
+              <p>{decision.message}</p>
+              {status === 'rejected' && decisionComment && (
+                <div className="decision-comment">
+                  <div className="decision-comment-label">Reviewer note</div>
+                  <div>{decisionComment}</div>
+                </div>
+              )}
+              {status === 'rejected' && (
+                <p style={{ fontSize: '0.9rem' }}>
+                  If you believe this is an error or your circumstances change, contact us at{' '}
+                  <a href="mailto:support@eficyent.com">support@eficyent.com</a>.
+                </p>
+              )}
               <button
                 className="btn-primary-custom"
                 style={{ marginTop: 16 }}

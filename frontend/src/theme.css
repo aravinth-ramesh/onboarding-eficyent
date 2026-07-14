@@ -1606,6 +1606,35 @@ a.file-preview-name:hover { text-decoration: underline; }
   animation: auroraGlow 2.4s ease-in-out infinite;
 }
 
+.completion-icon.approved {
+  background: linear-gradient(135deg, #10B981 0%, #047857 100%);
+}
+
+.completion-icon.rejected {
+  background: linear-gradient(135deg, #F87171 0%, #DC2626 100%);
+  box-shadow: 0 12px 32px rgba(220, 38, 38, 0.28);
+}
+
+.decision-comment {
+  max-width: 480px;
+  margin: 8px auto 12px;
+  padding: 14px 18px;
+  text-align: left;
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #DC2626;
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+
+.decision-comment-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #B91C1C;
+  margin-bottom: 4px;
+}
+
 .completion-screen h2 {
   font-size: 30px;
   font-weight: 800;
@@ -2622,6 +2651,11 @@ a.file-preview-name:hover { text-decoration: underline; }
 .sb-pill.success {
   background: rgba(16, 185, 129, 0.14);
   color: #047857;
+}
+
+.sb-pill.danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: #B91C1C;
 }
 
 .sb-help {

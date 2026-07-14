@@ -65,6 +65,8 @@ class OnboardingController extends Controller
             'steps' => $steps,
             'started_at' => $onboarding->started_at,
             'completed_at' => $onboarding->completed_at,
+            'decided_at' => $onboarding->decided_at,
+            'decision_comment' => $onboarding->decision_comment,
         ];
     }
 
@@ -180,7 +182,9 @@ class OnboardingController extends Controller
      */
     private function isSubmitted(UserOnboarding $onboarding): bool
     {
-        return $onboarding->status === 'completed';
+        // Once submitted (and after any decision) the application is locked;
+        // post-submission edits go through admin change requests only.
+        return in_array($onboarding->status, ['completed', 'approved', 'rejected'], true);
     }
 
     /**

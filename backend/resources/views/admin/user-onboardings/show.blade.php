@@ -177,6 +177,34 @@
                     <dt class="text-muted" style="font-size: 0.8rem;">Completed</dt>
                     <dd class="mb-0">{{ $userOnboarding->completed_at?->format('M d, Y H:i') ?? '-' }}</dd>
                 </dl>
+
+                @if($userOnboarding->status === 'completed')
+                    {{-- Awaiting decision --}}
+                    <hr>
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
+                              onsubmit="return confirm('Approve this application? The client will be notified by email.')">
+                            @csrf
+                            <button class="btn btn-success btn-sm">
+                                <i class="bi bi-check-circle"></i> Approve
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                    </div>
+                @elseif(in_array($userOnboarding->status, ['approved', 'rejected']))
+                    <hr>
+                    <div class="p-2 rounded {{ $userOnboarding->status === 'approved' ? 'bg-success-subtle' : 'bg-danger-subtle' }}" style="font-size: 0.85rem;">
+                        <strong>{{ ucfirst($userOnboarding->status) }}</strong>
+                        by {{ $userOnboarding->decidedBy->name ?? 'admin' }}
+                        on {{ $userOnboarding->decided_at?->format('M d, Y H:i') }}
+                        @if($userOnboarding->decision_comment)
+                            <div class="mt-1 fst-italic">"{{ $userOnboarding->decision_comment }}"</div>
+                        @endif
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -537,6 +565,37 @@
     </div>
 </div>
 @endif
+
+{{-- Reject Application Modal --}}
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('admin.user-onboardings.reject', $userOnboarding) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">Reject Application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Rejecting <strong>{{ $userOnboarding->reference }}</strong> —
+                        {{ $userOnboarding->user->name ?? $userOnboarding->user->email ?? 'client' }}.
+                        The reason below is emailed to the client and shown in their portal.
+                    </p>
+                    <div class="mb-0">
+                        <label for="rejectComment" class="form-label">Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejectComment" name="comment" rows="4" required
+                            placeholder="Explain why the application cannot be approved..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Application</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 {{-- Request Change Modal --}}
 <div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">

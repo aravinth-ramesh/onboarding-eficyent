@@ -122,6 +122,8 @@ const onboardingSlice = createSlice({
     onboardingId: null,
     startedAt: null,
     countryCode: null,
+    decidedAt: null,
+    decisionComment: null,
     userTypes: [],
     questionGroups: [],
     answers: {},
@@ -162,6 +164,8 @@ const onboardingSlice = createSlice({
         state.onboardingId = action.payload.id ?? null;
         state.startedAt = action.payload.started_at ?? null;
         state.countryCode = action.payload.country_code ?? null;
+        state.decidedAt = action.payload.decided_at ?? null;
+        state.decisionComment = action.payload.decision_comment ?? null;
       })
       .addCase(fetchOnboardingStatus.rejected, (state, action) => {
         state.loading = false;

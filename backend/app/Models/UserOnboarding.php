@@ -19,6 +19,9 @@ class UserOnboarding extends Model
         'template_version',
         'started_at',
         'completed_at',
+        'decided_at',
+        'decided_by',
+        'decision_comment',
     ];
 
     protected function casts(): array
@@ -27,7 +30,13 @@ class UserOnboarding extends Model
             'registration_details' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'decided_at' => 'datetime',
         ];
+    }
+
+    public function decidedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'decided_by');
     }
 
     /**
