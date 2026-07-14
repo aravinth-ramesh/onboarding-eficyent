@@ -3,22 +3,48 @@
 @section('title', 'User Onboardings')
 
 @section('content')
-{{-- Filter --}}
+{{-- Search & filters --}}
 <div class="card mb-3">
     <div class="card-body py-2">
-        <form method="GET" action="{{ route('admin.user-onboardings.index') }}" class="d-flex align-items-center gap-3">
-            <label class="form-label mb-0 fw-semibold" style="white-space: nowrap;">Filter by Status:</label>
-            <select name="status" class="form-select form-select-sm select2-enable" style="max-width: 200px;" onchange="this.form.submit()" data-placeholder="All Statuses">
-                <option value="">All Statuses</option>
-                @foreach(['pending', 'in_progress', 'completed'] as $status)
-                    <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
-                        {{ ucfirst(str_replace('_', ' ', $status)) }}
-                    </option>
-                @endforeach
-            </select>
-            @if(request('status'))
-                <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
-            @endif
+        <form method="GET" action="{{ route('admin.user-onboardings.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-4 col-lg-3">
+                <input type="search" name="search" class="form-control form-control-sm"
+                       placeholder="Search name, email or reference (ONB-...)"
+                       value="{{ request('search') }}">
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    <option value="pending" @selected(request('status') === 'pending')>Pending</option>
+                    <option value="in_progress" @selected(request('status') === 'in_progress')>In Progress</option>
+                    <option value="completed" @selected(request('status') === 'completed')>Awaiting Review</option>
+                    <option value="approved" @selected(request('status') === 'approved')>Approved</option>
+                    <option value="rejected" @selected(request('status') === 'rejected')>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <select name="user_type_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    @foreach($userTypes as $type)
+                        <option value="{{ $type->id }}" @selected(request('user_type_id') == $type->id)>
+                            {{ $type->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="resubmitted" value="1"
+                           id="filterResubmitted" @checked(request()->boolean('resubmitted')) onchange="this.form.submit()">
+                    <label class="form-check-label small" for="filterResubmitted">Resubmissions only</label>
+                </div>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button class="btn btn-sm btn-primary">Search</button>
+                @if(request()->hasAny(['search', 'status', 'user_type_id', 'resubmitted']))
+                    <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                @endif
+            </div>
         </form>
     </div>
 </div>

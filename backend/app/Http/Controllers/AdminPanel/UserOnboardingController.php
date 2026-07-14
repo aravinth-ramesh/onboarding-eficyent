@@ -9,6 +9,7 @@ use App\Models\AnswerAuditLog;
 use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
+use App\Models\UserType;
 use App\Services\AdminEmailService;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
@@ -32,9 +33,37 @@ class UserOnboardingController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        $onboardings = $query->latest()->paginate(20)->withQueryString();
+        if ($request->filled('user_type_id')) {
+            $query->where('user_type_id', $request->input('user_type_id'));
+        }
 
-        return view('admin.user-onboardings.index', compact('onboardings'));
+        if ($request->boolean('resubmitted')) {
+            $query->whereNotNull('reopened_at');
+        }
+
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+
+            // "ONB-2026-0042", "onb-42" or a bare number targets the reference.
+            $referenceId = preg_match('/^(?:ONB-?)(?:\d{4}-?)?0*(\d+)$/i', $term, $m)
+                ? (int) $m[1]
+                : (ctype_digit($term) ? (int) ltrim($term, '0') : null);
+
+            $query->where(function ($q) use ($term, $referenceId) {
+                $q->whereHas('user', function ($u) use ($term) {
+                    $u->where('name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%");
+                });
+                if ($referenceId !== null) {
+                    $q->orWhere('id', $referenceId);
+                }
+            });
+        }
+
+        $onboardings = $query->latest()->paginate(20)->withQueryString();
+        $userTypes = UserType::orderBy('order')->get();
+
+        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes'));
     }
 
     public function show(UserOnboarding $userOnboarding): View
