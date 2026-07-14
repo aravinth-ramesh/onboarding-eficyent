@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/registration', [Api\OnboardingController::class, 'saveRegistration']);
         Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
+        Route::post('/reopen', [Api\OnboardingController::class, 'reopen']);
         Route::post('/steps/{step}/complete', [Api\OnboardingController::class, 'completeStep']);
         Route::post('/steps/{step}/previous', [Api\OnboardingController::class, 'previousStep']);
         Route::post('/steps/{step}/goto', [Api\OnboardingController::class, 'goToStep']);

@@ -219,6 +219,29 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Reopen a rejected application so the client can edit and resubmit.
+     */
+    public function reopen(): JsonResponse
+    {
+        /**@disregard */
+        $onboarding = auth()->user()->onboarding;
+
+        if (! $onboarding) {
+            return response()->json(['message' => 'No onboarding found.'], 404);
+        }
+
+        try {
+            $onboarding = $this->onboardingService->reopen($onboarding);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
+
+        return response()->json([
+            'data' => $this->formatOnboardingResponse($onboarding),
+        ]);
+    }
+
+    /**
      * Set user type (and optionally subcategory) for onboarding.
      */
     public function setUserType(SetUserTypeRequest $request): JsonResponse

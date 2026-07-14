@@ -74,6 +74,9 @@ export const previousStep = (stepId) =>
 export const gotoStep = (stepId) =>
   client.post(`/onboarding/steps/${stepId}/goto`);
 
+export const reopenOnboarding = () =>
+  client.post('/onboarding/reopen');
+
 export const getRegistrationCatalog = () =>
   client.get('/onboarding/registration');
 

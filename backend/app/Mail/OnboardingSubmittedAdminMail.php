@@ -25,9 +25,10 @@ class OnboardingSubmittedAdminMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $client = $this->onboarding->user?->name ?? $this->onboarding->user?->email ?? 'A client';
+        $verb = $this->onboarding->reopened_at ? 'Resubmitted' : 'Submitted';
 
         return new Envelope(
-            subject: "New Onboarding Submitted — {$client} ({$this->onboarding->reference})",
+            subject: "Onboarding {$verb} — {$client} ({$this->onboarding->reference})",
         );
     }
 

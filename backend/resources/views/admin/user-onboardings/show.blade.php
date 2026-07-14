@@ -166,6 +166,11 @@
                         <span class="badge badge-{{ $userOnboarding->status }}">
                             {{ ucfirst(str_replace('_', ' ', $userOnboarding->status)) }}
                         </span>
+                        @if($userOnboarding->reopened_at)
+                            <span class="badge bg-info-subtle text-info-emphasis border" title="Reopened after rejection on {{ $userOnboarding->reopened_at->format('M d, Y H:i') }}">
+                                Resubmission
+                            </span>
+                        @endif
                     </dd>
 
                     <dt class="text-muted" style="font-size: 0.8rem;">Template Version</dt>

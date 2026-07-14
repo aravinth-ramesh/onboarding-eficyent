@@ -22,6 +22,7 @@ class UserOnboarding extends Model
         'decided_at',
         'decided_by',
         'decision_comment',
+        'reopened_at',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class UserOnboarding extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'decided_at' => 'datetime',
+            'reopened_at' => 'datetime',
         ];
     }
 

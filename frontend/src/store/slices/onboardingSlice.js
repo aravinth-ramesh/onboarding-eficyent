@@ -111,6 +111,18 @@ export const goToOnboardingStep = createAsyncThunk(
   }
 );
 
+export const reopenOnboarding = createAsyncThunk(
+  'onboarding/reopen',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.reopenOnboarding();
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reopen the application');
+    }
+  }
+);
+
 const onboardingSlice = createSlice({
   name: 'onboarding',
   initialState: {
@@ -169,6 +181,19 @@ const onboardingSlice = createSlice({
       })
       .addCase(fetchOnboardingStatus.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+      // Reopen (rejected → editable again); payload has the same shape as
+      // the status endpoint.
+      .addCase(reopenOnboarding.fulfilled, (state, action) => {
+        state.status = action.payload.status;
+        state.steps = action.payload.steps;
+        state.currentStep = action.payload.current_step;
+        state.decidedAt = null;
+        state.decisionComment = null;
+        state.error = null;
+      })
+      .addCase(reopenOnboarding.rejected, (state, action) => {
         state.error = action.payload;
       })
       // Fetch User Types

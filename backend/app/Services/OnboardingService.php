@@ -120,6 +120,45 @@ class OnboardingService
         return $this->decide($onboarding, $admin, 'rejected', $comment);
     }
 
+    /**
+     * Reopen a rejected application so the client can fix it and resubmit.
+     * All answers stay intact; the flow resumes at the review step, whose
+     * Edit buttons jump back into any section. The next submission is
+     * flagged as a resubmission (reopened_at) for the admin team.
+     */
+    public function reopen(UserOnboarding $onboarding): UserOnboarding
+    {
+        if ($onboarding->status !== 'rejected') {
+            throw new \DomainException('Only rejected applications can be reopened for resubmission.');
+        }
+
+        // Resume at the last non-skipped step (the review step in the
+        // standard flow) — everything before it stays completed. reorder()
+        // clears the relation's default ascending order.
+        $reviewStep = $onboarding->steps()
+            ->where('status', '!=', 'skipped')
+            ->reorder('order', 'desc')
+            ->first();
+
+        $reviewStep?->update([
+            'status' => 'in_progress',
+            'started_at' => now(),
+            'completed_at' => null,
+        ]);
+
+        $onboarding->update([
+            'status' => 'in_progress',
+            'completed_at' => null,
+            'decided_at' => null,
+            'decided_by' => null,
+            'decision_comment' => null,
+            'reopened_at' => now(),
+            'current_step_id' => $reviewStep?->id,
+        ]);
+
+        return $onboarding->fresh('steps');
+    }
+
     private function decide(UserOnboarding $onboarding, Admin $admin, string $status, ?string $comment): UserOnboarding
     {
         if ($onboarding->status !== 'completed') {

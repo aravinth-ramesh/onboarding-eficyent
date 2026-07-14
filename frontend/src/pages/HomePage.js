@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchOnboardingStatus, goToPreviousStep } from '../store/slices/onboardingSlice';
+import { fetchOnboardingStatus, goToPreviousStep, reopenOnboarding } from '../store/slices/onboardingSlice';
 import AppLayout from '../components/layout/AppLayout';
 import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
@@ -101,17 +101,26 @@ function HomePage() {
               )}
               {status === 'rejected' && (
                 <p style={{ fontSize: '0.9rem' }}>
-                  If you believe this is an error or your circumstances change, contact us at{' '}
+                  You can update your answers and resubmit the application, or contact us at{' '}
                   <a href="mailto:support@eficyent.com">support@eficyent.com</a>.
                 </p>
               )}
-              <button
-                className="btn-primary-custom"
-                style={{ marginTop: 16 }}
-                onClick={() => setViewingAnswers(true)}
-              >
-                View Submitted Answers
-              </button>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+                {status === 'rejected' && (
+                  <button
+                    className="btn-primary-custom"
+                    onClick={() => dispatch(reopenOnboarding())}
+                  >
+                    Edit &amp; Resubmit Application
+                  </button>
+                )}
+                <button
+                  className={status === 'rejected' ? 'btn-secondary-custom' : 'btn-primary-custom'}
+                  onClick={() => setViewingAnswers(true)}
+                >
+                  View Submitted Answers
+                </button>
+              </div>
             </div>
           </div>
         </div>

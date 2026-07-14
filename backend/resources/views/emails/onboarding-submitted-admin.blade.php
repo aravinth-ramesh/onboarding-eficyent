@@ -18,10 +18,18 @@
                     <!-- Body -->
                     <tr>
                         <td style="padding: 32px;">
-                            <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a3a5c;">New onboarding submitted</h2>
-                            <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                A client has completed their onboarding and it is ready for review.
-                            </p>
+                            @if($onboarding->reopened_at)
+                                <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a3a5c;">Onboarding resubmitted</h2>
+                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
+                                    A previously rejected application has been updated and resubmitted
+                                    by the client — it is ready for another review.
+                                </p>
+                            @else
+                                <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a3a5c;">New onboarding submitted</h2>
+                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
+                                    A client has completed their onboarding and it is ready for review.
+                                </p>
+                            @endif
                             <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border: 1px solid #e1e5eb; border-radius: 6px;">
                                 <tr>
                                     <td style="padding: 16px 20px; font-size: 14px; color: #333333; line-height: 1.9;">
