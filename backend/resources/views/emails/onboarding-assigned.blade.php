@@ -18,7 +18,11 @@
                         <td style="padding: 32px;">
                             <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a3a5c;">An application was assigned to you</h2>
                             <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                {{ $assignedBy->name }} assigned you the review of the following application:
+                                @if($assignedBy)
+                                    {{ $assignedBy->name }} assigned you the review of the following application:
+                                @else
+                                    A new submission was automatically assigned to you for review:
+                                @endif
                             </p>
                             <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border: 1px solid #e1e5eb; border-radius: 6px;">
                                 <tr>

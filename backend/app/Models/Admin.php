@@ -39,4 +39,9 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(AdminQuestion::class);
     }
+
+    public function assignedOnboardings(): HasMany
+    {
+        return $this->hasMany(UserOnboarding::class, 'assigned_to');
+    }
 }

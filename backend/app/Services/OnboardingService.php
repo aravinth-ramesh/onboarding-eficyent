@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\OnboardingAssignedMail;
 use App\Mail\OnboardingDecisionMail;
 use App\Mail\OnboardingSubmittedAdminMail;
 use App\Mail\OnboardingSubmittedClientMail;
@@ -100,6 +101,8 @@ class OnboardingService
                 'event' => $onboarding->reopened_at ? 'resubmitted' : 'submitted',
             ]);
 
+            $this->autoAssign($onboarding->fresh());
+
             $this->notifySubmission($onboarding->fresh());
         }
 
@@ -196,6 +199,41 @@ class OnboardingService
         }
 
         return $onboarding;
+    }
+
+    /**
+     * Give an unassigned fresh submission to the active admin with the
+     * fewest open (awaiting-review) assignments. Stateless least-loaded
+     * balancing; resubmissions keep their existing reviewer for continuity.
+     * Never blocks a submission — failures are reported and swallowed.
+     */
+    private function autoAssign(UserOnboarding $onboarding): void
+    {
+        if (! config('onboarding.auto_assign_submissions') || $onboarding->assigned_to !== null) {
+            return;
+        }
+
+        try {
+            $assignee = Admin::where('is_active', true)
+                ->withCount(['assignedOnboardings as open_count' => fn ($q) => $q->where('status', 'completed')])
+                ->orderBy('open_count')
+                ->orderBy('id')
+                ->first();
+
+            if (! $assignee) {
+                return;
+            }
+
+            $onboarding->update(['assigned_to' => $assignee->id]);
+
+            if ($assignee->email) {
+                Mail::to($assignee->email)->queue(
+                    new OnboardingAssignedMail($onboarding->fresh(['user', 'userType']), null)
+                );
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

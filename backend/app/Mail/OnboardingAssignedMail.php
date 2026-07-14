@@ -20,7 +20,7 @@ class OnboardingAssignedMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public UserOnboarding $onboarding,
-        public Admin $assignedBy,
+        public ?Admin $assignedBy = null, // null = automatic assignment
     ) {}
 
     public function envelope(): Envelope
