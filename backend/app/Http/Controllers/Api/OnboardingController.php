@@ -283,6 +283,30 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Discard the draft and start over: the owner's unsubmitted application
+     * is deleted (cascading answers, steps, team, thread) and a fresh one is
+     * initialized immediately.
+     */
+    public function destroyDraft(): JsonResponse
+    {
+        /**@disregard */
+        $user = auth()->user();
+
+        try {
+            $this->onboardingService->discardDraft($user);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
+
+        $fresh = $this->onboardingService->initializeForUser($user->fresh());
+
+        return response()->json([
+            'message' => 'Your application has been reset.',
+            'data' => $this->formatOnboardingResponse($fresh),
+        ]);
+    }
+
+    /**
      * Reopen a rejected application so the client can edit and resubmit.
      */
     public function reopen(): JsonResponse

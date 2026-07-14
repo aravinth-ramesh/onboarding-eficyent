@@ -111,6 +111,18 @@ export const goToOnboardingStep = createAsyncThunk(
   }
 );
 
+export const discardDraft = createAsyncThunk(
+  'onboarding/discardDraft',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.deleteDraft();
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Could not reset the application');
+    }
+  }
+);
+
 export const reopenOnboarding = createAsyncThunk(
   'onboarding/reopen',
   async (_, { rejectWithValue }) => {
@@ -181,6 +193,22 @@ const onboardingSlice = createSlice({
       })
       .addCase(fetchOnboardingStatus.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+      // Start over: fresh application, local answers wiped.
+      .addCase(discardDraft.fulfilled, (state, action) => {
+        state.status = action.payload.status;
+        state.steps = action.payload.steps;
+        state.currentStep = action.payload.current_step;
+        state.userType = null;
+        state.subcategory = null;
+        state.countryCode = null;
+        state.questionGroups = [];
+        state.answers = {};
+        state.kycDocStatus = {};
+        state.error = null;
+      })
+      .addCase(discardDraft.rejected, (state, action) => {
         state.error = action.payload;
       })
       // Reopen (rejected → editable again); payload has the same shape as

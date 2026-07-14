@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
         Route::post('/reopen', [Api\OnboardingController::class, 'reopen']);
+        Route::delete('/draft', [Api\OnboardingController::class, 'destroyDraft']);
         Route::get('/download-pdf', [Api\OnboardingController::class, 'downloadPdf']);
         Route::get('/timeline', [Api\OnboardingController::class, 'timeline']);
         Route::get('/notification-preferences', [Api\NotificationPreferenceController::class, 'show']);

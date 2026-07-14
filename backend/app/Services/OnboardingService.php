@@ -128,6 +128,28 @@ class OnboardingService
     }
 
     /**
+     * Discard a draft application so the owner can start over. Only drafts
+     * (pending / in_progress) can be discarded — a submitted application is
+     * a compliance record and stays. Deleting cascades to answers, steps,
+     * messages, notes, review logs and collaborators; uploaded S3 objects
+     * are retained per the existing storage policy.
+     */
+    public function discardDraft(User $user): void
+    {
+        $onboarding = $user->onboarding;
+
+        if (! $onboarding) {
+            throw new \DomainException('Only the application owner can start over.');
+        }
+
+        if (! in_array($onboarding->status, ['pending', 'in_progress'], true)) {
+            throw new \DomainException('Only draft applications can be discarded — this one has already been submitted.');
+        }
+
+        $onboarding->delete();
+    }
+
+    /**
      * Reopen a rejected application so the client can fix it and resubmit.
      * All answers stay intact; the flow resumes at the review step, whose
      * Edit buttons jump back into any section. The next submission is

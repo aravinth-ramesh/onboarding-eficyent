@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, clearAuth } from '../../store/slices/authSlice';
-import { goToOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
+import { goToOnboardingStep, fetchOnboardingStatus, discardDraft } from '../../store/slices/onboardingSlice';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
@@ -109,6 +109,16 @@ function AppLayout({ children, pageTitle }) {
   const handleCloseMessages = () => {
     setMessagesOpen(false);
     setUnreadMessages(0);
+  };
+
+  const handleStartOver = () => {
+    const confirmed = window.confirm(
+      'Start over? This permanently deletes your draft application — all answers, ' +
+      'uploaded documents, messages and team invitations — and cannot be undone.'
+    );
+    if (confirmed) {
+      dispatch(discardDraft());
+    }
   };
 
   const handleLogout = () => {
@@ -256,6 +266,11 @@ function AppLayout({ children, pageTitle }) {
                     <span>Status</span>
                     <span className={`sb-pill ${statusClass}`}>{statusLabel}</span>
                   </div>
+                )}
+                {(status === 'pending' || status === 'in_progress') && (
+                  <button type="button" className="sb-start-over" onClick={handleStartOver}>
+                    ↺ Start over
+                  </button>
                 )}
               </div>
 

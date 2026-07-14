@@ -1723,6 +1723,22 @@ a.file-preview-name:hover { text-decoration: underline; }
   margin-top: 2px;
 }
 
+/* ── Start over ── */
+.sb-start-over {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.05);
+  color: #B91C1C;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sb-start-over:hover { background: rgba(220, 38, 38, 0.1); }
+
 /* ── Notification settings ── */
 .settings-body { padding: 14px 16px 16px; }
 

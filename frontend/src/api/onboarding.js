@@ -80,6 +80,9 @@ export const reopenOnboarding = () =>
 export const getTimeline = () =>
   client.get('/onboarding/timeline');
 
+export const deleteDraft = () =>
+  client.delete('/onboarding/draft');
+
 // Fetches the PDF with the auth header and triggers a browser download.
 export const downloadApplicationPdf = async () => {
   const response = await client.get('/onboarding/download-pdf', { responseType: 'blob' });
