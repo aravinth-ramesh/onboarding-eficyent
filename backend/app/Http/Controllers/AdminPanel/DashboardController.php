@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
+use App\Models\OnboardingReviewLog;
 use App\Models\OnboardingStep;
 use App\Models\Question;
 use App\Models\QuestionGroup;
@@ -25,6 +26,8 @@ class DashboardController extends Controller
             'onboardings_pending' => UserOnboarding::where('status', 'pending')->count(),
             'onboardings_in_progress' => UserOnboarding::where('status', 'in_progress')->count(),
             'onboardings_completed' => UserOnboarding::where('status', 'completed')->count(),
+            'onboardings_approved' => UserOnboarding::where('status', 'approved')->count(),
+            'onboardings_rejected' => UserOnboarding::where('status', 'rejected')->count(),
         ];
 
         $recentOnboardings = UserOnboarding::with(['user', 'userType'])
@@ -32,6 +35,56 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'recentOnboardings'));
+        return view('admin.dashboard', [
+            'stats' => $stats,
+            'recentOnboardings' => $recentOnboardings,
+            'decisionStats' => $this->decisionStats(),
+            'recentDecisions' => OnboardingReviewLog::with(['admin', 'onboarding.user'])
+                ->whereIn('event', ['approved', 'rejected'])
+                ->latest('created_at')->latest('id')
+                ->limit(8)
+                ->get(),
+        ]);
+    }
+
+    /**
+     * Review activity over the last 30 days, including the average time from
+     * submission (or resubmission) to the decision.
+     */
+    private function decisionStats(): array
+    {
+        $since = now()->subDays(30);
+
+        $decisions = OnboardingReviewLog::whereIn('event', ['approved', 'rejected'])
+            ->where('created_at', '>=', $since)
+            ->get();
+
+        // Pair each decision with the submission event that preceded it.
+        $submissions = OnboardingReviewLog::whereIn('event', ['submitted', 'resubmitted'])
+            ->whereIn('user_onboarding_id', $decisions->pluck('user_onboarding_id'))
+            ->get()
+            ->groupBy('user_onboarding_id');
+
+        $decisionHours = $decisions->map(function ($decision) use ($submissions) {
+            $submission = $submissions->get($decision->user_onboarding_id, collect())
+                ->where('created_at', '<=', $decision->created_at)
+                ->sortByDesc('created_at')
+                ->first();
+
+            return $submission
+                ? $submission->created_at->diffInSeconds($decision->created_at) / 3600
+                : null;
+        })->filter(fn ($hours) => $hours !== null);
+
+        return [
+            'approved_30d' => $decisions->where('event', 'approved')->count(),
+            'rejected_30d' => $decisions->where('event', 'rejected')->count(),
+            'resubmissions_30d' => OnboardingReviewLog::where('event', 'resubmitted')
+                ->where('created_at', '>=', $since)
+                ->count(),
+            'avg_decision_hours' => $decisionHours->isEmpty()
+                ? null
+                : round($decisionHours->avg(), 1),
+        ];
     }
 }
