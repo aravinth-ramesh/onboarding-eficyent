@@ -7,6 +7,7 @@ import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
 import MessagesPanel from '../messages/MessagesPanel';
 import TeamPanel from '../team/TeamPanel';
+import NotificationSettingsPanel from '../settings/NotificationSettingsPanel';
 import { getUnreadMessageCount } from '../../api/messages';
 import { STEP_TIME_ESTIMATES, DEFAULT_STEP_MINUTES, REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
@@ -79,6 +80,7 @@ function AppLayout({ children, pageTitle }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Unread badge: fetch on mount and poll alongside the notification bell.
@@ -317,11 +319,15 @@ function AppLayout({ children, pageTitle }) {
               <div className="sidebar-user-name">{user?.name || 'User'}</div>
               <div className="sidebar-user-email">{user?.email}</div>
             </div>
+            <button className="btn-logout" onClick={() => setSettingsOpen(true)} title="Email notification settings">
+              &#9881;
+            </button>
             <button className="btn-logout" onClick={handleLogout} title="Sign out">
               &#x2192;
             </button>
           </div>
         </div>
+        {settingsOpen && <NotificationSettingsPanel onClose={() => setSettingsOpen(false)} />}
       </aside>
 
       {/* Main Content */}

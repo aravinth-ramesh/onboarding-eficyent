@@ -191,7 +191,7 @@ class OnboardingService
         $onboarding->load(['user', 'userType']);
 
         try {
-            if ($onboarding->user?->email) {
+            if ($onboarding->user?->email && $onboarding->user->wantsEmail('decisions')) {
                 Mail::to($onboarding->user->email)->queue(new OnboardingDecisionMail($onboarding));
             }
         } catch (\Throwable $e) {
@@ -246,7 +246,7 @@ class OnboardingService
         $onboarding->load(['user', 'userType', 'subcategory']);
 
         try {
-            if ($onboarding->user?->email) {
+            if ($onboarding->user?->email && $onboarding->user->wantsEmail('submission')) {
                 Mail::to($onboarding->user->email)->queue(new OnboardingSubmittedClientMail($onboarding));
             }
 

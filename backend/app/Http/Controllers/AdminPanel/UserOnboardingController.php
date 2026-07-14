@@ -291,7 +291,7 @@ class UserOnboardingController extends Controller
         ]);
 
         try {
-            if ($userOnboarding->user?->email) {
+            if ($userOnboarding->user?->email && $userOnboarding->user->wantsEmail('messages')) {
                 \Illuminate\Support\Facades\Mail::to($userOnboarding->user->email)
                     ->queue(new \App\Mail\NewMessageMail($message));
             }
@@ -300,7 +300,7 @@ class UserOnboardingController extends Controller
         }
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
-            ->with('success', 'Reply sent — the client has been notified by email.');
+            ->with('success', 'Reply sent — the client sees it in their portal.');
     }
 
     public function exportPdf(UserOnboarding $userOnboarding, \App\Services\ApplicationPdfService $pdfService)
@@ -390,7 +390,9 @@ class UserOnboardingController extends Controller
         ]);
 
         try {
-            $this->emailService->sendEmail($admin, $user, $subject, $body, $notification);
+            if ($user->wantsEmail('change_requests')) {
+                $this->emailService->sendEmail($admin, $user, $subject, $body, $notification);
+            }
         } catch (\Throwable $e) {
             report($e);
 
@@ -399,7 +401,7 @@ class UserOnboardingController extends Controller
         }
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
-            ->with('success', 'Change request sent to user and email notification delivered.');
+            ->with('success', 'Change request sent to user.');
     }
 
     public function createQuestion(UserOnboarding $userOnboarding): View
@@ -437,8 +439,8 @@ class UserOnboardingController extends Controller
 
         $notification = $this->notificationService->createNewQuestion($admin, $user, $questionData, $validated['message']);
 
-        // Send email if requested
-        if ($request->boolean('send_email')) {
+        // Send email if requested (and the client hasn't muted the category)
+        if ($request->boolean('send_email') && $user->wantsEmail('change_requests')) {
             $subject = $request->input('email_subject') ?: $this->emailService->getDefaultSubject('new_question', $validated['label']);
             $body = $request->input('email_body') ?: $this->emailService->getDefaultBody('new_question', [
                 'user_name' => $user->name ?? 'there',

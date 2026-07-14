@@ -21,6 +21,30 @@ class User extends Authenticatable
         'email',
         'is_admin',
         'status',
+        'notification_preferences',
+    ];
+
+    /**
+     * Optional email categories a client may mute. Transactional mail
+     * (login codes, team invitations) always sends and is not listed here.
+     */
+    public const NOTIFICATION_CATEGORIES = [
+        'submission' => [
+            'label' => 'Submission confirmations',
+            'description' => 'When your application is submitted for review.',
+        ],
+        'decisions' => [
+            'label' => 'Decision updates',
+            'description' => 'When your application is approved or not approved (recommended).',
+        ],
+        'change_requests' => [
+            'label' => 'Change requests & new questions',
+            'description' => 'When our team asks you to update an answer or answer a new question (recommended).',
+        ],
+        'messages' => [
+            'label' => 'Message replies',
+            'description' => 'When our team replies in your Messages thread.',
+        ],
     ];
 
     protected $hidden = [
@@ -32,7 +56,14 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_admin' => 'boolean',
+            'notification_preferences' => 'array',
         ];
+    }
+
+    /** Whether this user wants emails of the given category (default yes). */
+    public function wantsEmail(string $category): bool
+    {
+        return (bool) ($this->notification_preferences[$category] ?? true);
     }
 
     public function onboarding(): HasOne

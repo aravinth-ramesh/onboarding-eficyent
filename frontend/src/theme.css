@@ -1723,6 +1723,28 @@ a.file-preview-name:hover { text-decoration: underline; }
   margin-top: 2px;
 }
 
+/* ── Notification settings ── */
+.settings-body { padding: 14px 16px 16px; }
+
+.settings-hint {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+}
+
+.settings-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+}
+
+.settings-row input { margin-top: 3px; }
+.settings-label { display: block; font-weight: 600; font-size: 0.9rem; }
+.settings-desc { display: block; font-size: 0.78rem; color: var(--color-text-secondary); }
+
 /* ── Team panel ── */
 .team-body { padding: 14px 16px 16px; }
 
