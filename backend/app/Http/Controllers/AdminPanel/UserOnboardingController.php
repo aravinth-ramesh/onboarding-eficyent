@@ -27,6 +27,56 @@ class UserOnboardingController extends Controller
 
     public function index(Request $request): View
     {
+        $onboardings = $this->filteredQuery($request)->latest()->paginate(20)->withQueryString();
+        $userTypes = UserType::orderBy('order')->get();
+
+        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes'));
+    }
+
+    /**
+     * Stream the (filtered) list as CSV — same filters as the index, so
+     * "what you see is what you export".
+     */
+    public function exportCsv(Request $request)
+    {
+        $filename = 'onboardings-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () use ($request) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, [
+                'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
+                'Status', 'Resubmission', 'Country', 'Started', 'Submitted',
+                'Decided', 'Decided By', 'Decision Comment',
+            ]);
+
+            $this->filteredQuery($request)
+                ->with('decidedBy')
+                ->latest()
+                ->lazy()
+                ->each(function (UserOnboarding $o) use ($out) {
+                    fputcsv($out, [
+                        $o->reference,
+                        $o->user->name ?? '',
+                        $o->user->email ?? '',
+                        $o->userType->name ?? '',
+                        $o->subcategory->name ?? '',
+                        $o->status,
+                        $o->reopened_at ? 'yes' : 'no',
+                        $o->country_code ?? '',
+                        $o->started_at?->toDateTimeString() ?? '',
+                        $o->completed_at?->toDateTimeString() ?? '',
+                        $o->decided_at?->toDateTimeString() ?? '',
+                        $o->decidedBy->name ?? '',
+                        $o->decision_comment ?? '',
+                    ]);
+                });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    private function filteredQuery(Request $request)
+    {
         $query = UserOnboarding::with(['user', 'userType', 'subcategory']);
 
         if ($request->filled('status')) {
@@ -60,10 +110,7 @@ class UserOnboardingController extends Controller
             });
         }
 
-        $onboardings = $query->latest()->paginate(20)->withQueryString();
-        $userTypes = UserType::orderBy('order')->get();
-
-        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes'));
+        return $query;
     }
 
     public function show(UserOnboarding $userOnboarding): View

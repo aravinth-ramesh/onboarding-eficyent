@@ -68,6 +68,29 @@ class OnboardingIndexFilterTest extends TestCase
         $this->index(['resubmitted' => 1])->assertSee('Bob Jones')->assertDontSee('Carol White');
     }
 
+    public function test_csv_export_streams_the_filtered_list(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.user-onboardings.export-csv', ['status' => 'approved']));
+
+        $response->assertOk();
+        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $this->assertStringContainsString('onboardings-', $response->headers->get('content-disposition'));
+
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString('Reference,Name,Email', $csv);
+        $this->assertStringContainsString('alice@acme.com', $csv);
+        $this->assertStringContainsString('approved', $csv);
+        $this->assertStringNotContainsString('bob@bank.com', $csv);
+
+        // Unfiltered export contains everyone.
+        $all = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.user-onboardings.export-csv'))
+            ->streamedContent();
+        $this->assertStringContainsString('bob@bank.com', $all);
+        $this->assertStringContainsString('carol@corp.com', $all);
+    }
+
     public function test_filters_combine(): void
     {
         $corporate = UserType::where('slug', 'corporate')->first();

@@ -44,6 +44,10 @@
                 @if(request()->hasAny(['search', 'status', 'user_type_id', 'resubmitted']))
                     <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
+                <a href="{{ route('admin.user-onboardings.export-csv', request()->query()) }}"
+                   class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
             </div>
         </form>
     </div>
