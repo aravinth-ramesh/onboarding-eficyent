@@ -100,6 +100,35 @@ class ApplicationPdfTest extends TestCase
         $this->assertStringNotContainsString('full_name', $text);
     }
 
+    public function test_admin_can_export_the_application_pdf(): void
+    {
+        $onboarding = $this->service->initializeForUser($this->user);
+        $this->seedAnswers($onboarding);
+        foreach ($onboarding->steps as $step) {
+            $this->service->completeStep($onboarding->fresh(), $step);
+        }
+        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.user-onboardings.export-pdf', $onboarding))
+            ->assertOk();
+
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $text = (new PdfParser())->parseContent($response->getContent())->getText();
+        $this->assertStringContainsString('Acme Holdings Ltd', $text);
+    }
+
+    public function test_admin_export_requires_a_submitted_application(): void
+    {
+        $onboarding = $this->service->initializeForUser($this->user); // pending
+        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.user-onboardings.export-pdf', $onboarding))
+            ->assertRedirect(route('admin.user-onboardings.show', $onboarding))
+            ->assertSessionHas('error');
+    }
+
     public function test_decided_application_pdf_includes_the_decision(): void
     {
         $onboarding = $this->service->initializeForUser($this->user);

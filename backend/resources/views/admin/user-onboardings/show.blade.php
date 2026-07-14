@@ -132,6 +132,11 @@
 
 @section('actions')
     <div class="d-flex gap-2">
+        @if(in_array($userOnboarding->status, ['completed', 'approved', 'rejected']))
+            <a href="{{ route('admin.user-onboardings.export-pdf', $userOnboarding) }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+            </a>
+        @endif
         <a href="{{ route('admin.user-onboardings.new-question', $userOnboarding) }}" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-plus-circle"></i> New Question
         </a>

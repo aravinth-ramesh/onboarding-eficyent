@@ -113,6 +113,17 @@ class UserOnboardingController extends Controller
             ->with('success', $message);
     }
 
+    public function exportPdf(UserOnboarding $userOnboarding, \App\Services\ApplicationPdfService $pdfService)
+    {
+        if (! in_array($userOnboarding->status, ['completed', 'approved', 'rejected'], true)) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'The application PDF is available once the client has submitted.');
+        }
+
+        return $pdfService->render($userOnboarding)
+            ->download("application-{$userOnboarding->reference}.pdf");
+    }
+
     public function approve(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
         $validated = $request->validate(['comment' => 'nullable|string|max:2000']);
