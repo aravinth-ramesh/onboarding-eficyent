@@ -275,6 +275,7 @@ class OnboardingController extends Controller
                 'comment' => null,
                 'date' => null,
                 'current' => true,
+                'estimate' => app(\App\Services\ReviewTimeEstimator::class)->estimateLabel(),
             ]);
         }
 

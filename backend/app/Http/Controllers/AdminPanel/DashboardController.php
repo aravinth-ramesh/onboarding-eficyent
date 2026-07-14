@@ -92,22 +92,7 @@ class DashboardController extends Controller
             ->where('created_at', '>=', $since)
             ->get();
 
-        // Pair each decision with the submission event that preceded it.
-        $submissions = OnboardingReviewLog::whereIn('event', ['submitted', 'resubmitted'])
-            ->whereIn('user_onboarding_id', $decisions->pluck('user_onboarding_id'))
-            ->get()
-            ->groupBy('user_onboarding_id');
-
-        $decisionHours = $decisions->map(function ($decision) use ($submissions) {
-            $submission = $submissions->get($decision->user_onboarding_id, collect())
-                ->where('created_at', '<=', $decision->created_at)
-                ->sortByDesc('created_at')
-                ->first();
-
-            return $submission
-                ? $submission->created_at->diffInSeconds($decision->created_at) / 3600
-                : null;
-        })->filter(fn ($hours) => $hours !== null);
+        $decisionHours = app(\App\Services\ReviewTimeEstimator::class)->pairedDecisionHours($since);
 
         return [
             'approved_30d' => $decisions->where('event', 'approved')->count(),

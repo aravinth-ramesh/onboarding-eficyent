@@ -1717,6 +1717,12 @@ a.file-preview-name:hover { text-decoration: underline; }
   margin-top: 3px;
 }
 
+.timeline-estimate {
+  font-size: 0.8rem;
+  color: #B45309;
+  margin-top: 2px;
+}
+
 /* ── Messages thread ── */
 button.sb-messages {
   border: none;

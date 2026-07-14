@@ -49,6 +49,7 @@ function StatusTimeline() {
                 </div>
               )}
               {event.comment && <div className="timeline-comment">"{event.comment}"</div>}
+              {event.estimate && <div className="timeline-estimate">{event.estimate}</div>}
             </div>
           </div>
         );
