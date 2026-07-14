@@ -24,11 +24,7 @@ class OnboardingDecisionMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $subject = $this->onboarding->status === 'approved'
-            ? "Your Onboarding Has Been Approved — {$this->onboarding->reference}"
-            : "Update on Your Onboarding Application — {$this->onboarding->reference}";
-
-        return new Envelope(subject: $subject);
+        return new Envelope(subject: $this->template()['subject']);
     }
 
     public function content(): Content
@@ -38,8 +34,20 @@ class OnboardingDecisionMail extends Mailable implements ShouldQueue
             with: [
                 'onboarding' => $this->onboarding,
                 'approved' => $this->onboarding->status === 'approved',
+                'bodyText' => $this->template()['body'],
                 'portalUrl' => rtrim(config('app.frontend_url'), '/') . '/home',
             ],
         );
+    }
+
+    /** @return array{subject: string, body: string} */
+    private function template(): array
+    {
+        $key = $this->onboarding->status === 'approved' ? 'onboarding_approved' : 'onboarding_rejected';
+
+        return app(\App\Services\EmailTemplateService::class)->render($key, [
+            'client_name' => $this->onboarding->user->name ?? 'there',
+            'reference' => $this->onboarding->reference,
+        ]);
     }
 }

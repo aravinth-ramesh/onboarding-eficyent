@@ -20,25 +20,12 @@
                         <td style="padding: 32px;">
                             @if($approved)
                                 <h2 style="margin: 0 0 16px; font-size: 18px; color: #1f7a4d;">Your onboarding has been approved</h2>
-                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                    Hello {{ $onboarding->user->name ?? 'there' }},
-                                </p>
-                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                    Good news — your onboarding application
-                                    (reference <strong>{{ $onboarding->reference }}</strong>) has been reviewed
-                                    and approved. Welcome aboard! Our team will be in touch with the next steps.
-                                </p>
                             @else
                                 <h2 style="margin: 0 0 16px; font-size: 18px; color: #a3452c;">Your onboarding application was not approved</h2>
-                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                    Hello {{ $onboarding->user->name ?? 'there' }},
-                                </p>
-                                <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                    We have completed the review of your onboarding application
-                                    (reference <strong>{{ $onboarding->reference }}</strong>) and unfortunately
-                                    it was not approved at this time.
-                                </p>
                             @endif
+                            <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
+                                {!! nl2br(e($bodyText)) !!}
+                            </p>
 
                             @if($onboarding->decision_comment)
                                 <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border-left: 4px solid {{ $approved ? '#1f7a4d' : '#a3452c' }}; border-radius: 4px;">
@@ -51,14 +38,6 @@
                                 </table>
                             @endif
 
-                            @unless($approved)
-                                <p style="margin: 16px 0 0; color: #333333; line-height: 1.6;">
-                                    If you believe this is an error or your circumstances change, please
-                                    contact our team at
-                                    <a href="mailto:support@eficyent.com" style="color: #1a3a5c;">support@eficyent.com</a>,
-                                    quoting your reference number.
-                                </p>
-                            @endunless
                         </td>
                     </tr>
                     <!-- Call to action -->

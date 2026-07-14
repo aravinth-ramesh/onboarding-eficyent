@@ -51,21 +51,26 @@ class AdminEmailService
 
     public function getDefaultSubject(string $type, ?string $context = null): string
     {
-        return match ($type) {
-            'change_request' => 'Action Required: Please Update Your Response' . ($context ? " - {$context}" : ''),
-            'new_question' => 'New Question Assigned to You' . ($context ? " - {$context}" : ''),
-            default => 'Notification from Eficyent',
-        };
+        if (in_array($type, ['change_request', 'new_question'], true)) {
+            return app(EmailTemplateService::class)->render($type, [
+                'question_label' => $context ?? '',
+            ])['subject'];
+        }
+
+        return 'Notification from Eficyent';
     }
 
     public function getDefaultBody(string $type, ?array $context = null): string
     {
         $userName = $context['user_name'] ?? 'there';
 
-        return match ($type) {
-            'change_request' => "Hello {$userName},\n\nWe have reviewed your onboarding submission and require some changes to one of your answers.\n\nQuestion: " . ($context['question_label'] ?? '') . "\n\nPlease log in to your account to review the details and submit your updated response.\n\nThank you,\nEficyent Team",
-            'new_question' => "Hello {$userName},\n\nA new question has been assigned to you that requires your response.\n\nQuestion: " . ($context['question_label'] ?? '') . "\n\nPlease log in to your account to provide your answer.\n\nThank you,\nEficyent Team",
-            default => "Hello {$userName},\n\nYou have a new notification. Please log in to your account to review it.\n\nThank you,\nEficyent Team",
-        };
+        if (in_array($type, ['change_request', 'new_question'], true)) {
+            return app(EmailTemplateService::class)->render($type, [
+                'client_name' => $userName,
+                'question_label' => $context['question_label'] ?? '',
+            ])['body'];
+        }
+
+        return "Hello {$userName},\n\nYou have a new notification. Please log in to your account to review it.\n\nThank you,\nEficyent Team";
     }
 }

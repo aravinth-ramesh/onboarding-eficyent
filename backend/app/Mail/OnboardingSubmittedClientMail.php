@@ -23,9 +23,7 @@ class OnboardingSubmittedClientMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: "Onboarding Submitted — Reference {$this->onboarding->reference}",
-        );
+        return new Envelope(subject: $this->template()['subject']);
     }
 
     public function content(): Content
@@ -34,8 +32,19 @@ class OnboardingSubmittedClientMail extends Mailable implements ShouldQueue
             view: 'emails.onboarding-submitted-client',
             with: [
                 'onboarding' => $this->onboarding,
+                'bodyText' => $this->template()['body'],
                 'portalUrl' => rtrim(config('app.frontend_url'), '/') . '/home',
             ],
         );
+    }
+
+    /** @return array{subject: string, body: string} */
+    private function template(): array
+    {
+        return app(\App\Services\EmailTemplateService::class)->render('onboarding_submitted_client', [
+            'client_name' => $this->onboarding->user->name ?? 'there',
+            'reference' => $this->onboarding->reference,
+            'organization_type' => $this->onboarding->userType->name ?? '',
+        ]);
     }
 }

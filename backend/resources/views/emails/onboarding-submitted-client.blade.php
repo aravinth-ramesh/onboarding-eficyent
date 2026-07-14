@@ -20,12 +20,7 @@
                         <td style="padding: 32px;">
                             <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a3a5c;">Your onboarding has been submitted</h2>
                             <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                Hello {{ $onboarding->user->name ?? 'there' }},
-                            </p>
-                            <p style="margin: 0 0 16px; color: #333333; line-height: 1.6;">
-                                Thank you — we have received your onboarding application and our team
-                                will now review it. We will contact you by email if anything further
-                                is needed.
+                                {!! nl2br(e($bodyText)) !!}
                             </p>
                             <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border: 1px solid #e1e5eb; border-radius: 6px; margin: 0 0 8px;">
                                 <tr>
@@ -39,9 +34,6 @@
                                     </td>
                                 </tr>
                             </table>
-                            <p style="margin: 16px 0 0; color: #333333; line-height: 1.6;">
-                                Please quote this reference in any correspondence with us.
-                            </p>
                         </td>
                     </tr>
                     <!-- Call to action -->

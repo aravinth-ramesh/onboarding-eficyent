@@ -447,6 +447,10 @@
                 <i class="bi bi-globe2"></i> Country Registrations
             </a>
 
+            <a href="{{ route('admin.email-templates.index') }}" class="sidebar-link {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
+                <i class="bi bi-envelope-paper"></i> Email Templates
+            </a>
+
             <div class="sidebar-heading">Monitoring</div>
 
             <a href="{{ route('admin.user-onboardings.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-onboardings.*') ? 'active' : '' }}">

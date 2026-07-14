@@ -46,6 +46,12 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Country Registrations
     Route::resource('country-registrations', CountryRegistrationController::class)->except(['show']);
 
+    // Email Templates
+    Route::get('email-templates', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'index'])->name('email-templates.index');
+    Route::get('email-templates/{key}/edit', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'edit'])->name('email-templates.edit');
+    Route::put('email-templates/{key}', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'update'])->name('email-templates.update');
+    Route::post('email-templates/{key}/reset', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'reset'])->name('email-templates.reset');
+
     // User Onboardings
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');
     // Must precede the {userOnboarding} wildcard.
