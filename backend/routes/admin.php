@@ -50,6 +50,7 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');
     // Must precede the {userOnboarding} wildcard.
     Route::get('user-onboardings/export-csv', [UserOnboardingController::class, 'exportCsv'])->name('user-onboardings.export-csv');
+    Route::post('user-onboardings/bulk-decision', [UserOnboardingController::class, 'bulkDecision'])->name('user-onboardings.bulk-decision');
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
     Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');
     Route::get('user-onboardings/{userOnboarding}/export-pdf', [UserOnboardingController::class, 'exportPdf'])->name('user-onboardings.export-pdf');

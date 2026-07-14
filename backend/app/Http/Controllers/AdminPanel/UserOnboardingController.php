@@ -75,6 +75,44 @@ class UserOnboardingController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
+    /**
+     * Decide several applications at once. Each eligible application goes
+     * through the same service path as a single decision — per-client email,
+     * review-log entry, transition guard — so bulk is just a loop, not a
+     * shortcut around the lifecycle. Ineligible rows are skipped and counted.
+     */
+    public function bulkDecision(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'decision' => 'required|in:approve,reject',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:user_onboardings,id',
+            'comment' => 'required_if:decision,reject|nullable|string|max:2000',
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        $decided = 0;
+        $skipped = 0;
+
+        foreach (UserOnboarding::whereIn('id', $validated['ids'])->get() as $onboarding) {
+            try {
+                $validated['decision'] === 'approve'
+                    ? $this->onboardingService->approve($onboarding, $admin, $validated['comment'] ?? null)
+                    : $this->onboardingService->reject($onboarding, $admin, $validated['comment']);
+                $decided++;
+            } catch (\DomainException) {
+                $skipped++;
+            }
+        }
+
+        $verb = $validated['decision'] === 'approve' ? 'approved' : 'rejected';
+        $message = "{$decided} application(s) {$verb}."
+            . ($skipped > 0 ? " {$skipped} skipped (not awaiting review)." : '');
+
+        return redirect()->route('admin.user-onboardings.index', $request->query())
+            ->with($decided > 0 ? 'success' : 'error', $message);
+    }
+
     private function filteredQuery(Request $request)
     {
         $query = UserOnboarding::with(['user', 'userType', 'subcategory']);

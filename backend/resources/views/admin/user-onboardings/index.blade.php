@@ -53,12 +53,33 @@
     </div>
 </div>
 
+{{-- Bulk decision bar — appears when awaiting-review rows are ticked --}}
+<form method="POST" action="{{ route('admin.user-onboardings.bulk-decision', request()->query()) }}" id="bulkForm">
+    @csrf
+    <input type="hidden" name="decision" id="bulkDecision">
+    <input type="hidden" name="comment" id="bulkComment">
+    <div class="card mb-3" id="bulkBar" style="display: none;">
+        <div class="card-body py-2 d-flex align-items-center gap-3">
+            <span class="fw-semibold" style="font-size: 0.9rem;"><span id="bulkCount">0</span> selected</span>
+            <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">
+                <i class="bi bi-check-circle"></i> Approve Selected
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
+                <i class="bi bi-x-circle"></i> Reject Selected
+            </button>
+            <span class="text-muted" style="font-size: 0.8rem;">Each client is notified by email; only applications awaiting review can be decided.</span>
+        </div>
+    </div>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 32px;">
+                            <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all awaiting review">
+                        </th>
                         <th>ID</th>
                         <th>User</th>
                         <th>User Type</th>
@@ -72,6 +93,11 @@
                 <tbody>
                     @forelse($onboardings as $onboarding)
                         <tr>
+                            <td>
+                                @if($onboarding->status === 'completed')
+                                    <input type="checkbox" class="form-check-input bulk-check" name="ids[]" value="{{ $onboarding->id }}">
+                                @endif
+                            </td>
                             <td>{{ $onboarding->id }}</td>
                             <td>
                                 <div class="fw-semibold">{{ $onboarding->user->name ?? 'N/A' }}</div>
@@ -94,7 +120,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">No onboardings found.</td>
+                            <td colspan="9" class="text-center text-muted py-4">No onboardings found.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -107,4 +133,72 @@
         </div>
     @endif
 </div>
+</form>
+
+{{-- Bulk Reject Modal --}}
+<div class="modal fade" id="bulkRejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Selected Applications</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                    The reason below is emailed to <strong>every selected client</strong> and shown in their portal.
+                </p>
+                <label for="bulkRejectComment" class="form-label">Reason <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="bulkRejectComment" rows="4" required
+                          placeholder="Explain why these applications cannot be approved..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="bulkRejectConfirm">Reject Applications</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    (function () {
+        var checks = document.querySelectorAll('.bulk-check');
+        var bar = document.getElementById('bulkBar');
+        var count = document.getElementById('bulkCount');
+        var selectAll = document.getElementById('bulkSelectAll');
+        var form = document.getElementById('bulkForm');
+
+        function refresh() {
+            var selected = document.querySelectorAll('.bulk-check:checked').length;
+            count.textContent = selected;
+            bar.style.display = selected > 0 ? 'block' : 'none';
+        }
+
+        checks.forEach(function (c) { c.addEventListener('change', refresh); });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checks.forEach(function (c) { c.checked = selectAll.checked; });
+                refresh();
+            });
+        }
+
+        document.getElementById('bulkApproveBtn').addEventListener('click', function () {
+            var selected = document.querySelectorAll('.bulk-check:checked').length;
+            if (!confirm('Approve ' + selected + ' application(s)? Each client will be notified by email.')) return;
+            document.getElementById('bulkDecision').value = 'approve';
+            document.getElementById('bulkComment').value = '';
+            form.submit();
+        });
+
+        document.getElementById('bulkRejectConfirm').addEventListener('click', function () {
+            var reason = document.getElementById('bulkRejectComment').value.trim();
+            if (!reason) { document.getElementById('bulkRejectComment').focus(); return; }
+            document.getElementById('bulkDecision').value = 'reject';
+            document.getElementById('bulkComment').value = reason;
+            form.submit();
+        });
+    })();
+</script>
+@endpush
 @endsection
