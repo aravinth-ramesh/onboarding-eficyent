@@ -460,6 +460,10 @@
             <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
                 <i class="bi bi-journal-text"></i> Audit Logs
             </a>
+
+            <a href="{{ route('admin.admin-activity.index') }}" class="sidebar-link {{ request()->routeIs('admin.admin-activity.*') ? 'active' : '' }}">
+                <i class="bi bi-person-lines-fill"></i> Admin Activity
+            </a>
         </nav>
 
         <div class="sidebar-footer">

@@ -21,7 +21,7 @@ Route::middleware('web')->prefix('admin')->name('admin.')->group(function () {
 });
 
 // Admin Protected Routes
-Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivity::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -66,6 +66,9 @@ Route::middleware(['web', AdminAuth::class])->prefix('admin')->name('admin.')->g
 
     // Audit Logs
     Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');
+
+    // Admin Activity (append-only audit of admin actions)
+    Route::get('admin-activity', [\App\Http\Controllers\AdminPanel\AdminActivityLogController::class, 'index'])->name('admin-activity.index');
 
     // Document Reviews (AI validation queue)
     Route::get('document-reviews', [DocumentReviewController::class, 'index'])->name('document-reviews.index');
