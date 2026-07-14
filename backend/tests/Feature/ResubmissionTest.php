@@ -89,6 +89,33 @@ class ResubmissionTest extends TestCase
         $this->postJson('/api/onboarding/reopen')->assertStatus(403);
     }
 
+    public function test_review_history_survives_the_full_cycle(): void
+    {
+        $onboarding = $this->rejectedOnboarding();
+        $this->service->reopen($onboarding);
+
+        $reviewStep = $onboarding->fresh()->steps()->where('component_key', 'review')->first();
+        $this->service->completeStep($onboarding->fresh(), $reviewStep);
+        $this->service->approve($onboarding->fresh(), $this->admin, 'All issues resolved.');
+
+        $events = $onboarding->fresh()->reviewLogs->map(fn ($log) => $log->event)->all();
+        $this->assertSame(['submitted', 'rejected', 'reopened', 'resubmitted', 'approved'], $events);
+
+        // The original rejection reason is still on record even though the
+        // decision columns were cleared by the reopen.
+        $rejection = $onboarding->reviewLogs()->where('event', 'rejected')->first();
+        $this->assertSame('UBO documentation incomplete.', $rejection->comment);
+        $this->assertSame($this->admin->id, $rejection->admin_id);
+
+        // And the admin page renders the timeline.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.user-onboardings.show', $onboarding))
+            ->assertOk()
+            ->assertSee('Review History')
+            ->assertSee('UBO documentation incomplete.')
+            ->assertSee('All issues resolved.');
+    }
+
     public function test_resubmission_notifies_admins_with_marker(): void
     {
         $onboarding = $this->rejectedOnboarding();

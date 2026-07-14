@@ -46,6 +46,7 @@ class UserOnboardingController extends Controller
             'steps',
             'answers.question.group',
             'answers.files',
+            'reviewLogs.admin',
         ]);
 
         $userOnboarding->answers->loadCount('auditLogs');

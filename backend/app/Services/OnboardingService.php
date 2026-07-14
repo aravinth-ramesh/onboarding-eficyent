@@ -96,6 +96,10 @@ class OnboardingService
                 'current_step_id' => null,
             ]);
 
+            $onboarding->reviewLogs()->create([
+                'event' => $onboarding->reopened_at ? 'resubmitted' : 'submitted',
+            ]);
+
             $this->notifySubmission($onboarding->fresh());
         }
 
@@ -156,6 +160,8 @@ class OnboardingService
             'current_step_id' => $reviewStep?->id,
         ]);
 
+        $onboarding->reviewLogs()->create(['event' => 'reopened']);
+
         return $onboarding->fresh('steps');
     }
 
@@ -170,6 +176,12 @@ class OnboardingService
             'decided_at' => now(),
             'decided_by' => $admin->id,
             'decision_comment' => $comment ?: null,
+        ]);
+
+        $onboarding->reviewLogs()->create([
+            'event' => $status,
+            'admin_id' => $admin->id,
+            'comment' => $comment ?: null,
         ]);
 
         $onboarding = $onboarding->fresh();

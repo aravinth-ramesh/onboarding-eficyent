@@ -212,6 +212,40 @@
                 @endif
             </div>
         </div>
+
+        @if($userOnboarding->reviewLogs->isNotEmpty())
+            {{-- Full review timeline — survives reopening, so past rejection
+                 reasons stay visible across resubmission rounds. --}}
+            <div class="card mt-3">
+                <div class="card-header">Review History</div>
+                <div class="card-body py-2">
+                    @foreach($userOnboarding->reviewLogs as $log)
+                        @php
+                            $meta = [
+                                'submitted' => ['icon' => 'bi-send', 'class' => 'text-primary', 'label' => 'Submitted'],
+                                'resubmitted' => ['icon' => 'bi-arrow-repeat', 'class' => 'text-primary', 'label' => 'Resubmitted'],
+                                'approved' => ['icon' => 'bi-check-circle-fill', 'class' => 'text-success', 'label' => 'Approved'],
+                                'rejected' => ['icon' => 'bi-x-circle-fill', 'class' => 'text-danger', 'label' => 'Rejected'],
+                                'reopened' => ['icon' => 'bi-unlock', 'class' => 'text-secondary', 'label' => 'Reopened by client'],
+                            ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst($log->event)];
+                        @endphp
+                        <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
+                            <i class="bi {{ $meta['icon'] }} {{ $meta['class'] }}"></i>
+                            <div class="flex-grow-1">
+                                <strong>{{ $meta['label'] }}</strong>
+                                @if($log->admin)
+                                    by {{ $log->admin->name }}
+                                @endif
+                                <span class="text-muted">· {{ $log->created_at->format('M d, Y H:i') }}</span>
+                                @if($log->comment)
+                                    <div class="fst-italic text-muted mt-1">"{{ $log->comment }}"</div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- Steps --}}

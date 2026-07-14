@@ -329,6 +329,21 @@
             color: #383d41;
         }
 
+        .badge-approved {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .badge-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-in_progress {
+            background: #cce5ff;
+            color: #004085;
+        }
+
         /* Stat Cards */
         .stat-card {
             border-radius: var(--radius-md);

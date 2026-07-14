@@ -41,6 +41,11 @@ class UserOnboarding extends Model
         return $this->belongsTo(Admin::class, 'decided_by');
     }
 
+    public function reviewLogs(): HasMany
+    {
+        return $this->hasMany(OnboardingReviewLog::class)->orderBy('created_at')->orderBy('id');
+    }
+
     /**
      * Human-facing reference, e.g. ONB-2026-0042. Must stay in sync with
      * formatReference() in frontend/src/components/layout/AppLayout.js —
