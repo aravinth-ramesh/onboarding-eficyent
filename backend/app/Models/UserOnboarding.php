@@ -24,6 +24,8 @@ class UserOnboarding extends Model
         'decision_comment',
         'assigned_to',
         'reopened_at',
+        'archived_at',
+        'archived_by',
     ];
 
     protected function casts(): array
@@ -34,7 +36,13 @@ class UserOnboarding extends Model
             'completed_at' => 'datetime',
             'decided_at' => 'datetime',
             'reopened_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
+    }
+
+    public function archivedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'archived_by');
     }
 
     public function decidedBy(): BelongsTo

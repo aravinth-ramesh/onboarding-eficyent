@@ -50,6 +50,11 @@
                            id="filterResubmitted" @checked(request()->boolean('resubmitted')) onchange="this.form.submit()">
                     <label class="form-check-label small" for="filterResubmitted">Resubmissions only</label>
                 </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="archived" value="1"
+                           id="filterArchived" @checked(request()->boolean('archived')) onchange="this.form.submit()">
+                    <label class="form-check-label small" for="filterArchived">Archived</label>
+                </div>
             </div>
             <div class="col-auto d-flex gap-2">
                 <button class="btn btn-sm btn-primary">Search</button>

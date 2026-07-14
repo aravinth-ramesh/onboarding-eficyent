@@ -132,6 +132,22 @@
 
 @section('actions')
     <div class="d-flex gap-2">
+        @if($userOnboarding->archived_at)
+            <form method="POST" action="{{ route('admin.user-onboardings.unarchive', $userOnboarding) }}">
+                @csrf
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-up-square"></i> Unarchive
+                </button>
+            </form>
+        @elseif(in_array($userOnboarding->status, ['approved', 'rejected']))
+            <form method="POST" action="{{ route('admin.user-onboardings.archive', $userOnboarding) }}"
+                  onsubmit="return confirm('Archive this application? It will leave the active list but stays fully accessible.')">
+                @csrf
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-archive"></i> Archive
+                </button>
+            </form>
+        @endif
         @if(in_array($userOnboarding->status, ['completed', 'approved', 'rejected']))
             <a href="{{ route('admin.user-onboardings.export-pdf', $userOnboarding) }}" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-file-earmark-pdf"></i> Export PDF
@@ -174,6 +190,11 @@
                         @if($userOnboarding->reopened_at)
                             <span class="badge bg-info-subtle text-info-emphasis border" title="Reopened after rejection on {{ $userOnboarding->reopened_at->format('M d, Y H:i') }}">
                                 Resubmission
+                            </span>
+                        @endif
+                        @if($userOnboarding->archived_at)
+                            <span class="badge bg-secondary-subtle text-secondary border" title="Archived by {{ $userOnboarding->archivedBy->name ?? 'admin' }} on {{ $userOnboarding->archived_at->format('M d, Y H:i') }}">
+                                Archived
                             </span>
                         @endif
                     </dd>

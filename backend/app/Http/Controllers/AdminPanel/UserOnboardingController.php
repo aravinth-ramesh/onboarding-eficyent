@@ -131,6 +131,11 @@ class UserOnboardingController extends Controller
             $query->whereNotNull('reopened_at');
         }
 
+        // Archived applications are hidden unless explicitly requested.
+        $request->boolean('archived')
+            ? $query->whereNotNull('archived_at')
+            : $query->whereNull('archived_at');
+
         if ($request->filled('assigned')) {
             $assigned = $request->input('assigned');
             match (true) {
@@ -248,6 +253,32 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $message);
+    }
+
+    public function archive(UserOnboarding $userOnboarding): RedirectResponse
+    {
+        // Only finished lifecycles are archivable — anything still moving
+        // (draft, awaiting review) stays in the active lists.
+        if (! in_array($userOnboarding->status, ['approved', 'rejected'], true)) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'Only decided applications (approved or rejected) can be archived.');
+        }
+
+        $userOnboarding->update([
+            'archived_at' => now(),
+            'archived_by' => Auth::guard('admin')->id(),
+        ]);
+
+        return redirect()->route('admin.user-onboardings.index')
+            ->with('success', 'Application archived — find it under the Archived filter.');
+    }
+
+    public function unarchive(UserOnboarding $userOnboarding): RedirectResponse
+    {
+        $userOnboarding->update(['archived_at' => null, 'archived_by' => null]);
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Application restored to the active list.');
     }
 
     public function assign(Request $request, UserOnboarding $userOnboarding): RedirectResponse

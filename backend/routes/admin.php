@@ -60,6 +60,8 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
     Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');
     Route::get('user-onboardings/{userOnboarding}/export-pdf', [UserOnboardingController::class, 'exportPdf'])->name('user-onboardings.export-pdf');
+    Route::post('user-onboardings/{userOnboarding}/archive', [UserOnboardingController::class, 'archive'])->name('user-onboardings.archive');
+    Route::post('user-onboardings/{userOnboarding}/unarchive', [UserOnboardingController::class, 'unarchive'])->name('user-onboardings.unarchive');
     Route::post('user-onboardings/{userOnboarding}/assign', [UserOnboardingController::class, 'assign'])->name('user-onboardings.assign');
     Route::post('user-onboardings/{userOnboarding}/messages', [UserOnboardingController::class, 'replyMessage'])->name('user-onboardings.messages.reply');
     Route::post('user-onboardings/{userOnboarding}/notes', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'store'])->name('user-onboardings.notes.store');
