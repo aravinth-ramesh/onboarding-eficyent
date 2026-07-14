@@ -44,7 +44,40 @@ class DashboardController extends Controller
                 ->latest('created_at')->latest('id')
                 ->limit(8)
                 ->get(),
+            'workload' => $this->teamWorkload(),
+            'unassignedOpen' => UserOnboarding::where('status', 'completed')->whereNull('assigned_to')->count(),
         ]);
+    }
+
+    /**
+     * Per-admin view of the review queue: open assignments right now, and
+     * decisions made in the last 30 days (from the immutable review log).
+     */
+    private function teamWorkload()
+    {
+        $decisions = OnboardingReviewLog::whereIn('event', ['approved', 'rejected'])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->whereNotNull('admin_id')
+            ->selectRaw('admin_id, event, count(*) as total')
+            ->groupBy('admin_id', 'event')
+            ->get()
+            ->groupBy('admin_id');
+
+        return \App\Models\Admin::where('is_active', true)
+            ->withCount(['assignedOnboardings as open_count' => fn ($q) => $q->where('status', 'completed')])
+            ->orderByDesc('open_count')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($admin) use ($decisions) {
+                $own = $decisions->get($admin->id, collect());
+
+                return (object) [
+                    'admin' => $admin,
+                    'open' => $admin->open_count,
+                    'approved_30d' => (int) $own->firstWhere('event', 'approved')?->total,
+                    'rejected_30d' => (int) $own->firstWhere('event', 'rejected')?->total,
+                ];
+            });
     }
 
     /**

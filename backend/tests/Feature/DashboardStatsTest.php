@@ -70,6 +70,32 @@ class DashboardStatsTest extends TestCase
         $this->assertNotNull($response->viewData('decisionStats')['avg_decision_hours']);
     }
 
+    public function test_dashboard_shows_per_admin_workload(): void
+    {
+        $bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true]);
+        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false]);
+
+        // Reviewer decides one; Bob holds one open; one open is unassigned.
+        config(['onboarding.auto_assign_submissions' => false]);
+        $decided = $this->submitFor('d@test.com');
+        $this->service->approve($decided, $this->admin, 'ok');
+
+        $this->submitFor('open@test.com')->update(['assigned_to' => $bob->id]);
+        $this->submitFor('nobody@test.com');
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Team Workload')
+            ->assertSee('1 awaiting review unassigned')
+            ->assertDontSee('Inactive');
+
+        $workload = $response->viewData('workload')->keyBy(fn ($r) => $r->admin->id);
+        $this->assertSame(1, $workload[$bob->id]->open);
+        $this->assertSame(1, $workload[$this->admin->id]->approved_30d);
+        $this->assertSame(0, $workload[$this->admin->id]->open);
+    }
+
     public function test_dashboard_renders_cleanly_with_no_decisions(): void
     {
         $this->actingAs($this->admin, 'admin')

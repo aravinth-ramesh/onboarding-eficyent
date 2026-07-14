@@ -158,6 +158,58 @@
     </div>
 </div>
 
+{{-- Team workload --}}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Team Workload</span>
+        @if($unassignedOpen > 0)
+            <a href="{{ route('admin.user-onboardings.index', ['assigned' => 'unassigned', 'status' => 'completed']) }}"
+               class="badge bg-warning-subtle text-warning-emphasis border text-decoration-none">
+                {{ $unassignedOpen }} awaiting review unassigned
+            </a>
+        @endif
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Admin</th>
+                        <th class="text-center">Open Reviews</th>
+                        <th class="text-center">Approved (30 days)</th>
+                        <th class="text-center">Rejected (30 days)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($workload as $row)
+                        <tr>
+                            <td class="fw-semibold">{{ $row->admin->name }}</td>
+                            <td class="text-center">
+                                <span class="badge {{ $row->open > 0 ? 'bg-info-subtle text-info-emphasis' : 'bg-light text-muted' }} border">
+                                    {{ $row->open }}
+                                </span>
+                            </td>
+                            <td class="text-center text-success fw-semibold">{{ $row->approved_30d }}</td>
+                            <td class="text-center text-danger fw-semibold">{{ $row->rejected_30d }}</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   href="{{ route('admin.user-onboardings.index', ['assigned' => $row->admin->id]) }}">
+                                    View queue
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No active admins.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
     <div class="col-lg-5">
         <div class="card h-100">
