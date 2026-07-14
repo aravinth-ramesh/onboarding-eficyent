@@ -46,6 +46,11 @@ class UserOnboarding extends Model
         return $this->hasMany(OnboardingReviewLog::class)->orderBy('created_at')->orderBy('id');
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(OnboardingNote::class)->latest()->latest('id');
+    }
+
     /**
      * Human-facing reference, e.g. ONB-2026-0042. Must stay in sync with
      * formatReference() in frontend/src/components/layout/AppLayout.js —

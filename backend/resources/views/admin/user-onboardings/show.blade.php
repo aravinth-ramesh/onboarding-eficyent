@@ -218,6 +218,48 @@
             </div>
         </div>
 
+        {{-- Internal notes — admin-only; never shown to the client. --}}
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Internal Notes</span>
+                <span class="badge bg-secondary-subtle text-secondary border" title="Notes are only visible in the admin panel">
+                    <i class="bi bi-eye-slash"></i> Not visible to client
+                </span>
+            </div>
+            <div class="card-body py-2">
+                @forelse($userOnboarding->notes as $note)
+                    <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
+                        <div class="flex-grow-1">
+                            <strong>{{ $note->admin->name ?? 'Admin' }}</strong>
+                            <span class="text-muted">· {{ $note->created_at->format('M d, Y H:i') }}</span>
+                            <div style="white-space: pre-wrap;">{{ $note->note }}</div>
+                        </div>
+                        @if($note->admin_id === auth('admin')->id())
+                            <form method="POST" action="{{ route('admin.user-onboardings.notes.destroy', [$userOnboarding, $note]) }}"
+                                  onsubmit="return confirm('Delete this note?')">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-sm btn-link text-danger p-0" title="Delete note">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @empty
+                    <div class="text-muted py-2" style="font-size: 0.85rem;">No notes yet.</div>
+                @endforelse
+
+                <form method="POST" action="{{ route('admin.user-onboardings.notes.store', $userOnboarding) }}" class="mt-2">
+                    @csrf
+                    <textarea name="note" class="form-control form-control-sm mb-2" rows="2" required
+                              placeholder="Add an internal note for the team..."></textarea>
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-journal-plus"></i> Add Note
+                    </button>
+                </form>
+            </div>
+        </div>
+
         @if($userOnboarding->reviewLogs->isNotEmpty())
             {{-- Full review timeline — survives reopening, so past rejection
                  reasons stay visible across resubmission rounds. --}}

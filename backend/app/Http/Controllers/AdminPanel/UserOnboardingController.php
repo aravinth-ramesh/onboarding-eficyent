@@ -47,6 +47,7 @@ class UserOnboardingController extends Controller
             'answers.question.group',
             'answers.files',
             'reviewLogs.admin',
+            'notes.admin',
         ]);
 
         $userOnboarding->answers->loadCount('auditLogs');
