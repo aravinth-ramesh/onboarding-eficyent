@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
         Route::post('/reopen', [Api\OnboardingController::class, 'reopen']);
         Route::get('/download-pdf', [Api\OnboardingController::class, 'downloadPdf']);
+        Route::get('/timeline', [Api\OnboardingController::class, 'timeline']);
         Route::get('/messages', [Api\MessageController::class, 'index']);
         Route::post('/messages', [Api\MessageController::class, 'store']);
         Route::get('/messages/unread-count', [Api\MessageController::class, 'unreadCount']);

@@ -8,6 +8,7 @@ import SubmittedAnswersView from '../components/onboarding/SubmittedAnswersView'
 import ProfileSetup from '../components/onboarding/ProfileSetup';
 import appConfig from '../appConfig';
 import { downloadApplicationPdf } from '../api/onboarding';
+import StatusTimeline from '../components/onboarding/StatusTimeline';
 
 function HomePage() {
   const dispatch = useDispatch();
@@ -141,6 +142,7 @@ function HomePage() {
                   {downloading ? 'Preparing…' : '⬇ Download PDF'}
                 </button>
               </div>
+              <StatusTimeline />
             </div>
           </div>
         </div>

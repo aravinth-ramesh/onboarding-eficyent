@@ -1635,6 +1635,88 @@ a.file-preview-name:hover { text-decoration: underline; }
   margin-bottom: 4px;
 }
 
+/* ── Client status timeline ── */
+.status-timeline {
+  max-width: 460px;
+  margin: 20px auto 0;
+  text-align: left;
+  padding: 18px 20px;
+  background: rgba(15, 23, 42, 0.025);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
+}
+
+.status-timeline-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.timeline-row { display: flex; gap: 12px; }
+
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 26px;
+  flex-shrink: 0;
+}
+
+.timeline-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #94A3B8;
+}
+
+.timeline-dot.info { background: #6366F1; }
+.timeline-dot.progress { background: #F59E0B; }
+.timeline-dot.ok { background: #10B981; }
+.timeline-dot.bad { background: #DC2626; }
+.timeline-dot.muted { background: #94A3B8; }
+
+.timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: 14px;
+  background: rgba(15, 23, 42, 0.12);
+  margin: 2px 0;
+}
+
+.timeline-content { padding-bottom: 14px; }
+.timeline-row:last-child .timeline-content { padding-bottom: 2px; }
+
+.timeline-label { font-size: 0.92rem; font-weight: 600; }
+
+.timeline-now {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #B45309;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.timeline-date { font-size: 0.78rem; color: var(--color-text-secondary); }
+
+.timeline-comment {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  margin-top: 3px;
+}
+
 /* ── Messages thread ── */
 button.sb-messages {
   border: none;

@@ -237,6 +237,51 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Client-safe review timeline: lifecycle events from the immutable
+     * review log, without admin identities. While the application awaits a
+     * decision, a virtual "under review" node marks the current stage.
+     */
+    public function timeline(): JsonResponse
+    {
+        /**@disregard */
+        $onboarding = auth()->user()->onboarding;
+
+        if (! $onboarding) {
+            return response()->json(['data' => []]);
+        }
+
+        $labels = [
+            'submitted' => 'Application submitted',
+            'resubmitted' => 'Application resubmitted',
+            'approved' => 'Application approved',
+            'rejected' => 'Application not approved',
+            'reopened' => 'Reopened for changes',
+        ];
+
+        $events = $onboarding->reviewLogs()->get()->map(fn ($log) => [
+            'event' => $log->event,
+            'label' => $labels[$log->event] ?? ucfirst($log->event),
+            // Decision comments are already client-visible elsewhere;
+            // admin identity is not exposed.
+            'comment' => in_array($log->event, ['approved', 'rejected'], true) ? $log->comment : null,
+            'date' => $log->created_at,
+            'current' => false,
+        ])->values();
+
+        if ($onboarding->status === 'completed') {
+            $events->push([
+                'event' => 'under_review',
+                'label' => 'Under review by our team',
+                'comment' => null,
+                'date' => null,
+                'current' => true,
+            ]);
+        }
+
+        return response()->json(['data' => $events]);
+    }
+
+    /**
      * Reopen a rejected application so the client can edit and resubmit.
      */
     public function reopen(): JsonResponse

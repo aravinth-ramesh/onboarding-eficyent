@@ -77,6 +77,9 @@ export const gotoStep = (stepId) =>
 export const reopenOnboarding = () =>
   client.post('/onboarding/reopen');
 
+export const getTimeline = () =>
+  client.get('/onboarding/timeline');
+
 // Fetches the PDF with the auth header and triggers a browser download.
 export const downloadApplicationPdf = async () => {
   const response = await client.get('/onboarding/download-pdf', { responseType: 'blob' });
