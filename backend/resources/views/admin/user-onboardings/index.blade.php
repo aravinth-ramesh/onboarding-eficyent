@@ -32,6 +32,18 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-md-3 col-lg-2">
+                <select name="assigned" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Any Assignee</option>
+                    <option value="me" @selected(request('assigned') === 'me')>Assigned to me</option>
+                    <option value="unassigned" @selected(request('assigned') === 'unassigned')>Unassigned</option>
+                    @foreach($admins as $adminOption)
+                        <option value="{{ $adminOption->id }}" @selected(request('assigned') == $adminOption->id)>
+                            {{ $adminOption->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-auto">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="resubmitted" value="1"
@@ -85,6 +97,7 @@
                         <th>User Type</th>
                         <th>Subcategory</th>
                         <th>Status</th>
+                        <th>Assigned</th>
                         <th>Started</th>
                         <th>Completed</th>
                         <th style="width: 80px;">Actions</th>
@@ -110,6 +123,13 @@
                                     {{ ucfirst(str_replace('_', ' ', $onboarding->status)) }}
                                 </span>
                             </td>
+                            <td>
+                                @if($onboarding->assignee)
+                                    {{ $onboarding->assignee->name }}
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>{{ $onboarding->started_at?->format('M d, Y H:i') ?? '-' }}</td>
                             <td>{{ $onboarding->completed_at?->format('M d, Y H:i') ?? '-' }}</td>
                             <td>
@@ -120,7 +140,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">No onboardings found.</td>
+                            <td colspan="10" class="text-center text-muted py-4">No onboardings found.</td>
                         </tr>
                     @endforelse
                 </tbody>

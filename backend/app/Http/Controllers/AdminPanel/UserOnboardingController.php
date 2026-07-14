@@ -27,10 +27,11 @@ class UserOnboardingController extends Controller
 
     public function index(Request $request): View
     {
-        $onboardings = $this->filteredQuery($request)->latest()->paginate(20)->withQueryString();
+        $onboardings = $this->filteredQuery($request)->with('assignee')->latest()->paginate(20)->withQueryString();
         $userTypes = UserType::orderBy('order')->get();
+        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes'));
+        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes', 'admins'));
     }
 
     /**
@@ -45,12 +46,12 @@ class UserOnboardingController extends Controller
             $out = fopen('php://output', 'w');
             fputcsv($out, [
                 'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
-                'Status', 'Resubmission', 'Country', 'Started', 'Submitted',
+                'Status', 'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
                 'Decided', 'Decided By', 'Decision Comment',
             ]);
 
             $this->filteredQuery($request)
-                ->with('decidedBy')
+                ->with(['decidedBy', 'assignee'])
                 ->latest()
                 ->lazy()
                 ->each(function (UserOnboarding $o) use ($out) {
@@ -63,6 +64,7 @@ class UserOnboardingController extends Controller
                         $o->status,
                         $o->reopened_at ? 'yes' : 'no',
                         $o->country_code ?? '',
+                        $o->assignee->name ?? '',
                         $o->started_at?->toDateTimeString() ?? '',
                         $o->completed_at?->toDateTimeString() ?? '',
                         $o->decided_at?->toDateTimeString() ?? '',
@@ -129,6 +131,15 @@ class UserOnboardingController extends Controller
             $query->whereNotNull('reopened_at');
         }
 
+        if ($request->filled('assigned')) {
+            $assigned = $request->input('assigned');
+            match (true) {
+                $assigned === 'unassigned' => $query->whereNull('assigned_to'),
+                $assigned === 'me' => $query->where('assigned_to', Auth::guard('admin')->id()),
+                default => $query->where('assigned_to', (int) $assigned),
+            };
+        }
+
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
 
@@ -163,6 +174,7 @@ class UserOnboardingController extends Controller
             'reviewLogs.admin',
             'notes.admin',
             'messages.admin',
+            'assignee',
         ]);
 
         // Viewing the thread counts as reading the client's messages.
@@ -193,11 +205,14 @@ class UserOnboardingController extends Controller
             ->filter()
             ->toArray();
 
+        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
+
         return view('admin.user-onboardings.show', compact(
             'userOnboarding',
             'notifications',
             'adminQuestions',
             'pendingChangeRequestAnswerIds',
+            'admins',
         ));
     }
 
@@ -233,6 +248,36 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $message);
+    }
+
+    public function assign(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        $validated = $request->validate([
+            'assigned_to' => 'nullable|exists:admins,id',
+        ]);
+
+        $newAssignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
+        $changed = $newAssignee !== $userOnboarding->assigned_to;
+
+        $userOnboarding->update(['assigned_to' => $newAssignee]);
+
+        $actingAdmin = Auth::guard('admin')->user();
+
+        // Notify the new assignee — unless they assigned it to themselves.
+        if ($changed && $newAssignee !== null && $newAssignee !== $actingAdmin->id) {
+            try {
+                $assignee = \App\Models\Admin::find($newAssignee);
+                if ($assignee?->email) {
+                    \Illuminate\Support\Facades\Mail::to($assignee->email)
+                        ->queue(new \App\Mail\OnboardingAssignedMail($userOnboarding->fresh(['user', 'userType']), $actingAdmin));
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', $newAssignee ? 'Application assigned.' : 'Assignment cleared.');
     }
 
     public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse

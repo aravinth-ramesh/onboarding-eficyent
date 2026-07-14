@@ -22,6 +22,7 @@ class UserOnboarding extends Model
         'decided_at',
         'decided_by',
         'decision_comment',
+        'assigned_to',
         'reopened_at',
     ];
 
@@ -39,6 +40,11 @@ class UserOnboarding extends Model
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'decided_by');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'assigned_to');
     }
 
     public function reviewLogs(): HasMany

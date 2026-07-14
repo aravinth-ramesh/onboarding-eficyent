@@ -178,6 +178,22 @@
                         @endif
                     </dd>
 
+                    <dt class="text-muted" style="font-size: 0.8rem;">Assigned To</dt>
+                    <dd>
+                        <form method="POST" action="{{ route('admin.user-onboardings.assign', $userOnboarding) }}">
+                            @csrf
+                            <select name="assigned_to" class="form-select form-select-sm" onchange="this.form.submit()"
+                                    style="max-width: 220px;">
+                                <option value="">— Unassigned —</option>
+                                @foreach($admins as $adminOption)
+                                    <option value="{{ $adminOption->id }}" @selected($userOnboarding->assigned_to === $adminOption->id)>
+                                        {{ $adminOption->name }}{{ $adminOption->id === auth('admin')->id() ? ' (me)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    </dd>
+
                     <dt class="text-muted" style="font-size: 0.8rem;">Template Version</dt>
                     <dd>{{ $userOnboarding->template_version ?? '-' }}</dd>
 
