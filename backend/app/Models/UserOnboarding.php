@@ -30,6 +30,19 @@ class UserOnboarding extends Model
         ];
     }
 
+    /**
+     * Human-facing reference, e.g. ONB-2026-0042. Must stay in sync with
+     * formatReference() in frontend/src/components/layout/AppLayout.js —
+     * clients quote this number from both the portal and emails.
+     */
+    public function getReferenceAttribute(): string
+    {
+        $padded = str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+        $year = $this->started_at?->format('Y');
+
+        return $year ? "ONB-{$year}-{$padded}" : "ONB-{$padded}";
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

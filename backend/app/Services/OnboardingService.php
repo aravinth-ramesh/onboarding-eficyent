@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Mail\OnboardingSubmittedAdminMail;
+use App\Mail\OnboardingSubmittedClientMail;
+use App\Models\Admin;
 use App\Models\OnboardingStep;
 use App\Models\User;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
+use Illuminate\Support\Facades\Mail;
 
 class OnboardingService
 {
@@ -90,9 +94,34 @@ class OnboardingService
                 'completed_at' => now(),
                 'current_step_id' => null,
             ]);
+
+            $this->notifySubmission($onboarding->fresh());
         }
 
         return $onboarding->fresh('steps');
+    }
+
+    /**
+     * Submission emails: confirmation to the client, heads-up to every
+     * active admin. Queued, and a mail hiccup must never undo a submission —
+     * hence the blanket catch.
+     */
+    private function notifySubmission(UserOnboarding $onboarding): void
+    {
+        $onboarding->load(['user', 'userType', 'subcategory']);
+
+        try {
+            if ($onboarding->user?->email) {
+                Mail::to($onboarding->user->email)->queue(new OnboardingSubmittedClientMail($onboarding));
+            }
+
+            $adminEmails = Admin::where('is_active', true)->pluck('email');
+            foreach ($adminEmails as $email) {
+                Mail::to($email)->queue(new OnboardingSubmittedAdminMail($onboarding));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
