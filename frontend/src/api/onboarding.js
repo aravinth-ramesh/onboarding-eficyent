@@ -77,6 +77,21 @@ export const gotoStep = (stepId) =>
 export const reopenOnboarding = () =>
   client.post('/onboarding/reopen');
 
+// Fetches the PDF with the auth header and triggers a browser download.
+export const downloadApplicationPdf = async () => {
+  const response = await client.get('/onboarding/download-pdf', { responseType: 'blob' });
+  const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+  const link = document.createElement('a');
+  const disposition = response.headers['content-disposition'] || '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  link.href = url;
+  link.download = match ? match[1] : 'application.pdf';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 export const getRegistrationCatalog = () =>
   client.get('/onboarding/registration');
 

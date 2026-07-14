@@ -7,6 +7,7 @@ import StepRenderer from '../components/onboarding/StepRenderer';
 import SubmittedAnswersView from '../components/onboarding/SubmittedAnswersView';
 import ProfileSetup from '../components/onboarding/ProfileSetup';
 import appConfig from '../appConfig';
+import { downloadApplicationPdf } from '../api/onboarding';
 
 function HomePage() {
   const dispatch = useDispatch();
@@ -16,6 +17,18 @@ function HomePage() {
   const user = useSelector((state) => state.auth.user);
   const profileCompleted = !!(user && user.profile_completed);
   const [viewingAnswers, setViewingAnswers] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    try {
+      await downloadApplicationPdf();
+    } catch {
+      // Non-fatal: the button simply re-enables.
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     // Only start/fetch onboarding once the user's name and position are on
@@ -119,6 +132,13 @@ function HomePage() {
                   onClick={() => setViewingAnswers(true)}
                 >
                   View Submitted Answers
+                </button>
+                <button
+                  className="btn-secondary-custom"
+                  onClick={handleDownloadPdf}
+                  disabled={downloading}
+                >
+                  {downloading ? 'Preparing…' : '⬇ Download PDF'}
                 </button>
               </div>
             </div>

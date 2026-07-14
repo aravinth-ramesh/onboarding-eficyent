@@ -219,6 +219,24 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Download the submitted application as a PDF. Available once the
+     * application is submitted (and after any decision) — the same states
+     * where editing is locked.
+     */
+    public function downloadPdf(\App\Services\ApplicationPdfService $pdfService)
+    {
+        /**@disregard */
+        $onboarding = auth()->user()->onboarding;
+
+        if (! $onboarding || ! $this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'The application PDF is available after submission.'], 403);
+        }
+
+        return $pdfService->render($onboarding)
+            ->download("application-{$onboarding->reference}.pdf");
+    }
+
+    /**
      * Reopen a rejected application so the client can edit and resubmit.
      */
     public function reopen(): JsonResponse

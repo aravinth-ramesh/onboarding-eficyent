@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchQuestions } from '../../store/slices/onboardingSlice';
 import TableAnswerView from './TableAnswerView';
 import { formatMcc, formatAddress, formatUbo } from '../../utils/answerFormat';
+import { downloadApplicationPdf } from '../../api/onboarding';
 
 /**
  * Read-only view of submitted answers.
@@ -94,9 +95,17 @@ function SubmittedAnswersView({ onBack }) {
     <div className="ob-card">
       <div className="ob-card-header">
         <h5>Submitted Answers</h5>
-        <button className="btn-secondary-custom" onClick={onBack}>
-          &#8592; Back
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn-secondary-custom"
+            onClick={() => downloadApplicationPdf().catch(() => {})}
+          >
+            &#8595; Download PDF
+          </button>
+          <button className="btn-secondary-custom" onClick={onBack}>
+            &#8592; Back
+          </button>
+        </div>
       </div>
       <div className="ob-card-body">
         <div className="alert-corporate success" style={{ marginBottom: 20 }}>
