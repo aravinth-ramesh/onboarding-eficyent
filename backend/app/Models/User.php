@@ -40,6 +40,27 @@ class User extends Authenticatable
         return $this->hasOne(UserOnboarding::class);
     }
 
+    public function collaboration(): HasOne
+    {
+        return $this->hasOne(OnboardingCollaborator::class);
+    }
+
+    /**
+     * The onboarding this user works on: their own, or — for invited team
+     * members — the one they collaborate on. All client-facing endpoints
+     * resolve through this.
+     */
+    public function activeOnboarding(): ?UserOnboarding
+    {
+        return $this->onboarding ?? $this->collaboration?->onboarding;
+    }
+
+    /** Owners may manage the team; collaborators may not. */
+    public function ownsActiveOnboarding(): bool
+    {
+        return $this->onboarding !== null;
+    }
+
     public function answers(): HasMany
     {
         return $this->hasMany(UserAnswer::class);

@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
 import MessagesPanel from '../messages/MessagesPanel';
+import TeamPanel from '../team/TeamPanel';
 import { getUnreadMessageCount } from '../../api/messages';
 import { STEP_TIME_ESTIMATES, DEFAULT_STEP_MINUTES, REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
@@ -77,6 +78,7 @@ function AppLayout({ children, pageTitle }) {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [messagesOpen, setMessagesOpen] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Unread badge: fetch on mount and poll alongside the notification bell.
@@ -283,6 +285,14 @@ function AppLayout({ children, pageTitle }) {
           )}
 
           {/* Help / support */}
+          <button type="button" className="sb-card sb-help sb-messages" onClick={() => setTeamOpen(true)}>
+            <div className="sb-help-icon">{'👥'}</div>
+            <div>
+              <div className="sb-help-title">Team</div>
+              <div className="sb-help-sub">Invite colleagues to collaborate</div>
+            </div>
+          </button>
+
           <button type="button" className="sb-card sb-help sb-messages" onClick={() => setMessagesOpen(true)}>
             <div className="sb-help-icon">
               {'💬'}
@@ -298,6 +308,7 @@ function AppLayout({ children, pageTitle }) {
         </div>
 
         {messagesOpen && <MessagesPanel onClose={handleCloseMessages} />}
+        {teamOpen && <TeamPanel onClose={() => setTeamOpen(false)} />}
 
         <div className="sidebar-footer">
           <div className="sidebar-user-info">

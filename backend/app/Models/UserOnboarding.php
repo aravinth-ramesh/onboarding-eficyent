@@ -62,6 +62,11 @@ class UserOnboarding extends Model
         return $this->hasMany(OnboardingMessage::class)->orderBy('created_at')->orderBy('id');
     }
 
+    public function collaborators(): HasMany
+    {
+        return $this->hasMany(OnboardingCollaborator::class);
+    }
+
     /**
      * Human-facing reference, e.g. ONB-2026-0042. Must stay in sync with
      * formatReference() in frontend/src/components/layout/AppLayout.js —

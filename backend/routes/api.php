@@ -50,6 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reopen', [Api\OnboardingController::class, 'reopen']);
         Route::get('/download-pdf', [Api\OnboardingController::class, 'downloadPdf']);
         Route::get('/timeline', [Api\OnboardingController::class, 'timeline']);
+        Route::get('/team', [Api\TeamController::class, 'index']);
+        Route::post('/team/invite', [Api\TeamController::class, 'invite']);
+        Route::delete('/team/{collaborator}', [Api\TeamController::class, 'remove']);
         Route::get('/messages', [Api\MessageController::class, 'index']);
         Route::post('/messages', [Api\MessageController::class, 'store']);
         Route::get('/messages/unread-count', [Api\MessageController::class, 'unreadCount']);

@@ -32,8 +32,9 @@ class AnswerService
         // Normalize value for multi-select
         $normalizedValue = is_array($value) ? json_encode($value) : (string) $value;
 
-        $existing = UserAnswer::where('user_id', $user->id)
-            ->where('question_id', $questionId)
+        // Keyed by onboarding + question (not user): collaborators edit the
+        // application's shared answer, with edited_by capturing the actor.
+        $existing = UserAnswer::where('question_id', $questionId)
             ->where('user_onboarding_id', $onboarding->id)
             ->first();
 
@@ -45,7 +46,7 @@ class AnswerService
                 AnswerAuditLog::create([
                     'user_answer_id' => $existing->id,
                     'question_id' => $questionId,
-                    'user_id' => $user->id,
+                    'user_id' => $existing->user_id,
                     'edited_by' => $editedBy->id,
                     'old_value' => $oldValue,
                     'new_value' => $normalizedValue,
@@ -91,8 +92,7 @@ class AnswerService
             $newPaths = array_column($uploadedMeta, 's3_path');
             $newValue = json_encode($newPaths);
 
-            $existing = UserAnswer::where('user_id', $user->id)
-                ->where('question_id', $questionId)
+            $existing = UserAnswer::where('question_id', $questionId)
                 ->where('user_onboarding_id', $onboarding->id)
                 ->first();
 
@@ -108,7 +108,7 @@ class AnswerService
                 AnswerAuditLog::create([
                     'user_answer_id' => $existing->id,
                     'question_id' => $questionId,
-                    'user_id' => $user->id,
+                    'user_id' => $existing->user_id,
                     'edited_by' => $editedBy->id,
                     'old_value' => json_encode($oldFileData),
                     'new_value' => $newValue,
@@ -163,8 +163,7 @@ class AnswerService
         $editedBy = $editedBy ?? $user;
 
         return DB::transaction(function () use ($user, $onboarding, $questionId, $entries, $editedBy) {
-            $existing = UserAnswer::where('user_id', $user->id)
-                ->where('question_id', $questionId)
+            $existing = UserAnswer::where('question_id', $questionId)
                 ->where('user_onboarding_id', $onboarding->id)
                 ->first();
 
@@ -210,7 +209,7 @@ class AnswerService
                     AnswerAuditLog::create([
                         'user_answer_id' => $existing->id,
                         'question_id' => $questionId,
-                        'user_id' => $user->id,
+                        'user_id' => $existing->user_id,
                         'edited_by' => $editedBy->id,
                         'old_value' => $oldValue,
                         'new_value' => $newValue,

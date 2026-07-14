@@ -1723,6 +1723,66 @@ a.file-preview-name:hover { text-decoration: underline; }
   margin-top: 2px;
 }
 
+/* ── Team panel ── */
+.team-body { padding: 14px 16px 16px; }
+
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.team-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  color: #4338CA;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.team-avatar.owner { background: #4338CA; color: #fff; }
+
+.team-info { flex: 1; min-width: 0; }
+.team-name { font-weight: 600; font-size: 0.92rem; }
+.team-sub { font-size: 0.78rem; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; }
+
+.team-remove {
+  border: none;
+  background: none;
+  color: #DC2626;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+}
+
+.team-empty {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  padding: 14px 4px;
+  text-align: center;
+}
+
+.team-invite {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.team-invite input {
+  flex: 1;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
 /* ── Messages thread ── */
 button.sb-messages {
   border: none;

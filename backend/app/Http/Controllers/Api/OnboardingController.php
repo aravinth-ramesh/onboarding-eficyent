@@ -78,7 +78,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
@@ -107,7 +107,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
@@ -207,7 +207,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             $onboarding = $this->onboardingService->initializeForUser($user);
@@ -226,7 +226,7 @@ class OnboardingController extends Controller
     public function downloadPdf(\App\Services\ApplicationPdfService $pdfService)
     {
         /**@disregard */
-        $onboarding = auth()->user()->onboarding;
+        $onboarding = auth()->user()->activeOnboarding();
 
         if (! $onboarding || ! $this->isSubmitted($onboarding)) {
             return response()->json(['message' => 'The application PDF is available after submission.'], 403);
@@ -244,7 +244,7 @@ class OnboardingController extends Controller
     public function timeline(): JsonResponse
     {
         /**@disregard */
-        $onboarding = auth()->user()->onboarding;
+        $onboarding = auth()->user()->activeOnboarding();
 
         if (! $onboarding) {
             return response()->json(['data' => []]);
@@ -288,7 +288,7 @@ class OnboardingController extends Controller
     public function reopen(): JsonResponse
     {
         /**@disregard */
-        $onboarding = auth()->user()->onboarding;
+        $onboarding = auth()->user()->activeOnboarding();
 
         if (! $onboarding) {
             return response()->json(['message' => 'No onboarding found.'], 404);
@@ -312,7 +312,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
@@ -337,7 +337,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding || !$onboarding->user_type_id) {
             return response()->json(['message' => 'Please select a user type first.'], 422);
@@ -451,7 +451,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
@@ -556,7 +556,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
@@ -622,7 +622,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);
@@ -643,7 +643,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);
@@ -664,7 +664,7 @@ class OnboardingController extends Controller
     {
         /**@disregard */
         $user = auth()->user();
-        $onboarding = $user->onboarding;
+        $onboarding = $user->activeOnboarding();
 
         if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);

@@ -87,6 +87,6 @@ class MessageController extends Controller
     private function onboarding(): ?UserOnboarding
     {
         /**@disregard */
-        return auth()->user()->onboarding;
+        return auth()->user()->activeOnboarding();
     }
 }

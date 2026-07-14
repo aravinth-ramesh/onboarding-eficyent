@@ -58,7 +58,7 @@ class AuthController extends Controller
             'message' => 'Login successful.',
             'data' => [
                 'user' => $this->formatUser($user, [
-                    'has_onboarding' => $user->onboarding()->exists(),
+                    'has_onboarding' => $user->activeOnboarding() !== null,
                 ]),
                 'token' => $token,
             ],
@@ -73,8 +73,8 @@ class AuthController extends Controller
         return response()->json([
             'data' => [
                 'user' => $this->formatUser($user, [
-                    'has_onboarding' => $user->onboarding !== null,
-                    'onboarding' => $user->onboarding,
+                    'has_onboarding' => $user->activeOnboarding() !== null,
+                    'onboarding' => $user->activeOnboarding(),
                 ]),
             ],
         ]);
@@ -100,7 +100,7 @@ class AuthController extends Controller
             'message' => 'Profile saved successfully.',
             'data' => [
                 'user' => $this->formatUser($user, [
-                    'has_onboarding' => $user->onboarding()->exists(),
+                    'has_onboarding' => $user->activeOnboarding() !== null,
                 ]),
             ],
         ]);
