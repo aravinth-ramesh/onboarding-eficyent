@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, clearAuth } from '../../store/slices/authSlice';
 import { goToOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import appConfig from '../../appConfig';
 import NotificationBell from '../notifications/NotificationBell';
+import MessagesPanel from '../messages/MessagesPanel';
+import { getUnreadMessageCount } from '../../api/messages';
 import { STEP_TIME_ESTIMATES, DEFAULT_STEP_MINUTES, REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
 import { evaluateConditionalRules } from '../../utils/conditionalEngine';
 
@@ -72,6 +74,38 @@ function AppLayout({ children, pageTitle }) {
   const { steps, currentStep, userType, status, onboardingId, startedAt, kycDocStatus, questionGroups, answers } = useSelector(
     (state) => state.onboarding
   );
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Unread badge: fetch on mount and poll alongside the notification bell.
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      getUnreadMessageCount()
+        .then((r) => { if (active) setUnreadMessages(r.data.count); })
+        .catch(() => {});
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => { active = false; clearInterval(interval); };
+  }, [messagesOpen]);
+
+  // Email deep link: /home?messages=1 opens the thread directly.
+  useEffect(() => {
+    if (searchParams.get('messages')) {
+      setMessagesOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('messages');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCloseMessages = () => {
+    setMessagesOpen(false);
+    setUnreadMessages(0);
+  };
 
   const handleLogout = () => {
     dispatch(clearAuth());
@@ -249,14 +283,21 @@ function AppLayout({ children, pageTitle }) {
           )}
 
           {/* Help / support */}
-          <a className="sb-card sb-help" href={`mailto:${appConfig.supportEmail}`}>
-            <div className="sb-help-icon">?</div>
-            <div>
-              <div className="sb-help-title">Need a hand?</div>
-              <div className="sb-help-sub">{appConfig.supportEmail}</div>
+          <button type="button" className="sb-card sb-help sb-messages" onClick={() => setMessagesOpen(true)}>
+            <div className="sb-help-icon">
+              {'💬'}
+              {unreadMessages > 0 && <span className="sb-messages-badge">{unreadMessages}</span>}
             </div>
-          </a>
+            <div>
+              <div className="sb-help-title">Messages</div>
+              <div className="sb-help-sub">
+                {unreadMessages > 0 ? `${unreadMessages} new repl${unreadMessages === 1 ? 'y' : 'ies'}` : 'Chat with our team'}
+              </div>
+            </div>
+          </button>
         </div>
+
+        {messagesOpen && <MessagesPanel onClose={handleCloseMessages} />}
 
         <div className="sidebar-footer">
           <div className="sidebar-user-info">

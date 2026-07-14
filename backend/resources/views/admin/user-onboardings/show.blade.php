@@ -359,6 +359,40 @@
     </div>
 </div>
 
+{{-- Client messages thread --}}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-chat-dots"></i> Messages with Client
+    </div>
+    <div class="card-body py-2">
+        @forelse($userOnboarding->messages as $message)
+            <div class="d-flex py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.88rem;">
+                <div class="flex-grow-1 {{ $message->sender_type === 'admin' ? 'text-end' : '' }}">
+                    <div>
+                        <strong>{{ $message->sender_type === 'admin' ? ($message->admin->name ?? 'Team') : ($userOnboarding->user->name ?? 'Client') }}</strong>
+                        <span class="text-muted">· {{ $message->created_at->format('M d, Y H:i') }}</span>
+                    </div>
+                    <div class="d-inline-block px-3 py-2 mt-1 rounded {{ $message->sender_type === 'admin' ? 'bg-primary-subtle' : 'bg-light border' }}"
+                         style="white-space: pre-wrap; max-width: 80%; text-align: left;">{{ $message->body }}</div>
+                </div>
+            </div>
+        @empty
+            <div class="text-muted py-2" style="font-size: 0.85rem;">No messages yet.</div>
+        @endforelse
+
+        <form method="POST" action="{{ route('admin.user-onboardings.messages.reply', $userOnboarding) }}" class="mt-2">
+            @csrf
+            <div class="d-flex gap-2">
+                <textarea name="body" class="form-control form-control-sm" rows="2" required
+                          placeholder="Reply to the client... (they are notified by email)"></textarea>
+                <button class="btn btn-sm btn-primary align-self-end">
+                    <i class="bi bi-send"></i> Send
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {{-- Answers --}}
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">

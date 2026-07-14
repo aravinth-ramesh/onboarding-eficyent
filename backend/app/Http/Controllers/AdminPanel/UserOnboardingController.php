@@ -162,7 +162,14 @@ class UserOnboardingController extends Controller
             'answers.files',
             'reviewLogs.admin',
             'notes.admin',
+            'messages.admin',
         ]);
+
+        // Viewing the thread counts as reading the client's messages.
+        $userOnboarding->messages()
+            ->where('sender_type', 'client')
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         $userOnboarding->answers->loadCount('auditLogs');
 
@@ -226,6 +233,29 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $message);
+    }
+
+    public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        $validated = $request->validate(['body' => 'required|string|max:5000']);
+
+        $message = $userOnboarding->messages()->create([
+            'sender_type' => 'admin',
+            'admin_id' => Auth::guard('admin')->id(),
+            'body' => $validated['body'],
+        ]);
+
+        try {
+            if ($userOnboarding->user?->email) {
+                \Illuminate\Support\Facades\Mail::to($userOnboarding->user->email)
+                    ->queue(new \App\Mail\NewMessageMail($message));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Reply sent — the client has been notified by email.');
     }
 
     public function exportPdf(UserOnboarding $userOnboarding, \App\Services\ApplicationPdfService $pdfService)
