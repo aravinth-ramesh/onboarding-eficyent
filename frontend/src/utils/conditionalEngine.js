@@ -35,13 +35,20 @@ export function evaluateConditionalRules(rules, answers) {
 }
 
 /**
- * Normalize an answer value to a string for comparison.
- * Handles arrays (multi_select), JSON strings, and primitive values.
+ * Parse a rule's trigger_value into an array for in/not_in comparisons.
+ * Accepts a JSON array, a comma-separated string, or a single value —
+ * a malformed value must never throw and break visibility for the group.
  */
-function normalizeAnswer(value) {
-  if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return value.join(',');
-  return String(value);
+function parseTriggerList(triggerValue) {
+  if (Array.isArray(triggerValue)) return triggerValue;
+  if (triggerValue === null || triggerValue === undefined || triggerValue === '') return [];
+  try {
+    const parsed = JSON.parse(triggerValue);
+    if (Array.isArray(parsed)) return parsed;
+    return [parsed];
+  } catch {
+    return String(triggerValue).split(',').map((v) => v.trim()).filter(Boolean);
+  }
 }
 
 /**
@@ -99,14 +106,14 @@ function evaluateSingleRule(rule, answers) {
     case 'less_than':
       return Number(parentAnswer) < Number(triggerValue);
     case 'in': {
-      const values = JSON.parse(triggerValue || '[]');
+      const values = parseTriggerList(triggerValue).map(String);
       const answerArr = parseAnswerArray(parentAnswer);
-      return answerArr.some((v) => values.includes(v));
+      return answerArr.some((v) => values.includes(String(v)));
     }
     case 'not_in': {
-      const values = JSON.parse(triggerValue || '[]');
+      const values = parseTriggerList(triggerValue).map(String);
       const answerArr = parseAnswerArray(parentAnswer);
-      return !answerArr.some((v) => values.includes(v));
+      return !answerArr.some((v) => values.includes(String(v)));
     }
     case 'is_empty':
       return !parentAnswer || parentAnswer === '' || (Array.isArray(parentAnswer) && parentAnswer.length === 0);

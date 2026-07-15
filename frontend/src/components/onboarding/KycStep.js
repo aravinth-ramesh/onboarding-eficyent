@@ -2,17 +2,12 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { completeOnboardingStep, fetchOnboardingStatus, setKycDocStatus } from '../../store/slices/onboardingSlice';
 import { REQUIRED_KYC_DOCUMENTS } from '../../config/onboardingConfig';
-
-const formatFileSize = (bytes) => {
-  if (bytes === undefined || bytes === null) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+import { MAX_FILE_SIZE_MB, formatFileSize, partitionBySize, oversizeMessage } from '../../utils/files';
 
 function KycUploadTile({ doc, file, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
+  const [sizeError, setSizeError] = useState(null);
 
   const previewUrl = useMemo(() => {
     if (!file || !file.type || !file.type.startsWith('image/')) return null;
@@ -26,6 +21,14 @@ function KycUploadTile({ doc, file, onChange }) {
   }, [previewUrl]);
 
   const handlePick = (picked) => {
+    if (picked) {
+      const { rejected } = partitionBySize([picked]);
+      if (rejected.length > 0) {
+        setSizeError(oversizeMessage(rejected));
+        return;
+      }
+    }
+    setSizeError(null);
     onChange(picked || null);
   };
 
@@ -80,13 +83,6 @@ function KycUploadTile({ doc, file, onChange }) {
             <div className="kyc-selected-size">{formatFileSize(file.size)}</div>
           </div>
           <div className="kyc-selected-actions">
-            {/* <button
-              type="button"
-              className="kyc-btn-link"
-              onClick={() => inputRef.current?.click()}
-            >
-              Replace
-            </button> */}
             <button
               type="button"
               className="kyc-btn-link danger"
@@ -121,6 +117,11 @@ function KycUploadTile({ doc, file, onChange }) {
       <div className="kyc-upload-cta">
         Drag &amp; drop or <strong>click to browse</strong>
       </div>
+      {sizeError && (
+        <div className="alert-corporate danger" style={{ marginTop: 8, fontSize: '0.8rem' }}>
+          {sizeError}
+        </div>
+      )}
     </label>
   );
 }
@@ -170,7 +171,7 @@ function KycStep({ step, onBack, isFirstStep }) {
         )}
 
         <div className="alert-corporate info" style={{ marginBottom: 20 }}>
-          Upload the required documents below. Accepted formats: PDF, JPG, PNG (max 10MB each).
+          Upload the required documents below. Accepted formats: PDF, JPG, PNG (max {MAX_FILE_SIZE_MB}MB each).
         </div>
 
         <div style={{ display: 'grid', gap: 12 }}>

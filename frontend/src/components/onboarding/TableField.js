@@ -1,24 +1,12 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
-
-// Resolve the effective min/max for a date input by combining the explicit
-// `min_date`/`max_date` rules with the `allow_past` / `allow_future` flags.
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const dateBound = (rules, edge) => {
-  if (!rules) return undefined;
-  if (edge === 'min') {
-    if (rules.min_date) return rules.min_date;
-    if (rules.allow_past === false) return todayIso();
-    return undefined;
-  }
-  if (rules.max_date) return rules.max_date;
-  if (rules.allow_future === false) return todayIso();
-  return undefined;
-};
+import { dateBound } from '../../utils/dateBounds';
+import { partitionBySize, oversizeMessage } from '../../utils/files';
 
 function TableFileCell({ column, value, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
+  const [sizeError, setSizeError] = useState(null);
 
   const isFile = value instanceof File;
   const uploaded = !isFile && value && typeof value === 'object' && (value.filename || value.path)
@@ -38,6 +26,14 @@ function TableFileCell({ column, value, onChange }) {
   }, [previewUrl]);
 
   const handlePick = useCallback((file) => {
+    if (file) {
+      const { rejected } = partitionBySize([file]);
+      if (rejected.length > 0) {
+        setSizeError(oversizeMessage(rejected));
+        return;
+      }
+    }
+    setSizeError(null);
     onChange(file || null);
   }, [onChange]);
 
@@ -83,7 +79,6 @@ function TableFileCell({ column, value, onChange }) {
           size={value.size}
           mime={value.type}
           previewUrl={previewUrl}
-          onReplace={() => inputRef.current?.click()}
           onRemove={() => handlePick(null)}
         />
       )}
@@ -96,9 +91,14 @@ function TableFileCell({ column, value, onChange }) {
           mime={uploaded.mime}
           previewUrl={looksLikeImage(uploaded.mime) ? uploaded.url : null}
           downloadUrl={uploaded.url}
-          onReplace={() => inputRef.current?.click()}
           onRemove={() => handlePick(null)}
         />
+      )}
+
+      {sizeError && (
+        <div className="alert-corporate danger" style={{ marginBottom: 8, fontSize: '0.8rem' }}>
+          {sizeError}
+        </div>
       )}
 
       {!isFile && !uploaded && (

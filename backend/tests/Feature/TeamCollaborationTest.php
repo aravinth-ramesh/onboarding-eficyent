@@ -89,6 +89,36 @@ class TeamCollaborationTest extends TestCase
         $this->assertSame($colleague->id, $log->edited_by);
     }
 
+    public function test_collaborators_see_the_owners_answers_when_reading_questions(): void
+    {
+        $type = \App\Models\UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
+        $group = QuestionGroup::create(['name' => 'Docs', 'slug' => 'docs', 'order' => 1, 'is_active' => true]);
+        $question = Question::create([
+            'question_group_id' => $group->id, 'label' => 'Entity name',
+            'type' => 'text', 'is_required' => true, 'order' => 1, 'is_active' => true,
+        ]);
+        \App\Models\QuestionTypeMapping::create([
+            'question_id' => $question->id, 'user_type_id' => $type->id, 'is_required' => true, 'order' => 1,
+        ]);
+        app(OnboardingService::class)->setUserType($this->onboarding, $type->id, null);
+
+        Sanctum::actingAs($this->owner);
+        $this->postJson('/api/onboarding/answers', [
+            'answers' => [['question_id' => $question->id, 'value' => 'Acme Ltd']],
+        ])->assertOk();
+
+        $colleague = $this->inviteColleague();
+
+        // The read path must serve the shared application's answers even
+        // though they were authored by the owner.
+        Sanctum::actingAs($colleague);
+        $groups = $this->getJson('/api/onboarding/questions')->assertOk()->json('data');
+        $answer = collect($groups)->flatMap(fn ($g) => $g['questions'])
+            ->firstWhere('id', $question->id)['answer'];
+
+        $this->assertSame('Acme Ltd', $answer);
+    }
+
     public function test_invite_guards(): void
     {
         Sanctum::actingAs($this->owner);

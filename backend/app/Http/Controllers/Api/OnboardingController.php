@@ -13,7 +13,6 @@ use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
 use App\Services\AnswerService;
 use App\Services\ChecksumValidator;
-use App\Services\ConditionalRuleEngine;
 use App\Services\CountryRegistrationService;
 use App\Services\DocumentValidationService;
 use App\Services\OnboardingService;
@@ -26,7 +25,6 @@ class OnboardingController extends Controller
     public function __construct(
         private OnboardingService $onboardingService,
         private AnswerService $answerService,
-        private ConditionalRuleEngine $ruleEngine,
         private CountryRegistrationService $registrationService,
         private ChecksumValidator $checksumValidator,
         private DocumentValidationService $documentValidator,
@@ -383,9 +381,10 @@ class OnboardingController extends Controller
         // Deduplicate mappings — keep one per question (prefer subcategory-specific over generic)
         $mappings = $mappings->unique(fn ($m) => $m->question_id)->values();
 
-        // Get existing answers (with files for file-type questions)
-        $answerModels = $user->answers()
-            ->where('user_onboarding_id', $onboarding->id)
+        // Get existing answers (with files for file-type questions). Keyed by
+        // the onboarding, not the user — collaborators must see the shared
+        // application's answers regardless of who authored them.
+        $answerModels = $onboarding->answers()
             ->with('files')
             ->get()
             ->keyBy('question_id');

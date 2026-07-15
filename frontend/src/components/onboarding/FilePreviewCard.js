@@ -1,11 +1,7 @@
 import React from 'react';
+import { formatFileSize } from '../../utils/files';
 
-export const formatFileSize = (bytes) => {
-  if (bytes === undefined || bytes === null || bytes === '') return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+export { formatFileSize };
 
 export const looksLikePdf = (mime, name = '') =>
   mime === 'application/pdf' || /\.pdf$/i.test(name || '');
@@ -16,8 +12,8 @@ export const looksLikeImage = (mime) => Boolean(mime) && mime.startsWith('image/
  * Compact file preview card used by FileUploadField (top-level file
  * questions), TableFileCell (table-cell file uploads), and the notification
  * response form. Renders a thumbnail (image or icon), a coloured pill
- * badge ("Selected" / "Uploaded"), filename, size, and optional
- * Replace / Remove actions.
+ * badge ("Selected" / "Uploaded"), filename, size, and an optional
+ * Remove action.
  */
 // AI document-validation verdicts worth surfacing to the user. 'passed' and
 // 'skipped' render nothing extra; the rest get an amber "review" pill.
@@ -38,7 +34,6 @@ function FilePreviewCard({
   downloadUrl,
   kind,
   validationStatus,
-  onReplace,
   onRemove,
 }) {
   const isImage = looksLikeImage(mime) && previewUrl;
@@ -81,11 +76,6 @@ function FilePreviewCard({
         )}
       </div>
       <div className="file-preview-actions">
-        {/* {onReplace && (
-          <button type="button" className="kyc-btn-link" onClick={onReplace}>
-            Replace
-          </button>
-        )} */}
         {onRemove && (
           <button type="button" className="kyc-btn-link danger" onClick={onRemove}>
             Remove

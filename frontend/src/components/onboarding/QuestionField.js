@@ -5,23 +5,9 @@ import PhoneField from './PhoneField';
 import MccField from './MccField';
 import AddressField from './AddressField';
 import UboField from './UboField';
-
-// Resolve a date input's `min`/`max` HTML attribute by combining the explicit
-// `min_date`/`max_date` rules with `allow_past`/`allow_future` flags. This is
-// progressive enhancement — JS validation in `utils/validation.js` is
-// authoritative.
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const dateBound = (rules, edge) => {
-  if (!rules) return undefined;
-  if (edge === 'min') {
-    if (rules.min_date) return rules.min_date;
-    if (rules.allow_past === false) return todayIso();
-    return undefined;
-  }
-  if (rules.max_date) return rules.max_date;
-  if (rules.allow_future === false) return todayIso();
-  return undefined;
-};
+// The HTML min/max here is progressive enhancement — JS validation in
+// `utils/validation.js` is authoritative.
+import { dateBound } from '../../utils/dateBounds';
 
 function QuestionField({ question, value, onChange, cellErrors }) {
   const handleChange = (newValue) => {

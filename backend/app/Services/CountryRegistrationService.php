@@ -128,9 +128,25 @@ class CountryRegistrationService
 
     private function filterConfigByCategory(array $fields, string $category): array
     {
-        return array_values(array_filter(
+        $matching = array_filter(
             $fields,
             fn ($f) => in_array($category, $f['types'] ?? ['fi', 'corporate'], true)
-        ));
+        );
+
+        // Normalize to the exact shape CountryRegistration::toField() emits,
+        // so the API payload is identical whether the catalog table is
+        // seeded or the config fallback is in play: the checksum key is
+        // always present (null when absent) and the internal 'types' key
+        // never leaks to the frontend.
+        return array_values(array_map(fn ($f) => [
+            'key' => $f['key'],
+            'label' => $f['label'],
+            'required' => (bool) ($f['required'] ?? false),
+            'pattern' => $f['pattern'] ?? null,
+            'pattern_message' => $f['pattern_message'] ?? null,
+            'checksum' => $f['checksum'] ?? null,
+            'placeholder' => $f['placeholder'] ?? null,
+            'help' => $f['help'] ?? null,
+        ], $matching));
     }
 }

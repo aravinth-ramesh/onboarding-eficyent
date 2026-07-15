@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
+import { MAX_FILE_SIZE_MB, partitionBySize, oversizeMessage } from '../../utils/files';
 
 /**
  * File upload field with drag-and-drop UI (matching KYC module styling).
@@ -9,9 +10,13 @@ import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 function FileUploadField({ question, value, onChange, existingFiles }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
+  const [sizeError, setSizeError] = useState(null);
 
   const isMultiple = question.options?.multiple !== false;
-  const selectedFiles = Array.isArray(value) ? value : [];
+  const selectedFiles = useMemo(
+    () => (Array.isArray(value) ? value : []),
+    [value]
+  );
 
   // Generate (and revoke) object URLs for image previews of newly selected files.
   const selectedPreviews = useMemo(() => {
@@ -27,11 +32,15 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
   }, [selectedPreviews]);
 
   const handleFiles = useCallback((fileList) => {
-    const newFiles = Array.from(fileList);
+    // Enforce the server's per-file limit up front for instant feedback.
+    const { accepted, rejected } = partitionBySize(fileList);
+    setSizeError(rejected.length > 0 ? oversizeMessage(rejected) : null);
+    if (accepted.length === 0) return;
+
     if (!isMultiple) {
-      onChange(question.id, newFiles.slice(0, 1));
+      onChange(question.id, accepted.slice(0, 1));
     } else {
-      onChange(question.id, [...selectedFiles, ...newFiles]);
+      onChange(question.id, [...selectedFiles, ...accepted]);
     }
   }, [question.id, isMultiple, selectedFiles, onChange]);
 
@@ -96,7 +105,6 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
               previewUrl={looksLikeImage(file.mime_type) ? file.url : null}
               downloadUrl={file.url}
               validationStatus={file.reviewed ? 'reviewed' : file.validation_status}
-              onReplace={() => inputRef.current?.click()}
             />
           ))}
         </div>
@@ -112,10 +120,15 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
               size={file.size}
               mime={file.type}
               previewUrl={selectedPreviews[index]}
-              onReplace={!isMultiple ? () => inputRef.current?.click() : undefined}
               onRemove={() => handleRemoveSelected(index)}
             />
           ))}
+        </div>
+      )}
+
+      {sizeError && (
+        <div className="alert-corporate danger" style={{ marginBottom: 10 }}>
+          {sizeError}
         </div>
       )}
 
@@ -138,7 +151,7 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
               </span>
             </div>
             <div className="file-upload-dropzone-hint">
-              PDF, JPG, PNG, DOCX (max 5MB each)
+              PDF, JPG, PNG, DOCX (max {MAX_FILE_SIZE_MB}MB each)
             </div>
           </div>
         </label>

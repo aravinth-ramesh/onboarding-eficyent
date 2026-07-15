@@ -71,7 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | Admin Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
     // User Types
     Route::apiResource('user-types', Admin\UserTypeController::class);
     Route::apiResource('user-types.subcategories', Admin\SubcategoryController::class);

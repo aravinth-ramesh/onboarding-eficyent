@@ -146,7 +146,6 @@ const onboardingSlice = createSlice({
     onboardingId: null,
     startedAt: null,
     countryCode: null,
-    decidedAt: null,
     decisionComment: null,
     userTypes: [],
     questionGroups: [],
@@ -163,13 +162,6 @@ const onboardingSlice = createSlice({
     setKycDocStatus: (state, action) => {
       const { key, present } = action.payload;
       state.kycDocStatus[key] = present;
-    },
-    clearOnboarding: (state) => {
-      state.status = null;
-      state.steps = [];
-      state.currentStep = null;
-      state.questionGroups = [];
-      state.answers = {};
     },
   },
   extraReducers: (builder) => {
@@ -188,7 +180,6 @@ const onboardingSlice = createSlice({
         state.onboardingId = action.payload.id ?? null;
         state.startedAt = action.payload.started_at ?? null;
         state.countryCode = action.payload.country_code ?? null;
-        state.decidedAt = action.payload.decided_at ?? null;
         state.decisionComment = action.payload.decision_comment ?? null;
       })
       .addCase(fetchOnboardingStatus.rejected, (state, action) => {
@@ -217,7 +208,6 @@ const onboardingSlice = createSlice({
         state.status = action.payload.status;
         state.steps = action.payload.steps;
         state.currentStep = action.payload.current_step;
-        state.decidedAt = null;
         state.decisionComment = null;
         state.error = null;
       })
@@ -332,5 +322,5 @@ const onboardingSlice = createSlice({
   },
 });
 
-export const { setAnswer, setKycDocStatus, clearOnboarding } = onboardingSlice.actions;
+export const { setAnswer, setKycDocStatus } = onboardingSlice.actions;
 export default onboardingSlice.reducer;

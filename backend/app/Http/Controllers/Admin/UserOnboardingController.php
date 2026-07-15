@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AnswerAuditLog;
-use App\Models\User;
 use App\Models\UserOnboarding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

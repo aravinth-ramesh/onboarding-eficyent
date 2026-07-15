@@ -461,13 +461,6 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
   };
 
-  const handleGroupClick = (index) => {
-    // Allow navigating to any previously visited group or current
-    if (index <= activeGroupIndex) {
-      setActiveGroupIndex(index);
-    }
-  };
-
   if (loading && questionGroups.length === 0) {
     return (
       <div className="spinner-corporate">
@@ -482,45 +475,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       <div className="ob-card-header">
         <h5>{activeGroup ? activeGroup.name : 'Onboarding Questions'}</h5>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* <span className="group-counter">
-            {activeGroupIndex + 1} of {visibleGroups.length}
-          </span> */}
           <button className="btn-outline-custom" onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save Draft'}
           </button>
         </div>
       </div>
-
-      {/* Group Stepper */}
-      {/* {visibleGroups.length > 1 && (
-        <div className="group-stepper">
-          {visibleGroups.map((group, index) => {
-            let status = 'pending';
-            if (index < activeGroupIndex) status = 'completed';
-            if (index === activeGroupIndex) status = 'active';
-
-            return (
-              <div
-                key={group.id}
-                className={`group-stepper-item ${status}`}
-                onClick={() => handleGroupClick(index)}
-                title={group.name}
-              >
-                <div className="group-stepper-dot">
-                  {status === 'completed' ? '\u2713' : index + 1}
-                </div>
-                <span className="group-stepper-label">{group.name}</span>
-              </div>
-            );
-          })}
-          <div className="group-stepper-progress">
-            <div
-              className="group-stepper-progress-fill"
-              style={{ width: `${(activeGroupIndex / Math.max(visibleGroups.length - 1, 1)) * 100}%` }}
-            />
-          </div>
-        </div>
-      )} */}
 
       <div className="ob-card-body">
         {submitError && (
