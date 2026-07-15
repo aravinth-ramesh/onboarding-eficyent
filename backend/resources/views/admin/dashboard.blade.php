@@ -158,18 +158,21 @@
     </div>
 </div>
 
-{{-- Client responses to change requests / new questions --}}
+{{-- Client responses awaiting an admin check --}}
 @if($clientResponses->isNotEmpty())
 <div class="card mb-4">
-    <div class="card-header">
-        <i class="bi bi-reply-fill"></i> Client Responses to Your Requests
-        <div class="text-muted" style="font-size: 0.8rem; font-weight: normal;">
-            Clients have answered these — check and close them out.
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-reply-fill"></i> Client Responses Awaiting Check
+            <div class="text-muted" style="font-size: 0.8rem; font-weight: normal;">
+                Clients have answered these — open each one, then mark it checked to clear it.
+            </div>
         </div>
+        <span class="badge bg-warning-subtle text-warning-emphasis border">{{ $clientResponsesTotal }} to check</span>
     </div>
     <div class="card-body py-2">
         @foreach($clientResponses as $response)
-            <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
+            <div class="d-flex gap-2 py-2 align-items-center {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
                 <i class="bi bi-check2-circle text-success"></i>
                 <div class="flex-grow-1">
                     <strong>{{ $response->user->name ?? $response->user->email ?? 'Client' }}</strong>
@@ -177,12 +180,26 @@
                     <em>{{ Str::limit($response->userAnswer->question->label ?? $response->adminQuestion->label ?? 'a question', 50) }}</em>
                     <span class="text-muted">· {{ $response->resolved_at?->diffForHumans() }}</span>
                 </div>
-                @if($response->user?->onboarding)
-                    <a class="btn btn-sm btn-outline-primary py-0"
-                       href="{{ route('admin.user-onboardings.show', $response->user->onboarding) }}">Check</a>
-                @endif
+                <div class="d-flex gap-1">
+                    @if($response->user?->onboarding)
+                        <a class="btn btn-sm btn-outline-primary py-0"
+                           href="{{ route('admin.user-onboardings.show', $response->user->onboarding) }}">Open</a>
+                    @endif
+                    <form method="POST" action="{{ route('admin.notifications.check', $response) }}">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="{{ route('admin.dashboard') }}">
+                        <button class="btn btn-sm btn-outline-success py-0" title="Mark this response as checked">
+                            <i class="bi bi-check2"></i> Checked
+                        </button>
+                    </form>
+                </div>
             </div>
         @endforeach
+        @if($clientResponsesTotal > $clientResponses->count())
+            <div class="text-muted text-center py-2" style="font-size: 0.8rem;">
+                + {{ $clientResponsesTotal - $clientResponses->count() }} more awaiting check
+            </div>
+        @endif
     </div>
 </div>
 @endif

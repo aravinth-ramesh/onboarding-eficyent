@@ -255,6 +255,25 @@ class UserOnboardingController extends Controller
             ->with('success', $message);
     }
 
+    /**
+     * Acknowledge that an admin has looked at a client's response, clearing
+     * it from the "awaiting check" queue.
+     */
+    public function checkResponse(Request $request, AdminNotification $notification): RedirectResponse
+    {
+        if ($notification->status !== 'resolved') {
+            return redirect()->back()->with('error', 'That request has not been answered yet.');
+        }
+
+        $notification->update([
+            'checked_at' => now(),
+            'checked_by' => Auth::guard('admin')->id(),
+        ]);
+
+        return redirect()->to($request->input('redirect_to', route('admin.dashboard')))
+            ->with('success', 'Response marked as checked.');
+    }
+
     public function archive(UserOnboarding $userOnboarding): RedirectResponse
     {
         // Only finished lifecycles are archivable — anything still moving

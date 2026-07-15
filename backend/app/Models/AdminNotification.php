@@ -18,6 +18,8 @@ class AdminNotification extends Model
         'status',
         'read_at',
         'resolved_at',
+        'checked_at',
+        'checked_by',
     ];
 
     protected function casts(): array
@@ -25,6 +27,7 @@ class AdminNotification extends Model
         return [
             'read_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'checked_at' => 'datetime',
         ];
     }
 
@@ -56,6 +59,17 @@ class AdminNotification extends Model
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
+    }
+
+    /** Client answered, but no admin has confirmed they looked at it yet. */
+    public function scopeAwaitingCheck(Builder $query): Builder
+    {
+        return $query->where('status', 'resolved')->whereNull('checked_at');
+    }
+
+    public function checkedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'checked_by');
     }
 
     public function scopeForUser(Builder $query, int $userId): Builder

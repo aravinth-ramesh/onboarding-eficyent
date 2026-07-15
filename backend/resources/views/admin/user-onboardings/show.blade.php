@@ -697,22 +697,43 @@
                                 <span class="notification-status-badge {{ $notif->status }}">
                                     {{ ucfirst($notif->status) }}
                                 </span>
+                                @if($notif->status === 'resolved')
+                                    @if($notif->checked_at)
+                                        <span class="badge bg-success-subtle text-success border"
+                                              title="Checked by {{ $notif->checkedBy->name ?? 'admin' }} on {{ $notif->checked_at->format('M d, Y H:i') }}">
+                                            Checked
+                                        </span>
+                                    @else
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border">Needs check</span>
+                                    @endif
+                                @endif
                             </td>
                             <td>
                                 <small>{{ $notif->created_at->format('M d, H:i') }}</small>
                                 <br><small class="text-muted">by {{ $notif->admin->name ?? $notif->admin->email }}</small>
                             </td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-secondary btn-action"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#sendEmailModal"
-                                    data-user-id="{{ $notif->user_id }}"
-                                    data-notification-id="{{ $notif->id }}"
-                                    data-email-type="{{ $notif->type }}"
-                                    data-question-label="{{ $notif->type === 'change_request' ? ($notif->userAnswer->question->label ?? '') : ($notif->adminQuestion->label ?? '') }}"
-                                    title="Send email to user">
-                                    <i class="bi bi-envelope"></i>
-                                </button>
+                                <div class="d-flex gap-1">
+                                    @if($notif->status === 'resolved' && !$notif->checked_at)
+                                        <form method="POST" action="{{ route('admin.notifications.check', $notif) }}">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="{{ route('admin.user-onboardings.show', $userOnboarding) }}">
+                                            <button class="btn btn-sm btn-outline-success btn-action" title="Mark this response as checked">
+                                                <i class="bi bi-check2"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-action"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#sendEmailModal"
+                                        data-user-id="{{ $notif->user_id }}"
+                                        data-notification-id="{{ $notif->id }}"
+                                        data-email-type="{{ $notif->type }}"
+                                        data-question-label="{{ $notif->type === 'change_request' ? ($notif->userAnswer->question->label ?? '') : ($notif->adminQuestion->label ?? '') }}"
+                                        title="Send email to user">
+                                        <i class="bi bi-envelope"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

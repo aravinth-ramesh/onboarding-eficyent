@@ -129,7 +129,67 @@ class ClientResponseNotificationTest extends TestCase
         $this->actingAs($this->requester, 'admin')
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Client Responses to Your Requests')
+            ->assertSee('Client Responses Awaiting Check')
             ->assertSee('VAT Number');
+    }
+
+    public function test_checking_a_response_clears_it_from_the_queue(): void
+    {
+        $service = app(NotificationService::class);
+        $notification = $service->createChangeRequest($this->requester, $this->answer, 'Fix.');
+
+        Sanctum::actingAs($this->user);
+        $this->postJson("/api/notifications/{$notification->id}/resolve", ['value' => 'GB-123456789']);
+
+        // Before checking: in the queue.
+        $this->actingAs($this->requester, 'admin')
+            ->get(route('admin.dashboard'))
+            ->assertSee('Client Responses Awaiting Check');
+
+        $this->actingAs($this->requester, 'admin')
+            ->post(route('admin.notifications.check', $notification))
+            ->assertRedirect(route('admin.dashboard'));
+
+        $notification->refresh();
+        $this->assertNotNull($notification->checked_at);
+        $this->assertSame($this->requester->id, $notification->checked_by);
+
+        // After checking: queue is empty and the card disappears.
+        $this->actingAs($this->requester, 'admin')
+            ->get(route('admin.dashboard'))
+            ->assertDontSee('Client Responses Awaiting Check');
+    }
+
+    public function test_unanswered_requests_cannot_be_checked(): void
+    {
+        $service = app(NotificationService::class);
+        $notification = $service->createChangeRequest($this->requester, $this->answer, 'Fix.');
+
+        $this->actingAs($this->requester, 'admin')
+            ->from(route('admin.dashboard'))
+            ->post(route('admin.notifications.check', $notification))
+            ->assertSessionHas('error');
+
+        $this->assertNull($notification->fresh()->checked_at);
+    }
+
+    public function test_review_page_shows_needs_check_then_checked(): void
+    {
+        $service = app(NotificationService::class);
+        $notification = $service->createChangeRequest($this->requester, $this->answer, 'Fix.');
+
+        Sanctum::actingAs($this->user);
+        $this->postJson("/api/notifications/{$notification->id}/resolve", ['value' => 'GB-123456789']);
+
+        $this->actingAs($this->requester, 'admin')
+            ->get(route('admin.user-onboardings.show', $this->onboarding))
+            ->assertSee('Needs check');
+
+        $notification->update(['checked_at' => now(), 'checked_by' => $this->requester->id]);
+
+        $this->actingAs($this->requester, 'admin')
+            ->get(route('admin.user-onboardings.show', $this->onboarding))
+            ->assertSee('Checked')
+            ->assertDontSee('Needs check');
     }
 }
