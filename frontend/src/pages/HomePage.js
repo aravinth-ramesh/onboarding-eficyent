@@ -19,13 +19,17 @@ function HomePage() {
   const profileCompleted = !!(user && user.profile_completed);
   const [viewingAnswers, setViewingAnswers] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
 
   const handleDownloadPdf = async () => {
     setDownloading(true);
+    setDownloadError(null);
     try {
       await downloadApplicationPdf();
-    } catch {
-      // Non-fatal: the button simply re-enables.
+    } catch (err) {
+      // A silent failure leaves the user staring at a button that did
+      // nothing — always say what went wrong.
+      setDownloadError(err.message || 'Your PDF could not be prepared. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -142,6 +146,11 @@ function HomePage() {
                   {downloading ? 'Preparing…' : '⬇ Download PDF'}
                 </button>
               </div>
+              {downloadError && (
+                <div className="alert-corporate danger" style={{ marginTop: 12 }}>
+                  {downloadError}
+                </div>
+              )}
               <StatusTimeline />
             </div>
           </div>

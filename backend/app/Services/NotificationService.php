@@ -7,10 +7,13 @@ use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AdminQuestionAnswer;
 use App\Models\AdminQuestionAnswerFile;
+use App\Mail\ClientRespondedMail;
 use App\Models\User;
 use App\Models\UserAnswer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class NotificationService
 {
@@ -18,6 +21,44 @@ class NotificationService
         private AnswerService $answerService,
         private FileUploadService $fileUploadService,
     ) {}
+
+    /**
+     * Tell the review team a client has responded. Goes to the application's
+     * assigned reviewer when there is one (they asked for it), otherwise to
+     * every active admin so a response is never left unseen. Never lets a
+     * mail failure undo the client's submission.
+     */
+    private function notifyAdminsOfResponse(AdminNotification $notification, string $summary): void
+    {
+        try {
+            $notification->loadMissing(['user', 'admin', 'userAnswer.question', 'adminQuestion']);
+
+            $assignee = $notification->user?->activeOnboarding()?->assignee;
+            $recipients = $assignee && $assignee->is_active
+                ? collect([$assignee->email])
+                : Admin::where('is_active', true)->pluck('email');
+
+            foreach ($recipients->filter() as $email) {
+                Mail::to($email)->queue(new ClientRespondedMail($notification, $summary));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('client response notification failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** Short, email-safe description of what the client sent back. */
+    private function summarize(mixed $value, array $files = []): string
+    {
+        if (! empty($files)) {
+            $names = collect($files)->map(fn ($f) => is_string($f) ? $f : ($f->getClientOriginalName() ?? 'file'));
+
+            return $names->count() . ' file(s) uploaded: ' . $names->implode(', ');
+        }
+
+        $text = is_array($value) ? implode(', ', $value) : (string) $value;
+
+        return mb_strlen($text) > 300 ? mb_substr($text, 0, 300) . '…' : ($text !== '' ? $text : '—');
+    }
 
     public function createChangeRequest(Admin $admin, UserAnswer $answer, string $message): AdminNotification
     {
@@ -100,6 +141,8 @@ class NotificationService
             'resolved_at' => now(),
         ]);
 
+        $this->notifyAdminsOfResponse($notification, $this->summarize($newValue));
+
         return $updatedAnswer;
     }
 
@@ -121,6 +164,8 @@ class NotificationService
             'resolved_at' => now(),
         ]);
 
+        $this->notifyAdminsOfResponse($notification, $this->summarize(null, $files));
+
         return $updatedAnswer;
     }
 
@@ -136,6 +181,8 @@ class NotificationService
             'status' => 'resolved',
             'resolved_at' => now(),
         ]);
+
+        $this->notifyAdminsOfResponse($notification, $this->summarize($value));
 
         return $answer;
     }
@@ -167,6 +214,8 @@ class NotificationService
                 'status' => 'resolved',
                 'resolved_at' => now(),
             ]);
+
+            $this->notifyAdminsOfResponse($notification, $this->summarize(null, $files));
 
             return $answer->load('files');
         });

@@ -46,6 +46,13 @@ class DashboardController extends Controller
                 ->get(),
             'workload' => $this->teamWorkload(),
             'unassignedOpen' => UserOnboarding::where('status', 'completed')->whereNull('assigned_to')->count(),
+            // Client responses to change requests / new questions that an
+            // admin has not opened yet.
+            'clientResponses' => \App\Models\AdminNotification::with(['user', 'userAnswer.question', 'adminQuestion'])
+                ->where('status', 'resolved')
+                ->latest('resolved_at')
+                ->limit(8)
+                ->get(),
         ]);
     }
 

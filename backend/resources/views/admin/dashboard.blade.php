@@ -158,6 +158,35 @@
     </div>
 </div>
 
+{{-- Client responses to change requests / new questions --}}
+@if($clientResponses->isNotEmpty())
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-reply-fill"></i> Client Responses to Your Requests
+        <div class="text-muted" style="font-size: 0.8rem; font-weight: normal;">
+            Clients have answered these — check and close them out.
+        </div>
+    </div>
+    <div class="card-body py-2">
+        @foreach($clientResponses as $response)
+            <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
+                <i class="bi bi-check2-circle text-success"></i>
+                <div class="flex-grow-1">
+                    <strong>{{ $response->user->name ?? $response->user->email ?? 'Client' }}</strong>
+                    {{ $response->type === 'change_request' ? 'updated' : 'answered' }}
+                    <em>{{ Str::limit($response->userAnswer->question->label ?? $response->adminQuestion->label ?? 'a question', 50) }}</em>
+                    <span class="text-muted">· {{ $response->resolved_at?->diffForHumans() }}</span>
+                </div>
+                @if($response->user?->onboarding)
+                    <a class="btn btn-sm btn-outline-primary py-0"
+                       href="{{ route('admin.user-onboardings.show', $response->user->onboarding) }}">Check</a>
+                @endif
+            </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
 {{-- Team workload --}}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">

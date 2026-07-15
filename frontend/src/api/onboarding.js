@@ -86,16 +86,31 @@ export const deleteDraft = () =>
 // Fetches the PDF with the auth header and triggers a browser download.
 export const downloadApplicationPdf = async () => {
   const response = await client.get('/onboarding/download-pdf', { responseType: 'blob' });
+
+  // An error response still arrives as a blob because of responseType; read
+  // it back so the caller gets the server's message instead of saving a
+  // file full of JSON.
+  if (response.data.type === 'application/json') {
+    const text = await response.data.text();
+    throw new Error(JSON.parse(text).message || 'Download failed.');
+  }
+
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
   const link = document.createElement('a');
+  // Needs Content-Disposition to be CORS-exposed (see config/cors.php).
   const disposition = response.headers['content-disposition'] || '';
   const match = disposition.match(/filename="?([^";]+)"?/);
   link.href = url;
   link.download = match ? match[1] : 'application.pdf';
   document.body.appendChild(link);
   link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+
+  // Revoking synchronously can abort an in-flight download in some
+  // browsers — let the click settle first.
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 };
 
 export const getRegistrationCatalog = () =>
