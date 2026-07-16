@@ -121,19 +121,19 @@
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary duplicate-btn"
                                             data-bs-toggle="modal" data-bs-target="#duplicateModal"
-                                            data-url="{{ route('admin.scheduled-emails.duplicate', $email) }}"
+                                            data-url="{{ route('admin.scheduled-emails.duplicate', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
                                             data-subject="{{ $email->subject }}"
                                             data-count="{{ count($email->onboarding_ids) }}">
                                         <i class="bi bi-copy"></i> Duplicate
                                     </button>
                                     @if($email->status === 'pending')
-                                        <form method="POST" action="{{ route('admin.scheduled-emails.cancel', $email) }}"
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.cancel', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
                                               onsubmit="return confirm('Cancel this scheduled email?')">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-danger">Cancel</button>
                                         </form>
                                     @elseif($email->status === 'cancelled' && $email->send_at->isFuture())
-                                        <form method="POST" action="{{ route('admin.scheduled-emails.restore', $email) }}"
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.restore', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
                                               onsubmit="return confirm('Restore this email? It will send at its scheduled time.')">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-primary">

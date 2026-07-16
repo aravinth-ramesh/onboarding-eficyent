@@ -35,6 +35,12 @@ class ScheduledEmailController extends Controller
         ]);
     }
 
+    /** Redirect back to the list keeping the admin's active status/search/sort. */
+    private function backToIndex(Request $request): RedirectResponse
+    {
+        return redirect()->route('admin.scheduled-emails.index', $request->only('status', 'search', 'sort'));
+    }
+
     private function filteredQuery(Request $request)
     {
         return ScheduledEmail::with('admin')
@@ -97,7 +103,7 @@ class ScheduledEmailController extends Controller
             'status' => 'pending',
         ]);
 
-        return redirect()->route('admin.scheduled-emails.index')
+        return $this->backToIndex($request)
             ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to " . count($copy->onboarding_ids) . ' client(s).');
     }
 
@@ -152,17 +158,15 @@ class ScheduledEmailController extends Controller
             ->with($cancelled > 0 ? 'success' : 'error', $message);
     }
 
-    public function cancel(ScheduledEmail $scheduledEmail): RedirectResponse
+    public function cancel(Request $request, ScheduledEmail $scheduledEmail): RedirectResponse
     {
         if ($scheduledEmail->status !== 'pending') {
-            return redirect()->route('admin.scheduled-emails.index')
-                ->with('error', 'Only pending emails can be cancelled.');
+            return $this->backToIndex($request)->with('error', 'Only pending emails can be cancelled.');
         }
 
         $scheduledEmail->update(['status' => 'cancelled']);
 
-        return redirect()->route('admin.scheduled-emails.index')
-            ->with('success', 'Scheduled email cancelled.');
+        return $this->backToIndex($request)->with('success', 'Scheduled email cancelled.');
     }
 
     /**
@@ -170,21 +174,20 @@ class ScheduledEmailController extends Controller
      * send time is still in the future — a past-due restore would fire
      * instantly on the next run, so those are steered to Duplicate instead.
      */
-    public function restore(ScheduledEmail $scheduledEmail): RedirectResponse
+    public function restore(Request $request, ScheduledEmail $scheduledEmail): RedirectResponse
     {
         if ($scheduledEmail->status !== 'cancelled') {
-            return redirect()->route('admin.scheduled-emails.index')
-                ->with('error', 'Only cancelled emails can be restored.');
+            return $this->backToIndex($request)->with('error', 'Only cancelled emails can be restored.');
         }
 
         if ($scheduledEmail->send_at->isPast()) {
-            return redirect()->route('admin.scheduled-emails.index')
+            return $this->backToIndex($request)
                 ->with('error', 'This email\'s send time has passed — duplicate it with a new time instead.');
         }
 
         $scheduledEmail->update(['status' => 'pending']);
 
-        return redirect()->route('admin.scheduled-emails.index')
+        return $this->backToIndex($request)
             ->with('success', "Scheduled email restored — it will send on {$scheduledEmail->send_at->format('M d, Y H:i')}.");
     }
 }

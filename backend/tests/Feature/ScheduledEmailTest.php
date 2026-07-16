@@ -478,6 +478,34 @@ class ScheduledEmailTest extends TestCase
         $this->assertSame('pending', $pending->fresh()->status);
     }
 
+    public function test_row_actions_preserve_the_active_filters_on_redirect(): void
+    {
+        $pending = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Weekly digest', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+
+        $filters = ['status' => 'pending', 'search' => 'Weekly', 'sort' => 'desc'];
+        $expected = route('admin.scheduled-emails.index', $filters);
+
+        // Cancel keeps the filters.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.cancel', array_merge(['scheduledEmail' => $pending], $filters)))
+            ->assertRedirect($expected);
+
+        // Restore keeps them too.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.restore', array_merge(['scheduledEmail' => $pending->fresh(), 'status' => 'cancelled'], ['search' => 'Weekly', 'sort' => 'desc'])))
+            ->assertRedirect(route('admin.scheduled-emails.index', ['status' => 'cancelled', 'search' => 'Weekly', 'sort' => 'desc']));
+
+        // Duplicate keeps them.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.duplicate', array_merge(['scheduledEmail' => $pending], $filters)), [
+                'send_at' => now()->addWeek()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect($expected);
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([
