@@ -451,6 +451,10 @@
                 <i class="bi bi-envelope-paper"></i> Email Templates
             </a>
 
+            <a href="{{ route('admin.scheduled-emails.index') }}" class="sidebar-link {{ request()->routeIs('admin.scheduled-emails.*') ? 'active' : '' }}">
+                <i class="bi bi-clock-history"></i> Scheduled Emails
+            </a>
+
             <div class="sidebar-heading">Monitoring</div>
 
             <a href="{{ route('admin.user-onboardings.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-onboardings.*') ? 'active' : '' }}">

@@ -46,6 +46,10 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Country Registrations
     Route::resource('country-registrations', CountryRegistrationController::class)->except(['show']);
 
+    // Scheduled Emails
+    Route::get('scheduled-emails', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'index'])->name('scheduled-emails.index');
+    Route::post('scheduled-emails/{scheduledEmail}/cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'cancel'])->name('scheduled-emails.cancel');
+
     // Email Templates
     Route::get('email-templates', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'index'])->name('email-templates.index');
     Route::get('email-templates/{key}/edit', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'edit'])->name('email-templates.edit');

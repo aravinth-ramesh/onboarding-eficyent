@@ -81,6 +81,7 @@
     @csrf
     <input type="hidden" name="subject" id="bulkEmailSubjectInput">
     <input type="hidden" name="body" id="bulkEmailBodyInput">
+    <input type="hidden" name="send_at" id="bulkEmailSendAtInput">
     <div id="bulkEmailIds"></div>
 </form>
 
@@ -193,17 +194,26 @@
                     <input type="text" class="form-control" id="bulkEmailSubject"
                            placeholder="e.g. An update on your Eficyent onboarding">
                 </div>
-                <div class="mb-2">
+                <div class="mb-3">
                     <label for="bulkEmailBody" class="form-label">Message <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="bulkEmailBody" rows="7"
                               placeholder="Hello &#123;&#123;name&#125;&#125;,&#10;&#10;..."></textarea>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="bulkEmailScheduleToggle">
+                    <label class="form-check-label" for="bulkEmailScheduleToggle">Schedule for later</label>
+                </div>
+                <div class="mb-2 d-none" id="bulkEmailSendAtWrap">
+                    <label for="bulkEmailSendAt" class="form-label">Send at</label>
+                    <input type="datetime-local" class="form-control" id="bulkEmailSendAt">
+                    <div class="form-text">Runs on the server clock (UTC). Must be in the future.</div>
                 </div>
                 <div class="text-danger d-none" id="bulkEmailError" style="font-size: 0.85rem;"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="bulkEmailConfirm">
-                    <i class="bi bi-send"></i> Send Email
+                    <i class="bi bi-send"></i> <span id="bulkEmailConfirmLabel">Send Email</span>
                 </button>
             </div>
         </div>
@@ -306,18 +316,32 @@
             document.getElementById('bulkEmailCount').textContent = withEmail;
         });
 
+        // Schedule toggle reveals the datetime input and relabels the button.
+        var scheduleToggle = document.getElementById('bulkEmailScheduleToggle');
+        scheduleToggle.addEventListener('change', function () {
+            document.getElementById('bulkEmailSendAtWrap').classList.toggle('d-none', !this.checked);
+            document.getElementById('bulkEmailConfirmLabel').textContent = this.checked ? 'Schedule Email' : 'Send Email';
+        });
+
         document.getElementById('bulkEmailConfirm').addEventListener('click', function () {
             var subject = document.getElementById('bulkEmailSubject').value.trim();
             var body = document.getElementById('bulkEmailBody').value.trim();
+            var scheduling = scheduleToggle.checked;
+            var sendAt = document.getElementById('bulkEmailSendAt').value;
             var err = document.getElementById('bulkEmailError');
-            if (!subject || !body) {
-                err.textContent = 'Subject and message are both required.';
-                err.classList.remove('d-none');
-                return;
+
+            function fail(msg) { err.textContent = msg; err.classList.remove('d-none'); }
+
+            if (!subject || !body) { fail('Subject and message are both required.'); return; }
+            if (scheduling) {
+                if (!sendAt) { fail('Choose a date and time to send.'); return; }
+                if (new Date(sendAt) <= new Date()) { fail('The scheduled time must be in the future.'); return; }
             }
+
             fillIds(document.getElementById('bulkEmailIds'), null);
             document.getElementById('bulkEmailSubjectInput').value = subject;
             document.getElementById('bulkEmailBodyInput').value = body;
+            document.getElementById('bulkEmailSendAtInput').value = scheduling ? sendAt : '';
             document.getElementById('bulkEmailForm').submit();
         });
     })();
