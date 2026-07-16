@@ -28,6 +28,21 @@
     </div>
 </div>
 
+{{-- Bulk cancel — appears when pending rows are ticked --}}
+<form method="POST" action="{{ route('admin.scheduled-emails.bulk-cancel', request()->only('status', 'search', 'sort')) }}" id="bulkCancelForm" class="d-none">
+    @csrf
+    <div id="bulkCancelIds"></div>
+</form>
+<div class="card mb-3" id="cancelBar" style="display: none;">
+    <div class="card-body py-2 d-flex align-items-center gap-3">
+        <span class="fw-semibold" style="font-size: 0.9rem;"><span id="cancelCount">0</span> selected</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="bulkCancelBtn">
+            <i class="bi bi-x-circle"></i> Cancel Selected
+        </button>
+        <span class="text-muted" style="font-size: 0.8rem;">Only pending emails are cancellable.</span>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
@@ -48,6 +63,9 @@
                 <thead>
                     <tr>
                         @php $nextSort = $sort === 'asc' ? 'desc' : 'asc'; @endphp
+                        <th style="width: 32px;">
+                            <input type="checkbox" class="form-check-input" id="cancelSelectAll" title="Select all pending">
+                        </th>
                         <th style="white-space: nowrap;">
                             <a href="{{ route('admin.scheduled-emails.index', array_merge(request()->only('status', 'search'), ['sort' => $nextSort])) }}"
                                class="text-decoration-none text-reset">
@@ -71,6 +89,11 @@
                 <tbody>
                     @forelse($emails as $email)
                         <tr>
+                            <td>
+                                @if($email->status === 'pending')
+                                    <input type="checkbox" class="form-check-input cancel-check" value="{{ $email->id }}">
+                                @endif
+                            </td>
                             <td style="white-space: nowrap;">
                                 {{ $email->send_at->format('M d, Y H:i') }}
                                 @if($email->status === 'pending')
@@ -115,7 +138,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">No scheduled emails.</td>
+                            <td colspan="7" class="text-center text-muted py-4">No scheduled emails.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -181,6 +204,47 @@
 
 @push('scripts')
 <script>
+    // ── Bulk cancel ──
+    (function () {
+        var checks = document.querySelectorAll('.cancel-check');
+        var bar = document.getElementById('cancelBar');
+        var count = document.getElementById('cancelCount');
+        var selectAll = document.getElementById('cancelSelectAll');
+
+        function selected() {
+            return Array.prototype.filter.call(checks, function (c) { return c.checked; });
+        }
+        function refresh() {
+            var n = selected().length;
+            count.textContent = n;
+            bar.style.display = n > 0 ? 'block' : 'none';
+        }
+
+        checks.forEach(function (c) { c.addEventListener('change', refresh); });
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checks.forEach(function (c) { c.checked = selectAll.checked; });
+                refresh();
+            });
+        }
+
+        document.getElementById('bulkCancelBtn').addEventListener('click', function () {
+            var picked = selected();
+            if (picked.length === 0) return;
+            if (!confirm('Cancel ' + picked.length + ' scheduled email(s)? They will not be sent.')) return;
+            var container = document.getElementById('bulkCancelIds');
+            container.innerHTML = '';
+            picked.forEach(function (c) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = c.value;
+                container.appendChild(input);
+            });
+            document.getElementById('bulkCancelForm').submit();
+        });
+    })();
+
     var previewFrame = document.getElementById('previewFrame');
     document.getElementById('previewModal').addEventListener('show.bs.modal', function (event) {
         previewFrame.src = event.relatedTarget.getAttribute('data-url');

@@ -132,6 +132,26 @@ class ScheduledEmailController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
+    public function bulkCancel(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:scheduled_emails,id',
+        ]);
+
+        // Only pending ones can be cancelled; sent/cancelled are left alone.
+        $cancelled = ScheduledEmail::whereIn('id', $validated['ids'])
+            ->where('status', 'pending')
+            ->update(['status' => 'cancelled']);
+
+        $skipped = count($validated['ids']) - $cancelled;
+        $message = "{$cancelled} scheduled email(s) cancelled."
+            . ($skipped > 0 ? " {$skipped} skipped (already sent or cancelled)." : '');
+
+        return redirect()->route('admin.scheduled-emails.index', $request->except(['ids', '_token']))
+            ->with($cancelled > 0 ? 'success' : 'error', $message);
+    }
+
     public function cancel(ScheduledEmail $scheduledEmail): RedirectResponse
     {
         if ($scheduledEmail->status !== 'pending') {

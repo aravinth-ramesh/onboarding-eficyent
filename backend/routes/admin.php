@@ -50,6 +50,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::get('scheduled-emails', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'index'])->name('scheduled-emails.index');
     // Before the {scheduledEmail} wildcards below.
     Route::get('scheduled-emails/export-csv', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'exportCsv'])->name('scheduled-emails.export-csv');
+    Route::post('scheduled-emails/bulk-cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'bulkCancel'])->name('scheduled-emails.bulk-cancel');
     Route::post('scheduled-emails/{scheduledEmail}/cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'cancel'])->name('scheduled-emails.cancel');
     Route::post('scheduled-emails/{scheduledEmail}/duplicate', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'duplicate'])->name('scheduled-emails.duplicate');
     Route::get('scheduled-emails/{scheduledEmail}/preview', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'preview'])->name('scheduled-emails.preview');

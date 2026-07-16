@@ -374,6 +374,62 @@ class ScheduledEmailTest extends TestCase
             ->assertDontSee('Drop me');
     }
 
+    public function test_bulk_cancel_cancels_only_pending_selected(): void
+    {
+        $pendingA = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'A', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        $pendingB = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'B', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDays(2), 'status' => 'pending',
+        ]);
+        $alreadySent = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'C', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.bulk-cancel'), [
+                'ids' => [$pendingA->id, $pendingB->id, $alreadySent->id],
+            ])
+            ->assertRedirect(route('admin.scheduled-emails.index'))
+            ->assertSessionHas('success', '2 scheduled email(s) cancelled. 1 skipped (already sent or cancelled).');
+
+        $this->assertSame('cancelled', $pendingA->fresh()->status);
+        $this->assertSame('cancelled', $pendingB->fresh()->status);
+        $this->assertSame('sent', $alreadySent->fresh()->status); // untouched
+    }
+
+    public function test_bulk_cancel_of_no_pending_reports_an_error(): void
+    {
+        $sent = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'C', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.bulk-cancel'), ['ids' => [$sent->id]])
+            ->assertSessionHas('error');
+
+        $this->assertSame('sent', $sent->fresh()->status);
+    }
+
+    public function test_bulk_cancel_never_sends_the_cancelled_emails(): void
+    {
+        $pending = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'A', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addHour(), 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.bulk-cancel'), ['ids' => [$pending->id]]);
+
+        $this->travelTo(now()->addHours(2));
+        $this->artisan('emails:process-scheduled');
+        Mail::assertNothingQueued();
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([
