@@ -45,13 +45,22 @@
                             </td>
                             <td>{{ $email->admin->name ?? '—' }}</td>
                             <td class="text-end">
-                                @if($email->status === 'pending')
-                                    <form method="POST" action="{{ route('admin.scheduled-emails.cancel', $email) }}"
-                                          onsubmit="return confirm('Cancel this scheduled email?')">
-                                        @csrf
-                                        <button class="btn btn-sm btn-outline-danger">Cancel</button>
-                                    </form>
-                                @endif
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary duplicate-btn"
+                                            data-bs-toggle="modal" data-bs-target="#duplicateModal"
+                                            data-url="{{ route('admin.scheduled-emails.duplicate', $email) }}"
+                                            data-subject="{{ $email->subject }}"
+                                            data-count="{{ count($email->onboarding_ids) }}">
+                                        <i class="bi bi-copy"></i> Duplicate
+                                    </button>
+                                    @if($email->status === 'pending')
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.cancel', $email) }}"
+                                              onsubmit="return confirm('Cancel this scheduled email?')">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-danger">Cancel</button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -67,4 +76,50 @@
         <div class="card-footer">{{ $emails->links() }}</div>
     @endif
 </div>
+
+{{-- Duplicate modal --}}
+<div class="modal fade" id="duplicateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="duplicateForm">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Duplicate Scheduled Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                        Creates a new pending email with the same message and recipients
+                        (<span id="dupCount">0</span> client(s)) — choose when it should go out.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-control" id="dupSubject" readonly>
+                    </div>
+                    <div class="mb-0">
+                        <label for="dupSendAt" class="form-label">Send at <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="dupSendAt" name="send_at" required>
+                        <div class="form-text">Server clock (UTC). Must be in the future.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-copy"></i> Duplicate</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    document.getElementById('duplicateModal').addEventListener('show.bs.modal', function (event) {
+        var btn = event.relatedTarget;
+        document.getElementById('duplicateForm').action = btn.getAttribute('data-url');
+        document.getElementById('dupSubject').value = btn.getAttribute('data-subject');
+        document.getElementById('dupCount').textContent = btn.getAttribute('data-count');
+        document.getElementById('dupSendAt').value = '';
+    });
+</script>
+@endpush
 @endsection

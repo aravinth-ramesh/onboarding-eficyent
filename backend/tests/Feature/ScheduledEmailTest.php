@@ -128,6 +128,53 @@ class ScheduledEmailTest extends TestCase
             ->assertSessionHasErrors('send_at');
     }
 
+    public function test_duplicating_creates_a_new_pending_copy_at_a_new_time(): void
+    {
+        $original = ScheduledEmail::create([
+            'admin_id' => $this->admin->id,
+            'subject' => 'Quarterly notice',
+            'body' => 'Hello {{name}}, ref {{reference}}.',
+            'onboarding_ids' => [$this->a->id, $this->b->id],
+            'send_at' => now()->subDay(), // even a past/sent one can be duplicated
+            'status' => 'sent',
+        ]);
+
+        $newTime = now()->addWeek();
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.duplicate', $original), [
+                'send_at' => $newTime->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect(route('admin.scheduled-emails.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(2, ScheduledEmail::count());
+        $copy = ScheduledEmail::latest('id')->first();
+        $this->assertSame('pending', $copy->status);
+        $this->assertSame('Quarterly notice', $copy->subject);
+        $this->assertSame($original->body, $copy->body);
+        $this->assertEqualsCanonicalizing([$this->a->id, $this->b->id], $copy->onboarding_ids);
+        $this->assertNull($copy->sent_count);
+        $this->assertTrue($copy->send_at->equalTo($newTime->startOfSecond()));
+    }
+
+    public function test_duplicate_requires_a_future_time(): void
+    {
+        $original = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'S', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.scheduled-emails.index'))
+            ->post(route('admin.scheduled-emails.duplicate', $original), [
+                'send_at' => now()->subHour()->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('send_at');
+
+        $this->assertSame(1, ScheduledEmail::count());
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([
