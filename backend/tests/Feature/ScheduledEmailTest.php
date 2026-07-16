@@ -506,6 +506,31 @@ class ScheduledEmailTest extends TestCase
             ->assertRedirect($expected);
     }
 
+    public function test_clear_all_appears_only_when_a_filter_is_active(): void
+    {
+        // Bare list: nothing to clear.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index'))
+            ->assertDontSee('Clear all');
+
+        // A non-default sort alone counts as an active filter.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['sort' => 'asc']))
+            ->assertSee('Clear all')
+            ->assertSee('>1</span>', false); // badge shows the single active filter
+    }
+
+    public function test_clear_all_counts_every_active_filter(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', [
+                'status' => 'pending', 'search' => 'x', 'from' => '2026-08-01',
+                'to' => '2026-08-31', 'sort' => 'desc',
+            ]))
+            ->assertSee('Clear all')
+            ->assertSee('>5</span>', false); // badge shows all five active filters
+    }
+
     public function test_date_range_filters_by_send_date_inclusive(): void
     {
         // Anchor on fixed dates so start/end-of-day boundaries are exact.

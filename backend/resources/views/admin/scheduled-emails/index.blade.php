@@ -24,10 +24,19 @@
                 <span class="text-muted small">to</span>
                 <input type="date" name="to" class="form-control form-control-sm" value="{{ $to }}" title="To (send date)" style="width: 150px;">
             </div>
-            <div class="col-auto d-flex gap-2">
+            @php
+                // Every active filter, including a non-default sort — so "Clear
+                // all" resets the view back to its natural state in one click.
+                $activeFilters = collect([$status, $search, $from, $to, $sort])
+                    ->filter(fn ($v) => filled($v))->count();
+            @endphp
+            <div class="col-auto d-flex gap-2 align-items-center">
                 <button class="btn btn-sm btn-primary">Search</button>
-                @if($status || $search || $from || $to)
-                    <a href="{{ route('admin.scheduled-emails.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                @if($activeFilters > 0)
+                    <a href="{{ route('admin.scheduled-emails.index') }}" class="btn btn-sm btn-outline-secondary">
+                        Clear all
+                        <span class="badge bg-secondary ms-1">{{ $activeFilters }}</span>
+                    </a>
                 @endif
             </div>
         </form>
