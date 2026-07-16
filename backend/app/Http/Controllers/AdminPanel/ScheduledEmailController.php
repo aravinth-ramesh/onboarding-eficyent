@@ -14,14 +14,27 @@ use Illuminate\View\View;
 
 class ScheduledEmailController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $emails = ScheduledEmail::with('admin')
+        $emails = $this->filteredQuery($request)
             ->orderByRaw("CASE status WHEN 'pending' THEN 0 ELSE 1 END")
             ->orderBy('send_at')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.scheduled-emails.index', compact('emails'));
+        return view('admin.scheduled-emails.index', [
+            'emails' => $emails,
+            'status' => $request->input('status'),
+        ]);
+    }
+
+    private function filteredQuery(Request $request)
+    {
+        return ScheduledEmail::with('admin')
+            ->when(
+                in_array($request->input('status'), ['pending', 'sent', 'cancelled'], true),
+                fn ($q) => $q->where('status', $request->input('status')),
+            );
     }
 
     /**
@@ -77,18 +90,18 @@ class ScheduledEmailController extends Controller
             ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to " . count($copy->onboarding_ids) . ' client(s).');
     }
 
-    public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $filename = 'scheduled-emails-' . now()->format('Y-m-d') . '.csv';
 
-        return response()->streamDownload(function () {
+        return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
             fputcsv($out, [
                 'Send At (UTC)', 'Status', 'Subject', 'Recipients', 'Sent Count',
                 'Scheduled By', 'Created At (UTC)', 'Processed At (UTC)',
             ]);
 
-            ScheduledEmail::with('admin')
+            $this->filteredQuery($request)
                 ->orderByDesc('send_at')
                 ->lazy()
                 ->each(function (ScheduledEmail $email) use ($out) {

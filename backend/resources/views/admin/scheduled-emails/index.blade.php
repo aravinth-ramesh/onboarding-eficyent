@@ -3,6 +3,26 @@
 @section('title', 'Scheduled Emails')
 
 @section('content')
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ route('admin.scheduled-emails.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    @foreach(['pending' => 'Pending', 'sent' => 'Sent', 'cancelled' => 'Cancelled'] as $value => $label)
+                        <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @if($status)
+                <div class="col-auto">
+                    <a href="{{ route('admin.scheduled-emails.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                </div>
+            @endif
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
@@ -12,7 +32,7 @@
             </div>
         </div>
         @if($emails->total() > 0)
-            <a href="{{ route('admin.scheduled-emails.export-csv') }}" class="btn btn-sm btn-outline-success">
+            <a href="{{ route('admin.scheduled-emails.export-csv', request()->only('status')) }}" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-filetype-csv"></i> Export CSV
             </a>
         @endif

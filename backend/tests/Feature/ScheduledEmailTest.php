@@ -219,6 +219,47 @@ class ScheduledEmailTest extends TestCase
         $this->assertStringNotContainsString('{{name}}', $html);
     }
 
+    public function test_list_filters_by_status(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Pending blast', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Sent blast', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['status' => 'pending']))
+            ->assertSee('Pending blast')
+            ->assertDontSee('Sent blast');
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['status' => 'sent']))
+            ->assertSee('Sent blast')
+            ->assertDontSee('Pending blast');
+    }
+
+    public function test_csv_export_follows_the_status_filter(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Pending blast', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Sent blast', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        $csv = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.export-csv', ['status' => 'pending']))
+            ->streamedContent();
+
+        $this->assertStringContainsString('Pending blast', $csv);
+        $this->assertStringNotContainsString('Sent blast', $csv);
+    }
+
     public function test_csv_export_lists_all_scheduled_emails(): void
     {
         ScheduledEmail::create([
