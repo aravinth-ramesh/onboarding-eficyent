@@ -175,6 +175,50 @@ class ScheduledEmailTest extends TestCase
         $this->assertSame(1, ScheduledEmail::count());
     }
 
+    public function test_preview_renders_the_email_with_the_first_recipient_substituted(): void
+    {
+        $scheduled = ScheduledEmail::create([
+            'admin_id' => $this->admin->id,
+            'subject' => 'Notice for {{name}}',
+            'body' => 'Hello {{name}}, about {{reference}}. Warm regards.',
+            'onboarding_ids' => [$this->a->id, $this->b->id],
+            'send_at' => now()->addDay(),
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.preview', $scheduled))
+            ->assertOk();
+
+        $html = $response->getContent();
+        // Real branded mailable, placeholders filled from the first recipient.
+        $this->assertStringContainsString('Hello Alice, about ' . $this->a->reference, $html);
+        $this->assertStringContainsString('Eficyent', $html);
+        $this->assertStringNotContainsString('{{name}}', $html);
+        $this->assertStringNotContainsString('{{reference}}', $html);
+    }
+
+    public function test_preview_falls_back_to_sample_data_when_no_recipient_is_reachable(): void
+    {
+        // Only recipient is a soft-deleted user → no reachable client.
+        $ghostUser = User::create(['email' => 'ghost@test.com', 'name' => 'Ghost', 'position' => 'X']);
+        $ghost = UserOnboarding::create(['user_id' => $ghostUser->id, 'user_type_id' => $this->a->user_type_id, 'status' => 'pending', 'started_at' => now()]);
+        $ghostUser->delete();
+
+        $scheduled = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Hi {{name}}', 'body' => 'Hello {{name}}, ref {{reference}}.',
+            'onboarding_ids' => [$ghost->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+
+        $html = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.preview', $scheduled))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Jane Doe', $html);
+        $this->assertStringNotContainsString('{{name}}', $html);
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([

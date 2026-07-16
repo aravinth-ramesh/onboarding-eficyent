@@ -46,6 +46,11 @@
                             <td>{{ $email->admin->name ?? '—' }}</td>
                             <td class="text-end">
                                 <div class="d-flex gap-1 justify-content-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preview-btn"
+                                            data-bs-toggle="modal" data-bs-target="#previewModal"
+                                            data-url="{{ route('admin.scheduled-emails.preview', $email) }}">
+                                        <i class="bi bi-eye"></i> Preview
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary duplicate-btn"
                                             data-bs-toggle="modal" data-bs-target="#duplicateModal"
                                             data-url="{{ route('admin.scheduled-emails.duplicate', $email) }}"
@@ -75,6 +80,24 @@
     @if($emails->hasPages())
         <div class="card-footer">{{ $emails->links() }}</div>
     @endif
+</div>
+
+{{-- Preview modal --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Email Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="text-muted px-3 py-2 border-bottom" style="font-size: 0.8rem;">
+                    Rendered with the first recipient's details. Placeholders are filled per recipient when sent.
+                </div>
+                <iframe id="previewFrame" title="Email preview" style="width: 100%; height: 60vh; border: 0;"></iframe>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Duplicate modal --}}
@@ -113,6 +136,14 @@
 
 @push('scripts')
 <script>
+    var previewFrame = document.getElementById('previewFrame');
+    document.getElementById('previewModal').addEventListener('show.bs.modal', function (event) {
+        previewFrame.src = event.relatedTarget.getAttribute('data-url');
+    });
+    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        previewFrame.src = 'about:blank';
+    });
+
     document.getElementById('duplicateModal').addEventListener('show.bs.modal', function (event) {
         var btn = event.relatedTarget;
         document.getElementById('duplicateForm').action = btn.getAttribute('data-url');
