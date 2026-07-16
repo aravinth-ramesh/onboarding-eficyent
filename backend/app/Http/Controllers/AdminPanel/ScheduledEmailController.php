@@ -25,6 +25,7 @@ class ScheduledEmailController extends Controller
         return view('admin.scheduled-emails.index', [
             'emails' => $emails,
             'status' => $request->input('status'),
+            'search' => $request->input('search'),
         ]);
     }
 
@@ -34,6 +35,10 @@ class ScheduledEmailController extends Controller
             ->when(
                 in_array($request->input('status'), ['pending', 'sent', 'cancelled'], true),
                 fn ($q) => $q->where('status', $request->input('status')),
+            )
+            ->when(
+                filled($request->input('search')),
+                fn ($q) => $q->where('subject', 'like', '%' . trim($request->input('search')) . '%'),
             );
     }
 

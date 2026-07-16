@@ -6,6 +6,10 @@
 <div class="card mb-3">
     <div class="card-body py-2">
         <form method="GET" action="{{ route('admin.scheduled-emails.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="search" name="search" class="form-control form-control-sm"
+                       placeholder="Search by subject" value="{{ $search }}">
+            </div>
             <div class="col-md-3">
                 <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Statuses</option>
@@ -14,11 +18,12 @@
                     @endforeach
                 </select>
             </div>
-            @if($status)
-                <div class="col-auto">
+            <div class="col-auto d-flex gap-2">
+                <button class="btn btn-sm btn-primary">Search</button>
+                @if($status || $search)
                     <a href="{{ route('admin.scheduled-emails.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
-                </div>
-            @endif
+                @endif
+            </div>
         </form>
     </div>
 </div>
@@ -32,7 +37,7 @@
             </div>
         </div>
         @if($emails->total() > 0)
-            <a href="{{ route('admin.scheduled-emails.export-csv', request()->only('status')) }}" class="btn btn-sm btn-outline-success">
+            <a href="{{ route('admin.scheduled-emails.export-csv', request()->only('status', 'search')) }}" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-filetype-csv"></i> Export CSV
             </a>
         @endif

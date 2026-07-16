@@ -241,6 +241,55 @@ class ScheduledEmailTest extends TestCase
             ->assertDontSee('Pending blast');
     }
 
+    public function test_search_matches_the_subject_and_combines_with_status(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Quarterly newsletter', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Maintenance window', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Quarterly recap', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        // Subject search across statuses.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['search' => 'quarterly']))
+            ->assertSee('Quarterly newsletter')
+            ->assertSee('Quarterly recap')
+            ->assertDontSee('Maintenance window');
+
+        // Combined with the status filter.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['search' => 'quarterly', 'status' => 'pending']))
+            ->assertSee('Quarterly newsletter')
+            ->assertDontSee('Quarterly recap')
+            ->assertDontSee('Maintenance window');
+    }
+
+    public function test_csv_export_follows_the_subject_search(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Quarterly newsletter', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Maintenance window', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+
+        $csv = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.export-csv', ['search' => 'quarterly']))
+            ->streamedContent();
+
+        $this->assertStringContainsString('Quarterly newsletter', $csv);
+        $this->assertStringNotContainsString('Maintenance window', $csv);
+    }
+
     public function test_csv_export_follows_the_status_filter(): void
     {
         ScheduledEmail::create([
