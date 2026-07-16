@@ -32,13 +32,18 @@ class ScheduledEmailController extends Controller
             'status' => $request->input('status'),
             'search' => $request->input('search'),
             'sort' => $sort,
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
         ]);
     }
 
-    /** Redirect back to the list keeping the admin's active status/search/sort. */
+    /** Query params that make up the admin's active view. */
+    private const FILTER_KEYS = ['status', 'search', 'sort', 'from', 'to'];
+
+    /** Redirect back to the list keeping the admin's active filters. */
     private function backToIndex(Request $request): RedirectResponse
     {
-        return redirect()->route('admin.scheduled-emails.index', $request->only('status', 'search', 'sort'));
+        return redirect()->route('admin.scheduled-emails.index', $request->only(self::FILTER_KEYS));
     }
 
     private function filteredQuery(Request $request)
@@ -51,7 +56,28 @@ class ScheduledEmailController extends Controller
             ->when(
                 filled($request->input('search')),
                 fn ($q) => $q->where('subject', 'like', '%' . trim($request->input('search')) . '%'),
+            )
+            ->when(
+                $this->parseDate($request->input('from')),
+                fn ($q, $from) => $q->where('send_at', '>=', $from->startOfDay()),
+            )
+            ->when(
+                $this->parseDate($request->input('to')),
+                fn ($q, $to) => $q->where('send_at', '<=', $to->endOfDay()),
             );
+    }
+
+    /** Parse a YYYY-MM-DD filter value, ignoring anything malformed. */
+    private function parseDate(?string $value): ?\Illuminate\Support\Carbon
+    {
+        if (! filled($value)) {
+            return null;
+        }
+        try {
+            return \Illuminate\Support\Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

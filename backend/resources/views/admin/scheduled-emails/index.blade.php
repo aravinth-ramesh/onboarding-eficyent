@@ -10,7 +10,7 @@
                 <input type="search" name="search" class="form-control form-control-sm"
                        placeholder="Search by subject" value="{{ $search }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Statuses</option>
                     @foreach(['pending' => 'Pending', 'sent' => 'Sent', 'cancelled' => 'Cancelled'] as $value => $label)
@@ -18,9 +18,15 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-auto d-flex align-items-center gap-1">
+                <label class="form-label mb-0 small text-muted">Send</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="{{ $from }}" title="From (send date)" style="width: 150px;">
+                <span class="text-muted small">to</span>
+                <input type="date" name="to" class="form-control form-control-sm" value="{{ $to }}" title="To (send date)" style="width: 150px;">
+            </div>
             <div class="col-auto d-flex gap-2">
                 <button class="btn btn-sm btn-primary">Search</button>
-                @if($status || $search)
+                @if($status || $search || $from || $to)
                     <a href="{{ route('admin.scheduled-emails.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
             </div>
@@ -29,7 +35,7 @@
 </div>
 
 {{-- Bulk cancel — appears when pending rows are ticked --}}
-<form method="POST" action="{{ route('admin.scheduled-emails.bulk-cancel', request()->only('status', 'search', 'sort')) }}" id="bulkCancelForm" class="d-none">
+<form method="POST" action="{{ route('admin.scheduled-emails.bulk-cancel', request()->only('status', 'search', 'sort', 'from', 'to')) }}" id="bulkCancelForm" class="d-none">
     @csrf
     <div id="bulkCancelIds"></div>
 </form>
@@ -52,7 +58,7 @@
             </div>
         </div>
         @if($emails->total() > 0)
-            <a href="{{ route('admin.scheduled-emails.export-csv', request()->only('status', 'search')) }}" class="btn btn-sm btn-outline-success">
+            <a href="{{ route('admin.scheduled-emails.export-csv', request()->only('status', 'search', 'sort', 'from', 'to')) }}" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-filetype-csv"></i> Export CSV
             </a>
         @endif
@@ -67,7 +73,7 @@
                             <input type="checkbox" class="form-check-input" id="cancelSelectAll" title="Select all pending">
                         </th>
                         <th style="white-space: nowrap;">
-                            <a href="{{ route('admin.scheduled-emails.index', array_merge(request()->only('status', 'search'), ['sort' => $nextSort])) }}"
+                            <a href="{{ route('admin.scheduled-emails.index', array_merge(request()->only('status', 'search', 'from', 'to'), ['sort' => $nextSort])) }}"
                                class="text-decoration-none text-reset">
                                 Send At
                                 @if($sort === 'asc')
@@ -121,19 +127,19 @@
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary duplicate-btn"
                                             data-bs-toggle="modal" data-bs-target="#duplicateModal"
-                                            data-url="{{ route('admin.scheduled-emails.duplicate', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
+                                            data-url="{{ route('admin.scheduled-emails.duplicate', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort', 'from', 'to'))) }}"
                                             data-subject="{{ $email->subject }}"
                                             data-count="{{ count($email->onboarding_ids) }}">
                                         <i class="bi bi-copy"></i> Duplicate
                                     </button>
                                     @if($email->status === 'pending')
-                                        <form method="POST" action="{{ route('admin.scheduled-emails.cancel', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.cancel', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort', 'from', 'to'))) }}"
                                               onsubmit="return confirm('Cancel this scheduled email?')">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-danger">Cancel</button>
                                         </form>
                                     @elseif($email->status === 'cancelled' && $email->send_at->isFuture())
-                                        <form method="POST" action="{{ route('admin.scheduled-emails.restore', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort'))) }}"
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.restore', array_merge(['scheduledEmail' => $email], request()->only('status', 'search', 'sort', 'from', 'to'))) }}"
                                               onsubmit="return confirm('Restore this email? It will send at its scheduled time.')">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-primary">

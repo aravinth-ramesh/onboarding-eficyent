@@ -506,6 +506,82 @@ class ScheduledEmailTest extends TestCase
             ->assertRedirect($expected);
     }
 
+    public function test_date_range_filters_by_send_date_inclusive(): void
+    {
+        // Anchor on fixed dates so start/end-of-day boundaries are exact.
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-15 12:00:00'));
+
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Before window', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-09 09:00:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'On the from edge', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-10 00:30:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'On the to edge', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-12 23:30:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'After window', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-13 08:00:00', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['from' => '2026-08-10', 'to' => '2026-08-12']))
+            ->assertSee('On the from edge')
+            ->assertSee('On the to edge')
+            ->assertDontSee('Before window')
+            ->assertDontSee('After window');
+    }
+
+    public function test_open_ended_range_and_combination_with_status(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-15 12:00:00'));
+
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Early pending', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-05 09:00:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Late pending', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-20 09:00:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Late sent', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-25 09:00:00', 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        // from-only (>= Aug 18) combined with status=pending.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['from' => '2026-08-18', 'status' => 'pending']))
+            ->assertSee('Late pending')
+            ->assertDontSee('Early pending')
+            ->assertDontSee('Late sent');
+    }
+
+    public function test_csv_export_follows_the_date_range(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-15 12:00:00'));
+
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'In range', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-11 09:00:00', 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Out of range', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => '2026-08-20 09:00:00', 'status' => 'pending',
+        ]);
+
+        $csv = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.export-csv', ['from' => '2026-08-10', 'to' => '2026-08-12']))
+            ->streamedContent();
+
+        $this->assertStringContainsString('In range', $csv);
+        $this->assertStringNotContainsString('Out of range', $csv);
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([
