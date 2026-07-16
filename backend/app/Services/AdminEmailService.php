@@ -17,16 +17,22 @@ class AdminEmailService
         string $subject,
         string $body,
         ?AdminNotification $notification = null,
+        bool $queue = false,
     ): AdminEmailLog {
-        Mail::to($user->email)->send(
-            new AdminNotificationMail(
-                $user,
-                $subject,
-                $body,
-                $this->actionUrlFor($notification),
-                $notification ? 'View Review' : 'Open Portal',
-            )
+        $mailable = new AdminNotificationMail(
+            $user,
+            $subject,
+            $body,
+            $this->actionUrlFor($notification),
+            $notification ? 'View Review' : 'Open Portal',
         );
+
+        // Bulk sends queue so a large loop doesn't block the request; the
+        // single-send path stays synchronous so its success/failure is
+        // reflected immediately in the flash message.
+        $queue
+            ? Mail::to($user->email)->queue($mailable)
+            : Mail::to($user->email)->send($mailable);
 
         return AdminEmailLog::create([
             'admin_id' => $admin->id,

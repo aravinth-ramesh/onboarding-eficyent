@@ -83,6 +83,69 @@ class UserOnboardingController extends Controller
      * review-log entry, transition guard — so bulk is just a loop, not a
      * shortcut around the lifecycle. Ineligible rows are skipped and counted.
      */
+    /**
+     * Send one composed email to several clients at once. A deliberate
+     * broadcast from an admin — so it bypasses per-category notification
+     * prefs (like the single Send Email action) but skips clients with no
+     * email. Each send is logged via AdminEmailService.
+     */
+    public function bulkEmail(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:user_onboardings,id',
+            'subject' => 'required|string|max:500',
+            'body' => 'required|string|max:10000',
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        $sent = 0;
+        $skipped = 0;
+
+        $onboardings = UserOnboarding::with('user')->whereIn('id', $validated['ids'])->get();
+
+        foreach ($onboardings as $onboarding) {
+            $user = $onboarding->user;
+            if (! $user?->email) {
+                $skipped++;
+                continue;
+            }
+
+            // Per-recipient {{name}} / {{reference}} substitution.
+            $vars = [
+                'name' => $user->name ?: 'there',
+                'reference' => $onboarding->reference,
+            ];
+
+            try {
+                $this->emailService->sendEmail(
+                    $admin,
+                    $user,
+                    $this->fillPlaceholders($validated['subject'], $vars),
+                    $this->fillPlaceholders($validated['body'], $vars),
+                    queue: true,
+                );
+                $sent++;
+            } catch (\Throwable $e) {
+                report($e);
+                $skipped++;
+            }
+        }
+
+        $message = "Email queued to {$sent} client(s)."
+            . ($skipped > 0 ? " {$skipped} skipped (no email address or send failed)." : '');
+
+        return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'subject', 'body', '_token']))
+            ->with($sent > 0 ? 'success' : 'error', $message);
+    }
+
+    private function fillPlaceholders(string $text, array $vars): string
+    {
+        return preg_replace_callback('/\{\{\s*([a-z_]+)\s*\}\}/i', function ($m) use ($vars) {
+            return array_key_exists($m[1], $vars) ? (string) $vars[$m[1]] : $m[0];
+        }, $text);
+    }
+
     public function bulkDecision(Request $request): RedirectResponse
     {
         $validated = $request->validate([

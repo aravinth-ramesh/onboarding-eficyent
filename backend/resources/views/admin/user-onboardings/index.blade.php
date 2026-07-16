@@ -70,23 +70,36 @@
     </div>
 </div>
 
-{{-- Bulk decision bar — appears when awaiting-review rows are ticked --}}
-<form method="POST" action="{{ route('admin.user-onboardings.bulk-decision', request()->query()) }}" id="bulkForm">
+{{-- Hidden forms populated with the current selection on submit --}}
+<form method="POST" action="{{ route('admin.user-onboardings.bulk-decision', request()->query()) }}" id="bulkDecisionForm" class="d-none">
     @csrf
     <input type="hidden" name="decision" id="bulkDecision">
     <input type="hidden" name="comment" id="bulkComment">
-    <div class="card mb-3" id="bulkBar" style="display: none;">
-        <div class="card-body py-2 d-flex align-items-center gap-3">
-            <span class="fw-semibold" style="font-size: 0.9rem;"><span id="bulkCount">0</span> selected</span>
-            <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">
-                <i class="bi bi-check-circle"></i> Approve Selected
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
-                <i class="bi bi-x-circle"></i> Reject Selected
-            </button>
-            <span class="text-muted" style="font-size: 0.8rem;">Each client is notified by email; only applications awaiting review can be decided.</span>
-        </div>
+    <div id="bulkDecisionIds"></div>
+</form>
+<form method="POST" action="{{ route('admin.user-onboardings.bulk-email', request()->query()) }}" id="bulkEmailForm" class="d-none">
+    @csrf
+    <input type="hidden" name="subject" id="bulkEmailSubjectInput">
+    <input type="hidden" name="body" id="bulkEmailBodyInput">
+    <div id="bulkEmailIds"></div>
+</form>
+
+{{-- Bulk action bar — appears when any row is ticked --}}
+<div class="card mb-3" id="bulkBar" style="display: none;">
+    <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+        <span class="fw-semibold" style="font-size: 0.9rem;"><span id="bulkCount">0</span> selected</span>
+        <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">
+            <i class="bi bi-check-circle"></i> Approve
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
+            <i class="bi bi-x-circle"></i> Reject
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkEmailModal">
+            <i class="bi bi-envelope"></i> Send Email
+        </button>
+        <span class="text-muted" style="font-size: 0.8rem;">Approve/Reject apply only to awaiting-review rows; email goes to every selected client.</span>
     </div>
+</div>
 
 <div class="card">
     <div class="card-body p-0">
@@ -95,7 +108,7 @@
                 <thead>
                     <tr>
                         <th style="width: 32px;">
-                            <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all awaiting review">
+                            <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all">
                         </th>
                         <th>ID</th>
                         <th>User</th>
@@ -112,9 +125,10 @@
                     @forelse($onboardings as $onboarding)
                         <tr>
                             <td>
-                                @if($onboarding->status === 'completed')
-                                    <input type="checkbox" class="form-check-input bulk-check" name="ids[]" value="{{ $onboarding->id }}">
-                                @endif
+                                <input type="checkbox" class="form-check-input bulk-check"
+                                       value="{{ $onboarding->id }}"
+                                       data-status="{{ $onboarding->status }}"
+                                       @unless($onboarding->user?->email) data-no-email="1" @endunless>
                             </td>
                             <td>{{ $onboarding->id }}</td>
                             <td>
@@ -158,7 +172,43 @@
         </div>
     @endif
 </div>
-</form>
+
+{{-- Bulk Email Modal --}}
+<div class="modal fade" id="bulkEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Email <span id="bulkEmailCount">0</span> Selected Client(s)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size: 0.85rem;">
+                    A one-off message to the selected clients — sent regardless of their notification
+                    preferences. Use <code>&#123;&#123;name&#125;&#125;</code> and
+                    <code>&#123;&#123;reference&#125;&#125;</code> to personalize.
+                    Clients without an email address are skipped.
+                </p>
+                <div class="mb-3">
+                    <label for="bulkEmailSubject" class="form-label">Subject <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="bulkEmailSubject"
+                           placeholder="e.g. An update on your Eficyent onboarding">
+                </div>
+                <div class="mb-2">
+                    <label for="bulkEmailBody" class="form-label">Message <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="bulkEmailBody" rows="7"
+                              placeholder="Hello &#123;&#123;name&#125;&#125;,&#10;&#10;..."></textarea>
+                </div>
+                <div class="text-danger d-none" id="bulkEmailError" style="font-size: 0.85rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="bulkEmailConfirm">
+                    <i class="bi bi-send"></i> Send Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- Bulk Reject Modal --}}
 <div class="modal fade" id="bulkRejectModal" tabindex="-1" aria-hidden="true">
@@ -191,12 +241,15 @@
         var bar = document.getElementById('bulkBar');
         var count = document.getElementById('bulkCount');
         var selectAll = document.getElementById('bulkSelectAll');
-        var form = document.getElementById('bulkForm');
+
+        function selectedChecks() {
+            return Array.prototype.filter.call(checks, function (c) { return c.checked; });
+        }
 
         function refresh() {
-            var selected = document.querySelectorAll('.bulk-check:checked').length;
-            count.textContent = selected;
-            bar.style.display = selected > 0 ? 'block' : 'none';
+            var n = selectedChecks().length;
+            count.textContent = n;
+            bar.style.display = n > 0 ? 'block' : 'none';
         }
 
         checks.forEach(function (c) { c.addEventListener('change', refresh); });
@@ -208,20 +261,64 @@
             });
         }
 
+        // Inject the current selection as hidden ids[] inputs into a target form.
+        function fillIds(container, onlyStatus) {
+            container.innerHTML = '';
+            var n = 0;
+            selectedChecks().forEach(function (c) {
+                if (onlyStatus && c.dataset.status !== onlyStatus) return;
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = c.value;
+                container.appendChild(input);
+                n++;
+            });
+            return n;
+        }
+
+        // ── Decisions (awaiting-review rows only) ──
+        var decisionForm = document.getElementById('bulkDecisionForm');
+
         document.getElementById('bulkApproveBtn').addEventListener('click', function () {
-            var selected = document.querySelectorAll('.bulk-check:checked').length;
-            if (!confirm('Approve ' + selected + ' application(s)? Each client will be notified by email.')) return;
+            var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
+            if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
+            if (!confirm('Approve ' + n + ' application(s) awaiting review? Each client is notified by email.')) return;
             document.getElementById('bulkDecision').value = 'approve';
             document.getElementById('bulkComment').value = '';
-            form.submit();
+            decisionForm.submit();
         });
 
         document.getElementById('bulkRejectConfirm').addEventListener('click', function () {
             var reason = document.getElementById('bulkRejectComment').value.trim();
             if (!reason) { document.getElementById('bulkRejectComment').focus(); return; }
+            var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
+            if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
             document.getElementById('bulkDecision').value = 'reject';
             document.getElementById('bulkComment').value = reason;
-            form.submit();
+            decisionForm.submit();
+        });
+
+        // ── Bulk email (all selected rows) ──
+        var emailModal = document.getElementById('bulkEmailModal');
+        emailModal.addEventListener('show.bs.modal', function () {
+            var withEmail = selectedChecks().filter(function (c) { return !c.dataset.noEmail; }).length;
+            document.getElementById('bulkEmailCount').textContent = withEmail;
+        });
+
+        document.getElementById('bulkEmailConfirm').addEventListener('click', function () {
+            var subject = document.getElementById('bulkEmailSubject').value.trim();
+            var body = document.getElementById('bulkEmailBody').value.trim();
+            var err = document.getElementById('bulkEmailError');
+            if (!subject || !body) {
+                err.textContent = 'Subject and message are both required.';
+                err.classList.remove('d-none');
+                return;
+            }
+            fillIds(document.getElementById('bulkEmailIds'), null);
+            document.getElementById('bulkEmailSubjectInput').value = subject;
+            document.getElementById('bulkEmailBodyInput').value = body;
+            document.getElementById('bulkEmailForm').submit();
         });
     })();
 </script>
