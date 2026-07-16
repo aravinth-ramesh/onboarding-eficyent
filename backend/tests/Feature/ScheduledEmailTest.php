@@ -219,6 +219,32 @@ class ScheduledEmailTest extends TestCase
         $this->assertStringNotContainsString('{{name}}', $html);
     }
 
+    public function test_csv_export_lists_all_scheduled_emails(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Quarterly notice', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id, $this->b->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Old blast', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.export-csv'))
+            ->assertOk();
+
+        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $this->assertStringContainsString('scheduled-emails-', $response->headers->get('content-disposition'));
+
+        $csv = $response->streamedContent();
+        // fputcsv quotes fields containing spaces/parentheses.
+        $this->assertStringContainsString('"Send At (UTC)",Status,Subject,Recipients', $csv);
+        $this->assertStringContainsString('pending,"Quarterly notice",2', $csv);
+        $this->assertStringContainsString('sent,"Old blast",1,1', $csv);
+        $this->assertStringContainsString('Sender', $csv); // scheduled-by name
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([

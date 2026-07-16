@@ -4,11 +4,18 @@
 
 @section('content')
 <div class="card">
-    <div class="card-header">
-        Scheduled Emails
-        <div class="text-muted" style="font-size: 0.8rem; font-weight: normal;">
-            Bulk emails composed to send later. Pending ones can be cancelled before they fire.
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            Scheduled Emails
+            <div class="text-muted" style="font-size: 0.8rem; font-weight: normal;">
+                Bulk emails composed to send later. Pending ones can be cancelled before they fire.
+            </div>
         </div>
+        @if($emails->total() > 0)
+            <a href="{{ route('admin.scheduled-emails.export-csv') }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-filetype-csv"></i> Export CSV
+            </a>
+        @endif
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">

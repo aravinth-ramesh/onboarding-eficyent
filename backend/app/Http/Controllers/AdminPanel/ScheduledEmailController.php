@@ -77,6 +77,37 @@ class ScheduledEmailController extends Controller
             ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to " . count($copy->onboarding_ids) . ' client(s).');
     }
 
+    public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $filename = 'scheduled-emails-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, [
+                'Send At (UTC)', 'Status', 'Subject', 'Recipients', 'Sent Count',
+                'Scheduled By', 'Created At (UTC)', 'Processed At (UTC)',
+            ]);
+
+            ScheduledEmail::with('admin')
+                ->orderByDesc('send_at')
+                ->lazy()
+                ->each(function (ScheduledEmail $email) use ($out) {
+                    fputcsv($out, [
+                        $email->send_at->toDateTimeString(),
+                        $email->status,
+                        $email->subject,
+                        count($email->onboarding_ids),
+                        $email->sent_count ?? '',
+                        $email->admin->name ?? '',
+                        $email->created_at->toDateTimeString(),
+                        $email->processed_at?->toDateTimeString() ?? '',
+                    ]);
+                });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
     public function cancel(ScheduledEmail $scheduledEmail): RedirectResponse
     {
         if ($scheduledEmail->status !== 'pending') {
