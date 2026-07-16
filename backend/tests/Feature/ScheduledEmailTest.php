@@ -430,6 +430,54 @@ class ScheduledEmailTest extends TestCase
         Mail::assertNothingQueued();
     }
 
+    public function test_restoring_a_future_cancelled_email_makes_it_pending_and_it_sends(): void
+    {
+        $cancelled = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Restore me', 'body' => 'Hi {{name}}.',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addHour(), 'status' => 'cancelled',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.restore', $cancelled))
+            ->assertRedirect(route('admin.scheduled-emails.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('pending', $cancelled->fresh()->status);
+
+        // And it now sends when its time arrives.
+        $this->travelTo(now()->addHours(2));
+        $this->artisan('emails:process-scheduled');
+        Mail::assertQueued(AdminNotificationMail::class, fn ($m) => $m->hasTo('alice@test.com'));
+    }
+
+    public function test_a_past_due_cancelled_email_cannot_be_restored(): void
+    {
+        $cancelled = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Old', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->subHour(), 'status' => 'cancelled',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.restore', $cancelled))
+            ->assertSessionHas('error');
+
+        $this->assertSame('cancelled', $cancelled->fresh()->status);
+    }
+
+    public function test_only_cancelled_emails_can_be_restored(): void
+    {
+        $pending = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'P', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addHour(), 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.scheduled-emails.restore', $pending))
+            ->assertSessionHas('error');
+
+        $this->assertSame('pending', $pending->fresh()->status);
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([

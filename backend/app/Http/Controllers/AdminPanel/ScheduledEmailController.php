@@ -164,4 +164,27 @@ class ScheduledEmailController extends Controller
         return redirect()->route('admin.scheduled-emails.index')
             ->with('success', 'Scheduled email cancelled.');
     }
+
+    /**
+     * Un-cancel a scheduled email back to pending. Only allowed while its
+     * send time is still in the future — a past-due restore would fire
+     * instantly on the next run, so those are steered to Duplicate instead.
+     */
+    public function restore(ScheduledEmail $scheduledEmail): RedirectResponse
+    {
+        if ($scheduledEmail->status !== 'cancelled') {
+            return redirect()->route('admin.scheduled-emails.index')
+                ->with('error', 'Only cancelled emails can be restored.');
+        }
+
+        if ($scheduledEmail->send_at->isPast()) {
+            return redirect()->route('admin.scheduled-emails.index')
+                ->with('error', 'This email\'s send time has passed — duplicate it with a new time instead.');
+        }
+
+        $scheduledEmail->update(['status' => 'pending']);
+
+        return redirect()->route('admin.scheduled-emails.index')
+            ->with('success', "Scheduled email restored — it will send on {$scheduledEmail->send_at->format('M d, Y H:i')}.");
+    }
 }

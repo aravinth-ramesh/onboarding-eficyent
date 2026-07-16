@@ -132,6 +132,14 @@
                                             @csrf
                                             <button class="btn btn-sm btn-outline-danger">Cancel</button>
                                         </form>
+                                    @elseif($email->status === 'cancelled' && $email->send_at->isFuture())
+                                        <form method="POST" action="{{ route('admin.scheduled-emails.restore', $email) }}"
+                                              onsubmit="return confirm('Restore this email? It will send at its scheduled time.')">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
