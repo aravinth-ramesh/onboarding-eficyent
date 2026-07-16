@@ -47,7 +47,20 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Send At</th>
+                        @php $nextSort = $sort === 'asc' ? 'desc' : 'asc'; @endphp
+                        <th style="white-space: nowrap;">
+                            <a href="{{ route('admin.scheduled-emails.index', array_merge(request()->only('status', 'search'), ['sort' => $nextSort])) }}"
+                               class="text-decoration-none text-reset">
+                                Send At
+                                @if($sort === 'asc')
+                                    <i class="bi bi-caret-up-fill"></i>
+                                @elseif($sort === 'desc')
+                                    <i class="bi bi-caret-down-fill"></i>
+                                @else
+                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                @endif
+                            </a>
+                        </th>
                         <th>Subject</th>
                         <th>Recipients</th>
                         <th>Status</th>

@@ -16,16 +16,22 @@ class ScheduledEmailController extends Controller
 {
     public function index(Request $request): View
     {
-        $emails = $this->filteredQuery($request)
-            ->orderByRaw("CASE status WHEN 'pending' THEN 0 ELSE 1 END")
-            ->orderBy('send_at')
-            ->paginate(20)
-            ->withQueryString();
+        // Explicit send-date sort is purely chronological; without it the
+        // default keeps pending emails on top (the ones that still matter).
+        $sort = in_array($request->input('sort'), ['asc', 'desc'], true) ? $request->input('sort') : null;
+
+        $query = $this->filteredQuery($request);
+        $sort
+            ? $query->orderBy('send_at', $sort)
+            : $query->orderByRaw("CASE status WHEN 'pending' THEN 0 ELSE 1 END")->orderBy('send_at');
+
+        $emails = $query->paginate(20)->withQueryString();
 
         return view('admin.scheduled-emails.index', [
             'emails' => $emails,
             'status' => $request->input('status'),
             'search' => $request->input('search'),
+            'sort' => $sort,
         ]);
     }
 

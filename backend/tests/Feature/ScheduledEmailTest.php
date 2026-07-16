@@ -335,6 +335,45 @@ class ScheduledEmailTest extends TestCase
         $this->assertStringContainsString('Sender', $csv); // scheduled-by name
     }
 
+    public function test_send_date_sort_orders_chronologically_both_ways(): void
+    {
+        $early = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'EARLY email', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'sent', 'sent_count' => 1,
+        ]);
+        $late = ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'LATE email', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addWeek(), 'status' => 'pending',
+        ]);
+
+        // Ascending: EARLY before LATE regardless of status.
+        $asc = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['sort' => 'asc']))->getContent();
+        $this->assertLessThan(strpos($asc, 'LATE email'), strpos($asc, 'EARLY email'));
+
+        // Descending: LATE before EARLY.
+        $desc = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['sort' => 'desc']))->getContent();
+        $this->assertLessThan(strpos($desc, 'EARLY email'), strpos($desc, 'LATE email'));
+    }
+
+    public function test_sort_preserves_the_search_filter(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Keep me', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDay(), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Drop me', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addWeek(), 'status' => 'pending',
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', ['sort' => 'desc', 'search' => 'Keep']))
+            ->assertSee('Keep me')
+            ->assertDontSee('Drop me');
+    }
+
     public function test_management_page_lists_and_cancels(): void
     {
         ScheduledEmail::create([
