@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AdminNotificationMail;
+use App\Models\FilterPreset;
 use App\Models\ScheduledEmail;
 use App\Models\UserOnboarding;
 use App\Services\AdminEmailService;
@@ -27,6 +28,11 @@ class ScheduledEmailController extends Controller
 
         $emails = $query->paginate(20)->withQueryString();
 
+        // Saved views for whoever is looking — and which one (if any) the
+        // current filters match, so it can be shown as selected.
+        $presets = FilterPreset::ownedBy(Auth::guard('admin')->id(), self::CONTEXT)->get();
+        $active = collect($request->only(self::FILTER_KEYS))->filter(fn ($v) => filled($v))->all();
+
         return view('admin.scheduled-emails.index', [
             'emails' => $emails,
             'status' => $request->input('status'),
@@ -34,11 +40,16 @@ class ScheduledEmailController extends Controller
             'sort' => $sort,
             'from' => $request->input('from'),
             'to' => $request->input('to'),
+            'presets' => $presets,
+            'activePresetId' => $presets->first(fn ($p) => $p->filters == $active)?->id,
         ]);
     }
 
+    /** This page's key in FilterPreset::CONTEXTS. */
+    private const CONTEXT = 'scheduled-emails';
+
     /** Query params that make up the admin's active view. */
-    private const FILTER_KEYS = ['status', 'search', 'sort', 'from', 'to'];
+    private const FILTER_KEYS = FilterPreset::CONTEXTS[self::CONTEXT];
 
     /** Redirect back to the list keeping the admin's active filters. */
     private function backToIndex(Request $request): RedirectResponse

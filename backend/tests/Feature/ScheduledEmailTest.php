@@ -506,6 +506,129 @@ class ScheduledEmailTest extends TestCase
             ->assertRedirect($expected);
     }
 
+    public function test_saving_a_preset_stores_only_the_active_filters(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', [
+                'context' => 'scheduled-emails',
+                'status' => 'pending', 'search' => '  urgent  ', 'from' => '2026-08-01',
+                'to' => '', 'sort' => '', 'page' => '3',
+            ]), ['name' => '  Urgent pending  '])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $preset = \App\Models\FilterPreset::sole();
+
+        $this->assertSame('Urgent pending', $preset->name);
+        $this->assertSame('scheduled-emails', $preset->context);
+        $this->assertSame($this->admin->id, $preset->admin_id);
+        // Blanks dropped, search trimmed, and `page` is not a filter key.
+        $this->assertSame(['status' => 'pending', 'search' => 'urgent', 'from' => '2026-08-01'], $preset->filters);
+    }
+
+    public function test_saving_requires_a_name_and_at_least_one_filter(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', ['context' => 'scheduled-emails', 'status' => 'pending']), [])
+            ->assertSessionHasErrors('name');
+
+        // A name with nothing filtered saves nothing.
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.scheduled-emails.index'))
+            ->post(route('admin.filter-presets.store', ['context' => 'scheduled-emails']), ['name' => 'Everything'])
+            ->assertRedirect(route('admin.scheduled-emails.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
+    public function test_reusing_a_name_overwrites_that_preset(): void
+    {
+        $save = fn (array $filters) => $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', array_merge(['context' => 'scheduled-emails'], $filters)), ['name' => 'My view']);
+
+        $save(['status' => 'pending']);
+        $save(['status' => 'cancelled', 'sort' => 'asc']);
+
+        $this->assertDatabaseCount('filter_presets', 1);
+        $this->assertSame(
+            ['status' => 'cancelled', 'sort' => 'asc'],
+            \App\Models\FilterPreset::sole()->filters,
+        );
+    }
+
+    public function test_unknown_preset_context_is_rejected(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', ['context' => 'user-onboardings', 'status' => 'pending']), ['name' => 'X'])
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
+    public function test_applying_a_preset_filters_the_list_and_shows_as_active(): void
+    {
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Keep me', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDays(3), 'status' => 'pending',
+        ]);
+        ScheduledEmail::create([
+            'admin_id' => $this->admin->id, 'subject' => 'Hide me', 'body' => 'B',
+            'onboarding_ids' => [$this->a->id], 'send_at' => now()->addDays(4), 'status' => 'cancelled',
+        ]);
+
+        $preset = \App\Models\FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'scheduled-emails',
+            'name' => 'Only pending', 'filters' => ['status' => 'pending'],
+        ]);
+
+        // Visiting the preset's filters narrows the list and marks it selected.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index', $preset->filters))
+            ->assertSee('Keep me')
+            ->assertDontSee('Hide me')
+            ->assertSee('Only pending')      // shown as the dropdown's current label
+            ->assertDontSee('Save preset');  // already saved — nothing new to save
+    }
+
+    public function test_presets_are_private_to_the_admin_who_saved_them(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true]);
+
+        $theirs = \App\Models\FilterPreset::create([
+            'admin_id' => $other->id, 'context' => 'scheduled-emails',
+            'name' => 'Their private view', 'filters' => ['status' => 'sent'],
+        ]);
+
+        // Not listed for anyone else...
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.scheduled-emails.index'))
+            ->assertDontSee('Their private view');
+
+        // ...and not deletable by them either.
+        $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.filter-presets.destroy', ['context' => 'scheduled-emails', 'preset' => $theirs]))
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
+    public function test_deleting_a_preset_removes_it(): void
+    {
+        $preset = \App\Models\FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'scheduled-emails',
+            'name' => 'Disposable', 'filters' => ['status' => 'sent'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.scheduled-emails.index'))
+            ->delete(route('admin.filter-presets.destroy', ['context' => 'scheduled-emails', 'preset' => $preset]))
+            ->assertRedirect(route('admin.scheduled-emails.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
     public function test_clear_all_appears_only_when_a_filter_is_active(): void
     {
         // Bare list: nothing to clear.

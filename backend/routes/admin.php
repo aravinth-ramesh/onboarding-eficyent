@@ -56,6 +56,10 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('scheduled-emails/{scheduledEmail}/duplicate', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'duplicate'])->name('scheduled-emails.duplicate');
     Route::get('scheduled-emails/{scheduledEmail}/preview', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'preview'])->name('scheduled-emails.preview');
 
+    // Filter Presets (saved views on list pages; {context} names the page)
+    Route::post('filter-presets/{context}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'store'])->name('filter-presets.store');
+    Route::delete('filter-presets/{context}/{preset}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'destroy'])->name('filter-presets.destroy');
+
     // Email Templates
     Route::get('email-templates', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'index'])->name('email-templates.index');
     Route::get('email-templates/{key}/edit', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'edit'])->name('email-templates.edit');
