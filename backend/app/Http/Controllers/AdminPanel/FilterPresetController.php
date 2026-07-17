@@ -54,22 +54,12 @@ class FilterPresetController extends Controller
      */
     public function duplicate(Request $request, string $context, FilterPreset $preset): RedirectResponse
     {
-        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
-        abort_unless($preset->admin_id === Auth::guard('admin')->id(), 403);
+        $this->guard($context, $preset);
 
-        $adminId = Auth::guard('admin')->id();
-
-        $validated = $request->validate([
-            'name' => [
-                'required', 'string', 'max:60',
-                Rule::unique('filter_presets')->where(
-                    fn ($q) => $q->where('admin_id', $adminId)->where('context', $context),
-                ),
-            ],
-        ]);
+        $validated = $request->validate(['name' => $this->nameRules($context)]);
 
         $copy = FilterPreset::create([
-            'admin_id' => $adminId,
+            'admin_id' => Auth::guard('admin')->id(),
             'context' => $context,
             'name' => trim($validated['name']),
             'filters' => $preset->filters,
@@ -78,13 +68,61 @@ class FilterPresetController extends Controller
         return back()->with('success', "Preset \"{$preset->name}\" duplicated as \"{$copy->name}\".");
     }
 
+    /**
+     * Rename a preset in place, keeping its filters. Like duplicate(), a
+     * collision with another preset is refused — but the preset's own name is
+     * ignored, so re-submitting it unchanged is not an error.
+     */
+    public function rename(Request $request, string $context, FilterPreset $preset): RedirectResponse
+    {
+        $this->guard($context, $preset);
+
+        $validated = $request->validate(['name' => $this->nameRules($context, $preset->id)]);
+
+        $was = $preset->name;
+        $preset->update(['name' => trim($validated['name'])]);
+
+        return back()->with('success', $was === $preset->name
+            ? "Preset \"{$was}\" is unchanged."
+            : "Preset \"{$was}\" renamed to \"{$preset->name}\".");
+    }
+
     public function destroy(string $context, FilterPreset $preset): RedirectResponse
     {
-        abort_unless($preset->admin_id === Auth::guard('admin')->id(), 403);
+        $this->guard($context, $preset);
 
         $preset->delete();
 
         return back()->with('success', "Preset \"{$preset->name}\" deleted.");
+    }
+
+    /**
+     * A preset may only be touched by its owner, through the page it belongs
+     * to — the {context} in the URL is not free to disagree with the record.
+     */
+    private function guard(string $context, FilterPreset $preset): void
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+        abort_unless($preset->context === $context, 404);
+        abort_unless($preset->admin_id === Auth::guard('admin')->id(), 403);
+    }
+
+    /**
+     * Names are unique per admin per page. `$ignoreId` lets a rename keep its
+     * own name without colliding with itself.
+     */
+    private function nameRules(string $context, ?int $ignoreId = null): array
+    {
+        $adminId = Auth::guard('admin')->id();
+
+        $unique = Rule::unique('filter_presets')
+            ->where(fn ($q) => $q->where('admin_id', $adminId)->where('context', $context));
+
+        if ($ignoreId !== null) {
+            $unique->ignore($ignoreId);
+        }
+
+        return ['required', 'string', 'max:60', $unique];
     }
 
     /**

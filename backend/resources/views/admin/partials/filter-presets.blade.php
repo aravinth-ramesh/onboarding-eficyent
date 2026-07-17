@@ -29,6 +29,13 @@
                            href="{{ route("admin.{$context}.index", $preset->filters) }}">
                             {{ $preset->name }}
                         </a>
+                        <button type="button" class="btn btn-sm btn-link text-secondary p-0 px-1 preset-rename-btn"
+                                title="Rename preset"
+                                data-bs-toggle="modal" data-bs-target="#renamePresetModal"
+                                data-url="{{ route('admin.filter-presets.rename', ['context' => $context, 'preset' => $preset]) }}"
+                                data-name="{{ $preset->name }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
                         <button type="button" class="btn btn-sm btn-link text-secondary p-0 px-1 preset-duplicate-btn"
                                 title="Duplicate preset"
                                 data-bs-toggle="modal" data-bs-target="#duplicatePresetModal"
@@ -98,6 +105,34 @@
 @endif
 
 @if($presets->isNotEmpty())
+    <div class="modal fade" id="renamePresetModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" id="renamePresetForm">
+                @csrf
+                @method('PATCH')
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Rename Filter Preset</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                            Renaming <span class="fw-semibold" id="renamePresetSource"></span> keeps its filters —
+                            only the label changes.
+                        </p>
+                        <label for="renamePresetName" class="form-label">New name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="renamePresetName" name="name" maxlength="60" required>
+                        <div class="form-text">Must differ from your other preset names on this page.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-pencil"></i> Rename</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal fade" id="duplicatePresetModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form method="POST" id="duplicatePresetForm">
@@ -131,13 +166,29 @@
 
     @push('scripts')
     <script>
-        document.getElementById('duplicatePresetModal').addEventListener('show.bs.modal', function (event) {
-            var btn = event.relatedTarget;
-            if (!btn) return;
-            var name = btn.getAttribute('data-name');
-            document.getElementById('duplicatePresetForm').action = btn.getAttribute('data-url');
-            document.getElementById('duplicatePresetSource').textContent = name;
-            document.getElementById('duplicatePresetName').value = name + ' (copy)';
+        // Both dialogs act on whichever preset's button opened them: point the
+        // form at that preset and seed the name field.
+        [
+            { modal: 'renamePresetModal', form: 'renamePresetForm', source: 'renamePresetSource', input: 'renamePresetName', seed: function (n) { return n; } },
+            { modal: 'duplicatePresetModal', form: 'duplicatePresetForm', source: 'duplicatePresetSource', input: 'duplicatePresetName', seed: function (n) { return n + ' (copy)'; } },
+        ].forEach(function (cfg) {
+            document.getElementById(cfg.modal).addEventListener('show.bs.modal', function (event) {
+                var btn = event.relatedTarget;
+                if (!btn) return;
+                var name = btn.getAttribute('data-name');
+                document.getElementById(cfg.form).action = btn.getAttribute('data-url');
+                document.getElementById(cfg.source).textContent = name;
+                document.getElementById(cfg.input).value = cfg.seed(name);
+            });
+        });
+
+        // Focus the name so it can be typed over straight away.
+        ['renamePresetModal', 'duplicatePresetModal'].forEach(function (id) {
+            document.getElementById(id).addEventListener('shown.bs.modal', function () {
+                var input = this.querySelector('input[name="name"]');
+                input.focus();
+                input.select();
+            });
         });
     </script>
     @endpush

@@ -366,6 +366,100 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertDatabaseCount('filter_presets', 3);
     }
 
+    public function test_renaming_keeps_the_filters_and_changes_only_the_label(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Old name', 'filters' => ['status' => 'approved', 'from' => '2026-08-01'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->patch(route('admin.filter-presets.rename', ['context' => 'user-onboardings', 'preset' => $preset]),
+                ['name' => '  New name  '])
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $preset->refresh();
+
+        $this->assertSame('New name', $preset->name);
+        $this->assertSame(['status' => 'approved', 'from' => '2026-08-01'], $preset->filters);
+        $this->assertDatabaseCount('filter_presets', 1); // renamed in place, not copied
+    }
+
+    public function test_renaming_to_its_own_name_is_not_a_collision(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Same', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.filter-presets.rename', ['context' => 'user-onboardings', 'preset' => $preset]),
+                ['name' => 'Same'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Same', $preset->refresh()->name);
+    }
+
+    public function test_renaming_onto_another_preset_is_refused(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Mine', 'filters' => ['status' => 'approved'],
+        ]);
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Taken', 'filters' => ['status' => 'rejected'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.filter-presets.rename', ['context' => 'user-onboardings', 'preset' => $preset]),
+                ['name' => 'Taken'])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame('Mine', $preset->refresh()->name);
+        $this->assertSame(['status' => 'rejected'], FilterPreset::where('name', 'Taken')->sole()->filters);
+    }
+
+    public function test_cannot_rename_another_admins_preset(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other3@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = FilterPreset::create([
+            'admin_id' => $other->id, 'context' => 'user-onboardings',
+            'name' => 'Theirs', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.filter-presets.rename', ['context' => 'user-onboardings', 'preset' => $theirs]),
+                ['name' => 'Hijacked'])
+            ->assertForbidden();
+
+        $this->assertSame('Theirs', $theirs->refresh()->name);
+    }
+
+    public function test_a_preset_cannot_be_touched_through_the_wrong_pages_context(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Onboarding view', 'filters' => ['status' => 'approved'],
+        ]);
+
+        // Valid context, but not this preset's — the URL must not disagree
+        // with the record.
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.filter-presets.rename', ['context' => 'scheduled-emails', 'preset' => $preset]),
+                ['name' => 'Sneaky'])
+            ->assertNotFound();
+
+        $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.filter-presets.destroy', ['context' => 'scheduled-emails', 'preset' => $preset]))
+            ->assertNotFound();
+
+        $this->assertSame('Onboarding view', $preset->refresh()->name);
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
     public function test_cannot_duplicate_another_admins_preset(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other2@test.com', 'password' => 'x', 'is_active' => true]);
