@@ -476,6 +476,82 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertDatabaseCount('filter_presets', 1);
     }
 
+    public function test_exporting_returns_this_admins_presets_for_this_page_as_json(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-01 12:00:00'));
+
+        $other = Admin::create(['name' => 'Other', 'email' => 'other4@test.com', 'password' => 'x', 'is_active' => true]);
+
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Beta view', 'filters' => ['status' => 'rejected'],
+        ]);
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Alpha view', 'filters' => ['status' => 'approved', 'from' => '2026-08-01', 'date_field' => 'decided'],
+        ]);
+        // Must not appear: another page, and another admin.
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'scheduled-emails',
+            'name' => 'An email preset', 'filters' => ['status' => 'pending'],
+        ]);
+        FilterPreset::create([
+            'admin_id' => $other->id, 'context' => 'user-onboardings',
+            'name' => 'Their private view', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.filter-presets.export', ['context' => 'user-onboardings']));
+
+        $response->assertOk()
+            ->assertHeader('content-disposition', 'attachment; filename="filter-presets-user-onboardings-2026-09-01.json"');
+
+        $this->assertStringContainsString('application/json', $response->headers->get('content-type'));
+
+        $payload = $response->json();
+
+        $this->assertSame(1, $payload['version']);
+        $this->assertSame('user-onboardings', $payload['context']);
+        $this->assertNotEmpty($payload['exported_at']);
+
+        // Alphabetical (the ownedBy scope), and only name+filters — no ids.
+        $this->assertSame([
+            ['name' => 'Alpha view', 'filters' => ['status' => 'approved', 'from' => '2026-08-01', 'date_field' => 'decided']],
+            ['name' => 'Beta view', 'filters' => ['status' => 'rejected']],
+        ], $payload['presets']);
+
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('An email preset', $body);
+        $this->assertStringNotContainsString('Their private view', $body);
+        $this->assertStringNotContainsString('admin_id', $body);
+    }
+
+    public function test_exporting_with_no_presets_returns_an_empty_set(): void
+    {
+        $payload = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.filter-presets.export', ['context' => 'user-onboardings']))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame([], $payload['presets']);
+    }
+
+    public function test_exporting_an_unknown_context_is_rejected(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.filter-presets.export', ['context' => 'audit-logs']))
+            ->assertNotFound();
+    }
+
+    public function test_export_route_is_not_captured_by_the_preset_wildcards(): void
+    {
+        // `export` sits where a {preset} id would — the GET route must win.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.filter-presets.export', ['context' => 'user-onboardings']))
+            ->assertOk()
+            ->assertJsonStructure(['version', 'context', 'exported_at', 'presets']);
+    }
+
     public function test_deleting_a_preset_removes_it(): void
     {
         $preset = FilterPreset::create([

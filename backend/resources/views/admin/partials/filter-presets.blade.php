@@ -54,6 +54,14 @@
                         </form>
                     </li>
                 @endforeach
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item small text-muted"
+                       href="{{ route('admin.filter-presets.export', ['context' => $context]) }}">
+                        <i class="bi bi-download"></i>
+                        Export {{ $presets->count() }} preset{{ $presets->count() === 1 ? '' : 's' }} as JSON
+                    </a>
+                </li>
             </ul>
         </div>
     @endif

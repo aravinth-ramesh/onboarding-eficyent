@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
 use App\Models\FilterPreset;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,6 +43,40 @@ class FilterPresetController extends Controller
 
         return redirect()->route("admin.{$context}.index", $filters)
             ->with('success', "Preset \"{$name}\" saved.");
+    }
+
+    /**
+     * Download this admin's presets for one page as JSON.
+     *
+     * JSON rather than the CSV the other admin exports use: a preset is
+     * configuration, not a row — its filters are a structured blob that would
+     * land in a spreadsheet cell as unreadable soup and could not be read back
+     * in. `version` is here so a later import can tell what it is holding.
+     */
+    public function export(string $context): JsonResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $presets = FilterPreset::ownedBy(Auth::guard('admin')->id(), $context)->get();
+
+        // Ids and admin_id are deliberately left out — they mean nothing
+        // outside this database, and a preset is fully described by its name
+        // and filters.
+        $payload = [
+            'version' => 1,
+            'context' => $context,
+            'exported_at' => now()->toIso8601String(),
+            'presets' => $presets->map(fn (FilterPreset $p) => [
+                'name' => $p->name,
+                'filters' => $p->filters,
+            ])->all(),
+        ];
+
+        $filename = "filter-presets-{$context}-" . now()->format('Y-m-d') . '.json';
+
+        return response()->json($payload, 200, [
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
     /**
