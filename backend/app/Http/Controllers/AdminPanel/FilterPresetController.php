@@ -79,6 +79,90 @@ class FilterPresetController extends Controller
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
+    /** Never create more than this from one file, however large. */
+    private const IMPORT_LIMIT = 200;
+
+    /**
+     * Load presets from a JSON file produced by export(). Non-destructive by
+     * default: a name that already exists is left alone unless "overwrite" is
+     * asked for, so an import can never silently replace an admin's own views.
+     * Every incoming filter set is re-sanitised — the file is untrusted input.
+     */
+    public function import(Request $request, string $context): RedirectResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $request->validate([
+            'file' => 'required|file|max:256', // KB
+            'overwrite' => 'sometimes|boolean',
+        ]);
+
+        $data = json_decode((string) file_get_contents($request->file('file')->getRealPath()), true);
+
+        if (! is_array($data) || ($data['version'] ?? null) !== 1) {
+            return back()->with('error', 'That does not look like a filter preset export (version 1).');
+        }
+
+        if (($data['context'] ?? null) !== $context) {
+            $from = is_string($data['context'] ?? null) ? $data['context'] : 'unknown';
+
+            return back()->with('error', "That file holds \"{$from}\" presets — import it from that page instead.");
+        }
+
+        $entries = $data['presets'] ?? null;
+        if (! is_array($entries)) {
+            return back()->with('error', 'That file has no presets to import.');
+        }
+
+        $adminId = Auth::guard('admin')->id();
+        $overwrite = $request->boolean('overwrite');
+        $truncated = count($entries) > self::IMPORT_LIMIT;
+        $imported = $skipped = $invalid = 0;
+
+        foreach (array_slice($entries, 0, self::IMPORT_LIMIT) as $entry) {
+            $name = is_array($entry) && is_string($entry['name'] ?? null) ? trim($entry['name']) : '';
+            $filters = is_array($entry) && is_array($entry['filters'] ?? null)
+                ? $this->sanitizeFilters($context, $entry['filters'])
+                : [];
+
+            // A preset with no name, an over-long name, or nothing left after
+            // sanitising is not something we can meaningfully store.
+            if ($name === '' || mb_strlen($name) > 60 || empty($filters)) {
+                $invalid++;
+                continue;
+            }
+
+            $exists = FilterPreset::where('admin_id', $adminId)
+                ->where('context', $context)
+                ->where('name', $name)
+                ->exists();
+
+            if ($exists && ! $overwrite) {
+                $skipped++;
+                continue;
+            }
+
+            FilterPreset::updateOrCreate(
+                ['admin_id' => $adminId, 'context' => $context, 'name' => $name],
+                ['filters' => $filters],
+            );
+            $imported++;
+        }
+
+        $parts = ["Imported {$imported} preset(s)."];
+        if ($skipped) {
+            $parts[] = "{$skipped} skipped (name already exists — tick Overwrite to replace).";
+        }
+        if ($invalid) {
+            $parts[] = "{$invalid} skipped (invalid).";
+        }
+        if ($truncated) {
+            $parts[] = 'Only the first ' . self::IMPORT_LIMIT . ' were read.';
+        }
+
+        return back()->with($imported > 0 ? 'success' : 'error', implode(' ', $parts));
+    }
+
     /**
      * Copy an existing preset's filters under a new name — a starting point
      * for a variation without having to rebuild the filters by hand.
@@ -166,11 +250,30 @@ class FilterPresetController extends Controller
      */
     private function filtersFrom(Request $request, string $context): array
     {
-        $filters = collect($request->only(FilterPreset::CONTEXTS[$context]))
-            ->filter(fn ($value) => filled($value))
-            ->map(fn ($value) => is_string($value) ? trim($value) : $value)
-            ->all();
+        return $this->sanitizeFilters($context, $request->only(FilterPreset::CONTEXTS[$context]));
+    }
 
-        return FilterPreset::normalize($context, $filters);
+    /**
+     * Reduce a raw filters array to what this page recognises: only its known
+     * keys, values coerced to trimmed strings, blanks and non-scalars dropped.
+     * The gate for imported data — a hand-edited file can carry anything, and
+     * nothing outside this allow-list ever reaches the query builder.
+     */
+    private function sanitizeFilters(string $context, array $filters): array
+    {
+        $clean = [];
+
+        foreach (FilterPreset::CONTEXTS[$context] as $key) {
+            if (! array_key_exists($key, $filters) || ! is_scalar($filters[$key])) {
+                continue;
+            }
+
+            $value = trim((string) $filters[$key]);
+            if ($value !== '') {
+                $clean[$key] = $value;
+            }
+        }
+
+        return FilterPreset::normalize($context, $clean);
     }
 }

@@ -73,7 +73,47 @@
         </button>
     @endif
 
+    {{-- Always available — importing is most useful when you have none yet. --}}
+    <button type="button" class="btn btn-sm btn-link text-secondary p-0"
+            data-bs-toggle="modal" data-bs-target="#importPresetsModal" title="Import presets from a JSON file">
+        <i class="bi bi-upload"></i> Import
+    </button>
+
     <span class="text-muted" style="font-size: 0.8rem;">Saved views are private to your account.</span>
+</div>
+
+{{-- Import modal — always rendered, since it works with zero existing presets --}}
+<div class="modal fade" id="importPresetsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" enctype="multipart/form-data"
+              action="{{ route('admin.filter-presets.import', ['context' => $context]) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Filter Presets</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                        Load presets from a JSON file exported from this page. Presets whose name you
+                        already use are skipped unless you choose to overwrite.
+                    </p>
+                    <label for="importPresetsFile" class="form-label">Preset file (.json) <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" id="importPresetsFile" name="file" accept=".json,application/json" required>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" value="1" id="importPresetsOverwrite" name="overwrite">
+                        <label class="form-check-label" for="importPresetsOverwrite">
+                            Overwrite presets with the same name
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Import</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 @if($canSave)

@@ -552,6 +552,165 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertJsonStructure(['version', 'context', 'exported_at', 'presets']);
     }
 
+    /** Wrap a payload as an uploaded JSON file for the import endpoint. */
+    private function presetFile(array $payload): \Illuminate\Http\UploadedFile
+    {
+        return \Illuminate\Http\UploadedFile::fake()->createWithContent('presets.json', json_encode($payload));
+    }
+
+    private function importPayload(array $presets, string $context = 'user-onboardings'): array
+    {
+        return ['version' => 1, 'context' => $context, 'exported_at' => '2026-09-01T00:00:00+00:00', 'presets' => $presets];
+    }
+
+    public function test_importing_creates_presets_from_a_valid_file(): void
+    {
+        $file = $this->presetFile($this->importPayload([
+            ['name' => 'From file A', 'filters' => ['status' => 'approved']],
+            ['name' => 'From file B', 'filters' => ['from' => '2026-08-01', 'date_field' => 'decided']],
+        ]));
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file])
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('filter_presets', 2);
+        $this->assertSame(['status' => 'approved'], FilterPreset::where('name', 'From file A')->sole()->filters);
+        $this->assertSame(['from' => '2026-08-01', 'date_field' => 'decided'], FilterPreset::where('name', 'From file B')->sole()->filters);
+        $this->assertSame($this->admin->id, FilterPreset::where('name', 'From file A')->sole()->admin_id);
+    }
+
+    public function test_import_is_non_destructive_by_default(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Mine', 'filters' => ['status' => 'rejected'],
+        ]);
+
+        $file = $this->presetFile($this->importPayload([
+            ['name' => 'Mine', 'filters' => ['status' => 'approved']],   // collides
+            ['name' => 'Fresh', 'filters' => ['status' => 'pending']],   // new
+        ]));
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file])
+            ->assertSessionHas('success');
+
+        // The existing preset keeps its own filters; only the new one is added.
+        $this->assertSame(['status' => 'rejected'], FilterPreset::where('name', 'Mine')->sole()->filters);
+        $this->assertDatabaseCount('filter_presets', 2);
+    }
+
+    public function test_import_overwrites_when_asked(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Mine', 'filters' => ['status' => 'rejected'],
+        ]);
+
+        $file = $this->presetFile($this->importPayload([
+            ['name' => 'Mine', 'filters' => ['status' => 'approved']],
+        ]));
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file, 'overwrite' => '1'])
+            ->assertSessionHas('success');
+
+        $this->assertSame(['status' => 'approved'], FilterPreset::where('name', 'Mine')->sole()->filters);
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
+    public function test_import_sanitises_untrusted_filters(): void
+    {
+        $file = $this->presetFile($this->importPayload([
+            // Unknown keys and a date_field with no range must be stripped.
+            ['name' => 'Crafted', 'filters' => ['status' => 'approved', 'evil' => 'DROP TABLE', 'date_field' => 'decided']],
+            // Nothing valid left after sanitising -> not stored.
+            ['name' => 'Empty after clean', 'filters' => ['nonsense' => 'x']],
+            // Non-string name -> invalid.
+            ['name' => ['array'], 'filters' => ['status' => 'pending']],
+        ]));
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('filter_presets', 1);
+        $this->assertSame(['status' => 'approved'], FilterPreset::where('name', 'Crafted')->sole()->filters);
+    }
+
+    public function test_import_rejects_a_file_from_another_page(): void
+    {
+        $file = $this->presetFile($this->importPayload(
+            [['name' => 'Email preset', 'filters' => ['status' => 'pending']]],
+            context: 'scheduled-emails',
+        ));
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
+    public function test_import_rejects_a_non_preset_file(): void
+    {
+        $garbage = \Illuminate\Http\UploadedFile::fake()->createWithContent('notes.json', 'this is not json at all');
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $garbage])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
+    public function test_import_requires_a_file(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), [])
+            ->assertSessionHasErrors('file');
+    }
+
+    public function test_import_into_an_unknown_context_is_rejected(): void
+    {
+        $file = $this->presetFile($this->importPayload([['name' => 'X', 'filters' => ['status' => 'approved']]], context: 'audit-logs'));
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'audit-logs']), ['file' => $file])
+            ->assertNotFound();
+    }
+
+    public function test_export_then_import_round_trips_into_another_admin(): void
+    {
+        $source = [
+            ['name' => 'Alpha', 'filters' => ['status' => 'approved', 'user_type_id' => '1']],
+            ['name' => 'Beta', 'filters' => ['from' => '2026-08-01', 'to' => '2026-08-31', 'date_field' => 'decided']],
+        ];
+        foreach ($source as $s) {
+            FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings'] + $s);
+        }
+
+        // Export as this admin...
+        $exported = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.filter-presets.export', ['context' => 'user-onboardings']))
+            ->json();
+
+        // ...and import the exact payload as a different admin.
+        $other = Admin::create(['name' => 'Other', 'email' => 'other5@test.com', 'password' => 'x', 'is_active' => true]);
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('presets.json', json_encode($exported));
+
+        $this->actingAs($other, 'admin')
+            ->post(route('admin.filter-presets.import', ['context' => 'user-onboardings']), ['file' => $file])
+            ->assertSessionHas('success');
+
+        $theirs = FilterPreset::where('admin_id', $other->id)->orderBy('name')->get();
+        $this->assertSame(['Alpha', 'Beta'], $theirs->pluck('name')->all());
+        $this->assertSame(['status' => 'approved', 'user_type_id' => '1'], $theirs->firstWhere('name', 'Alpha')->filters);
+        $this->assertSame(['from' => '2026-08-01', 'to' => '2026-08-31', 'date_field' => 'decided'], $theirs->firstWhere('name', 'Beta')->filters);
+    }
+
     public function test_deleting_a_preset_removes_it(): void
     {
         $preset = FilterPreset::create([
