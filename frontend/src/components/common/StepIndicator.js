@@ -1,41 +1,77 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
+
+// The KYB flow runs to 11 steps, which never fit across the page — rendering
+// them all needed a horizontal scrollbar of its own. Instead, show a short
+// window around the current step and let the count and progress bar carry the
+// overall position.
+const WINDOW = 3;
 
 function StepIndicator({ steps, currentStepId }) {
-  const activeRef = useRef(null);
+  const total = steps.length;
+  if (total === 0) return null;
 
-  // Keep the active step in view when the flow has many steps (KYB).
-  useEffect(() => {
-    if (activeRef.current) {
-      activeRef.current.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    }
-  }, [currentStepId]);
+  const found = steps.findIndex((step) => step.id === currentStepId);
+  const currentIndex = found === -1 ? 0 : found;
+  const completed = steps.filter((step) => step.status === 'completed').length;
+  const percent = Math.round((completed / total) * 100);
+
+  // Slide the window so the current step sits in the middle where it can, and
+  // clamps at either end of the flow.
+  const start = Math.min(Math.max(currentIndex - 1, 0), Math.max(total - WINDOW, 0));
+  const visible = steps.slice(start, start + WINDOW);
+  const hiddenBefore = start;
+  const hiddenAfter = total - (start + visible.length);
 
   return (
     <div className="step-indicator">
-      {steps.map((step, index) => {
-        const isCurrent = step.id === currentStepId;
-        const isCompleted = step.status === 'completed';
+      <div className="step-indicator-head">
+        <span className="step-indicator-count">
+          Step {currentIndex + 1} of {total}
+        </span>
+        <span className="step-indicator-percent">{percent}% complete</span>
+      </div>
 
-        return (
-          <div key={step.id} className="step-item" ref={isCurrent ? activeRef : undefined}>
-            <div className="step-item-content">
-              <div
-                className={`step-circle ${isCompleted ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
-              >
+      <div
+        className="step-progress"
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Onboarding progress"
+      >
+        <div className="step-progress-fill" style={{ width: `${percent}%` }} />
+      </div>
+
+      <ol className="step-window">
+        {hiddenBefore > 0 && (
+          <li className="step-ellipsis" aria-hidden="true">
+            +{hiddenBefore}
+          </li>
+        )}
+        {visible.map((step, offset) => {
+          const index = start + offset;
+          const isCurrent = index === currentIndex;
+          const isCompleted = step.status === 'completed';
+
+          return (
+            <li
+              key={step.id}
+              className={`step-chip ${isCompleted ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''}`}
+              aria-current={isCurrent ? 'step' : undefined}
+            >
+              <span className="step-chip-circle" aria-hidden="true">
                 {isCompleted ? '✓' : index + 1}
-              </div>
-              <span
-                className={`step-label ${isCompleted ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
-              >
-                {step.name}
               </span>
-            </div>
-            {index < steps.length - 1 && (
-              <div className={`step-connector ${isCompleted ? 'completed' : ''}`} />
-            )}
-          </div>
-        );
-      })}
+              <span className="step-chip-label">{step.name}</span>
+            </li>
+          );
+        })}
+        {hiddenAfter > 0 && (
+          <li className="step-ellipsis" aria-hidden="true">
+            +{hiddenAfter}
+          </li>
+        )}
+      </ol>
     </div>
   );
 }

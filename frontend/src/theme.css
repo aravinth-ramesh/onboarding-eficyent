@@ -419,94 +419,126 @@ a:hover { color: var(--color-accent-hover); text-decoration: underline; }
   .app-main { margin-left: 0; }
 }
 
-/* ── Step Indicator ── */
+/* ── Step Indicator ──
+   A count, a progress bar, and a window of a few steps around the current one.
+   Deliberately never scrolls: the long KYB flow is conveyed by the bar and the
+   "+N" markers rather than by rendering every step. */
 .step-indicator {
-  display: flex;
-  align-items: flex-start;
-  justify-content: safe center;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding: 12px 20px 36px;
-  gap: 0;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
-  padding: 20px 24px;
+  padding: 14px 20px;
 }
 
-.step-item {
+.step-indicator-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.step-indicator-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.step-indicator-percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.step-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.step-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gradient-primary);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-window {
   display: flex;
   align-items: center;
-  position: relative;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  min-width: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.step-chip-circle {
   flex-shrink: 0;
-}
-
-.step-item-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  z-index: 1;
-  min-width: 110px;
-}
-
-.step-circle {
-  width: 40px; height: 40px;
+  width: 24px; height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 11px;
   font-weight: 700;
-  font-size: 14px;
-  border: 2px solid var(--color-border);
-  background: var(--color-bg-card);
+  background: var(--color-border);
   color: var(--color-text-muted);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.step-circle.active {
-  border: 2px solid transparent;
-  background: var(--gradient-primary);
-  color: #fff;
-  box-shadow: var(--shadow-glow);
-  transform: scale(1.06);
-}
-
-.step-circle.completed {
-  border-color: var(--color-success);
-  background: var(--color-success);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.30);
-}
-
-.step-label {
-  margin-top: 8px;
+.step-chip-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-muted);
-  text-align: center;
-  max-width: 110px;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
-.step-label.active { color: var(--color-accent); }
-.step-label.completed { color: var(--color-success); }
+.step-chip.is-done .step-chip-circle { background: var(--color-success); color: #fff; }
+.step-chip.is-done .step-chip-label { color: var(--color-success); }
 
-.step-connector {
-  width: 64px;
-  height: 2px;
-  background: var(--color-border);
-  margin-top: 19px;
+/* Current wins over done when a step is somehow both. */
+.step-chip.is-current {
+  border-color: transparent;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.step-chip.is-current .step-chip-circle { background: rgba(255, 255, 255, 0.25); color: #fff; }
+.step-chip.is-current .step-chip-label { color: #fff; }
+
+.step-ellipsis {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
   flex-shrink: 0;
-  border-radius: 2px;
-  transition: background 0.3s ease;
+  padding: 0 2px;
 }
 
-.step-connector.completed { background: linear-gradient(90deg, var(--color-success) 0%, rgba(16,185,129,0.5) 100%); }
+/* Too narrow for neighbours — the count and bar already say where you are. */
+@media (max-width: 640px) {
+  .step-window > :not(.step-chip.is-current) { display: none; }
+}
 
 /* ── Cards ── */
 .ob-card {
