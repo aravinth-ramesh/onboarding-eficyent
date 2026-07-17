@@ -63,6 +63,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('filter-presets/{context}/{preset}/duplicate', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'duplicate'])->name('filter-presets.duplicate');
     Route::patch('filter-presets/{context}/{preset}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'rename'])->name('filter-presets.rename');
     Route::delete('filter-presets/{context}/{preset}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'destroy'])->name('filter-presets.destroy');
+    Route::delete('filter-presets/{context}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'destroyAll'])->name('filter-presets.destroy-all');
 
     // Email Templates
     Route::get('email-templates', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'index'])->name('email-templates.index');

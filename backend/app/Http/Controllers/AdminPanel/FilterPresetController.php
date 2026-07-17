@@ -216,6 +216,27 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Delete all of this admin's presets for one page at once. Only ever the
+     * caller's own, and only for this page — one admin clearing their views
+     * never touches another's, or the same admin's views on a different page.
+     */
+    public function destroyAll(string $context): RedirectResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $deleted = FilterPreset::where('admin_id', Auth::guard('admin')->id())
+            ->where('context', $context)
+            ->delete();
+
+        return back()->with(
+            $deleted > 0 ? 'success' : 'error',
+            $deleted > 0
+                ? "Deleted all {$deleted} saved view(s) for this page."
+                : 'There were no saved views to delete.',
+        );
+    }
+
+    /**
      * A preset may only be touched by its owner, through the page it belongs
      * to — the {context} in the URL is not free to disagree with the record.
      */

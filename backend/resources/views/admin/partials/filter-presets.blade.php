@@ -62,6 +62,16 @@
                         Export {{ $presets->count() }} preset{{ $presets->count() === 1 ? '' : 's' }} as JSON
                     </a>
                 </li>
+                <li>
+                    <form method="POST" action="{{ route('admin.filter-presets.destroy-all', ['context' => $context]) }}"
+                          onsubmit="return confirm('Delete all {{ $presets->count() }} of your saved views for this page? This cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="dropdown-item small text-danger">
+                            <i class="bi bi-trash"></i> Delete all saved views
+                        </button>
+                    </form>
+                </li>
             </ul>
         </div>
     @endif

@@ -711,6 +711,49 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertSame(['from' => '2026-08-01', 'to' => '2026-08-31', 'date_field' => 'decided'], $theirs->firstWhere('name', 'Beta')->filters);
     }
 
+    public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true]);
+
+        // Two on this page for me, one on another page for me, one for someone else.
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Email', 'filters' => ['status' => 'pending']]);
+        FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->delete(route('admin.filter-presets.destroy-all', ['context' => 'user-onboardings']))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        // My onboarding views are gone; my email view and their view remain.
+        $this->assertDatabaseMissing('filter_presets', ['admin_id' => $this->admin->id, 'context' => 'user-onboardings']);
+        $this->assertDatabaseHas('filter_presets', ['admin_id' => $this->admin->id, 'context' => 'scheduled-emails']);
+        $this->assertDatabaseHas('filter_presets', ['admin_id' => $other->id, 'context' => 'user-onboardings']);
+        $this->assertDatabaseCount('filter_presets', 2);
+    }
+
+    public function test_delete_all_with_nothing_to_delete_reports_it(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.filter-presets.destroy-all', ['context' => 'user-onboardings']))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('filter_presets', 0);
+    }
+
+    public function test_delete_all_rejects_an_unknown_context(): void
+    {
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.filter-presets.destroy-all', ['context' => 'audit-logs']))
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
     public function test_deleting_a_preset_removes_it(): void
     {
         $preset = FilterPreset::create([
