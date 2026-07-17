@@ -45,6 +45,13 @@ class ScheduledEmailController extends Controller
             'to' => $request->input('to'),
             'presets' => $presets,
             'activePresetId' => $presets->first(fn ($p) => $p->filters == $active)?->id,
+            'presetSummary' => collect([
+                'Status' => $request->input('status'),
+                'Subject contains' => $request->input('search'),
+                'Send from' => $request->input('from'),
+                'Send to' => $request->input('to'),
+                'Sort' => $sort,
+            ])->filter(fn ($v) => filled($v))->all(),
         ]);
     }
 

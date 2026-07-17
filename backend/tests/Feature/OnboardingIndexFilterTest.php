@@ -302,6 +302,86 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertDatabaseCount('filter_presets', 1);
     }
 
+    public function test_duplicating_a_preset_copies_its_filters_under_a_new_name(): void
+    {
+        $original = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved', 'from' => '2026-08-01', 'date_field' => 'decided'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.duplicate', ['context' => 'user-onboardings', 'preset' => $original]),
+                ['name' => '  Approved (copy)  '])
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $copy = FilterPreset::where('name', 'Approved (copy)')->sole();
+
+        $this->assertSame($original->filters, $copy->filters);
+        $this->assertSame($this->admin->id, $copy->admin_id);
+        $this->assertSame('user-onboardings', $copy->context);
+        // The original is untouched.
+        $this->assertDatabaseHas('filter_presets', ['id' => $original->id, 'name' => 'Approved']);
+    }
+
+    public function test_duplicating_refuses_an_existing_name_rather_than_overwriting(): void
+    {
+        $original = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Taken', 'filters' => ['status' => 'rejected'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.duplicate', ['context' => 'user-onboardings', 'preset' => $original]),
+                ['name' => 'Taken'])
+            ->assertSessionHasErrors('name');
+
+        // "Taken" still holds its own filters — nothing was clobbered.
+        $this->assertSame(['status' => 'rejected'], FilterPreset::where('name', 'Taken')->sole()->filters);
+        $this->assertDatabaseCount('filter_presets', 2);
+    }
+
+    public function test_the_same_name_is_free_on_a_different_page(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'scheduled-emails',
+            'name' => 'Shared name', 'filters' => ['status' => 'pending'],
+        ]);
+        $onboardingPreset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        // Uniqueness is scoped per page, so this must not collide.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.duplicate', ['context' => 'user-onboardings', 'preset' => $onboardingPreset]),
+                ['name' => 'Shared name'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('filter_presets', 3);
+    }
+
+    public function test_cannot_duplicate_another_admins_preset(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other2@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = FilterPreset::create([
+            'admin_id' => $other->id, 'context' => 'user-onboardings',
+            'name' => 'Theirs', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.duplicate', ['context' => 'user-onboardings', 'preset' => $theirs]),
+                ['name' => 'Stolen'])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
     public function test_deleting_a_preset_removes_it(): void
     {
         $preset = FilterPreset::create([

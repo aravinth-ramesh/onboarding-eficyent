@@ -41,43 +41,8 @@
             </div>
         </form>
 
-        {{-- Saved views: apply one, or save the current filters as a new one.
-             Outside the filter form above — it carries its own POST forms. --}}
-        <div class="d-flex gap-2 align-items-center">
-            @if($presets->isNotEmpty())
-                <div class="dropdown">
-                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-bookmark"></i>
-                        {{ $activePresetId ? $presets->firstWhere('id', $activePresetId)->name : 'Presets' }}
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 240px;">
-                        @foreach($presets as $preset)
-                            <li class="d-flex align-items-center">
-                                <a class="dropdown-item text-truncate {{ $preset->id === $activePresetId ? 'active' : '' }}"
-                                   href="{{ route('admin.scheduled-emails.index', $preset->filters) }}">
-                                    {{ $preset->name }}
-                                </a>
-                                <form method="POST" class="pe-2"
-                                      action="{{ route('admin.filter-presets.destroy', ['context' => 'scheduled-emails', 'preset' => $preset]) }}"
-                                      onsubmit="return confirm('Delete the preset &quot;{{ $preset->name }}&quot;?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-link text-danger p-0" title="Delete preset">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-            @if($activeFilters > 0 && ! $activePresetId)
-                <button type="button" class="btn btn-sm btn-outline-primary"
-                        data-bs-toggle="modal" data-bs-target="#savePresetModal">
-                    <i class="bi bi-bookmark-plus"></i> Save preset
-                </button>
-            @endif
-        </div>
+        {{-- Saved views — outside the filter form above, which cannot nest forms. --}}
+        @include('admin.partials.filter-presets', ['context' => 'scheduled-emails'])
     </div>
 </div>
 
@@ -210,51 +175,6 @@
         <div class="card-footer">{{ $emails->links() }}</div>
     @endif
 </div>
-
-{{-- Save preset modal — the action carries the filters currently in the URL --}}
-@if($activeFilters > 0 && ! $activePresetId)
-<div class="modal fade" id="savePresetModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="POST" action="{{ route('admin.filter-presets.store', array_merge(['context' => 'scheduled-emails'], request()->only('status', 'search', 'sort', 'from', 'to'))) }}">
-            @csrf
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Save Filter Preset</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3" style="font-size: 0.9rem;">
-                        Saves the {{ $activeFilters }} filter(s) currently applied as a named view you can
-                        return to. Presets are private to your account.
-                    </p>
-                    @php
-                        $summary = collect([
-                            'Status' => $status,
-                            'Subject contains' => $search,
-                            'Send from' => $from,
-                            'Send to' => $to,
-                            'Sort' => $sort,
-                        ])->filter(fn ($v) => filled($v));
-                    @endphp
-                    <ul class="list-unstyled mb-3" style="font-size: 0.85rem;">
-                        @foreach($summary as $label => $value)
-                            <li><span class="text-muted">{{ $label }}:</span> <span class="fw-semibold">{{ $value }}</span></li>
-                        @endforeach
-                    </ul>
-                    <label for="presetName" class="form-label">Preset name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="presetName" name="name" maxlength="60" required
-                           placeholder="e.g. Pending this month">
-                    <div class="form-text">Re-using an existing name overwrites that preset.</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-bookmark-plus"></i> Save preset</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-@endif
 
 {{-- Preview modal --}}
 <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">

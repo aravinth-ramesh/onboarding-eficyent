@@ -63,7 +63,7 @@ class UserOnboardingController extends Controller
         return view('admin.user-onboardings.index', [
             ...compact('onboardings', 'userTypes', 'admins', 'presets'),
             'activePresetId' => $presets->first(fn ($p) => $p->filters == $active)?->id,
-            'activeFilterSummary' => $this->describeFilters($active, $userTypes, $admins),
+            'presetSummary' => $this->describeFilters($active, $userTypes, $admins),
         ]);
     }
 
