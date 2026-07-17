@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AnswerAuditLog;
+use App\Models\FilterPreset;
 use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
@@ -21,6 +22,12 @@ use Illuminate\View\View;
 class UserOnboardingController extends Controller
 {
     use ParsesDateRange;
+
+    /** This page's key in FilterPreset::CONTEXTS. */
+    private const CONTEXT = 'user-onboardings';
+
+    /** Query params that make up the admin's active view. */
+    private const FILTER_KEYS = FilterPreset::CONTEXTS[self::CONTEXT];
 
     /**
      * Date columns an admin can range on, keyed by the `date_field` param.
@@ -45,7 +52,55 @@ class UserOnboardingController extends Controller
         $userTypes = UserType::orderBy('order')->get();
         $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.user-onboardings.index', compact('onboardings', 'userTypes', 'admins'));
+        // Saved views for whoever is looking, and which one (if any) the
+        // current filters match, so it can be shown as selected.
+        $presets = FilterPreset::ownedBy(Auth::guard('admin')->id(), self::CONTEXT)->get();
+        $active = FilterPreset::normalize(self::CONTEXT, collect($request->only(self::FILTER_KEYS))
+            ->filter(fn ($v) => filled($v))
+            ->map(fn ($v) => is_string($v) ? trim($v) : $v)
+            ->all());
+
+        return view('admin.user-onboardings.index', [
+            ...compact('onboardings', 'userTypes', 'admins', 'presets'),
+            'activePresetId' => $presets->first(fn ($p) => $p->filters == $active)?->id,
+            'activeFilterSummary' => $this->describeFilters($active, $userTypes, $admins),
+        ]);
+    }
+
+    /**
+     * Human-readable "label => value" of the active filters, for the save
+     * preset dialog — ids resolved to the names the admin actually picked.
+     */
+    private function describeFilters(array $filters, $userTypes, $admins): array
+    {
+        $statuses = [
+            'pending' => 'Pending', 'in_progress' => 'In Progress', 'completed' => 'Awaiting Review',
+            'approved' => 'Approved', 'rejected' => 'Rejected',
+        ];
+
+        $assignee = match ($filters['assigned'] ?? null) {
+            null => null,
+            'me' => 'Assigned to me',
+            'unassigned' => 'Unassigned',
+            default => $admins->firstWhere('id', (int) $filters['assigned'])?->name ?? 'Unknown admin',
+        };
+
+        $range = collect([
+            isset($filters['from']) ? "from {$filters['from']}" : null,
+            isset($filters['to']) ? "to {$filters['to']}" : null,
+        ])->filter()->implode(' ');
+
+        return collect([
+            'Search' => $filters['search'] ?? null,
+            'Status' => $statuses[$filters['status'] ?? ''] ?? null,
+            'Type' => isset($filters['user_type_id'])
+                ? $userTypes->firstWhere('id', (int) $filters['user_type_id'])?->name
+                : null,
+            'Assignee' => $assignee,
+            'Resubmissions only' => isset($filters['resubmitted']) ? 'yes' : null,
+            'Archived' => isset($filters['archived']) ? 'yes' : null,
+            ucfirst($filters['date_field'] ?? 'submitted') => $range ?: null,
+        ])->filter()->all();
     }
 
     /**

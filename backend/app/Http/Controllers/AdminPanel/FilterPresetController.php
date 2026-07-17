@@ -58,9 +58,11 @@ class FilterPresetController extends Controller
      */
     private function filtersFrom(Request $request, string $context): array
     {
-        return collect($request->only(FilterPreset::CONTEXTS[$context]))
+        $filters = collect($request->only(FilterPreset::CONTEXTS[$context]))
             ->filter(fn ($value) => filled($value))
             ->map(fn ($value) => is_string($value) ? trim($value) : $value)
             ->all();
+
+        return FilterPreset::normalize($context, $filters);
     }
 }

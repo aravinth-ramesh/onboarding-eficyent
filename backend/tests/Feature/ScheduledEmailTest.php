@@ -560,7 +560,7 @@ class ScheduledEmailTest extends TestCase
     public function test_unknown_preset_context_is_rejected(): void
     {
         $this->actingAs($this->admin, 'admin')
-            ->post(route('admin.filter-presets.store', ['context' => 'user-onboardings', 'status' => 'pending']), ['name' => 'X'])
+            ->post(route('admin.filter-presets.store', ['context' => 'audit-logs', 'status' => 'pending']), ['name' => 'X'])
             ->assertNotFound();
 
         $this->assertDatabaseCount('filter_presets', 0);

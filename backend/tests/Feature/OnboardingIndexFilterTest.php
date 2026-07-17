@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\FilterPreset;
 use App\Models\User;
 use App\Models\UserOnboarding;
 use App\Models\UserType;
@@ -208,5 +209,112 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertStringContainsString('alice@acme.com', $csv);
         $this->assertStringContainsString('bob@bank.com', $csv);
         $this->assertStringNotContainsString('carol@corp.com', $csv);
+    }
+
+    private function savePreset(string $name, array $filters)
+    {
+        return $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', array_merge(['context' => 'user-onboardings'], $filters)), ['name' => $name]);
+    }
+
+    public function test_saving_a_preset_stores_only_this_pages_filters(): void
+    {
+        $corporate = UserType::where('slug', 'corporate')->first();
+
+        $this->savePreset('Corporate approved', [
+            'status' => 'approved', 'user_type_id' => $corporate->id, 'assigned' => 'me',
+            'search' => '', 'page' => '2', 'sort' => 'asc',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        // `page`/`sort` belong to other pages, blanks are dropped.
+        $this->assertSame(
+            ['status' => 'approved', 'user_type_id' => (string) $corporate->id, 'assigned' => 'me'],
+            FilterPreset::sole()->filters,
+        );
+        $this->assertSame('user-onboardings', FilterPreset::sole()->context);
+    }
+
+    public function test_date_field_is_only_saved_alongside_a_range(): void
+    {
+        // The filter bar submits date_field on every search — on its own it
+        // narrows nothing, so it should not land in the preset.
+        $this->savePreset('No range', ['status' => 'approved', 'date_field' => 'decided']);
+        $this->assertSame(['status' => 'approved'], FilterPreset::sole()->filters);
+
+        // With a range it is meaningful and must be kept.
+        $this->savePreset('With range', ['date_field' => 'decided', 'from' => '2026-08-01']);
+        $this->assertSame(
+            ['from' => '2026-08-01', 'date_field' => 'decided'],
+            FilterPreset::where('name', 'With range')->sole()->filters,
+        );
+    }
+
+    public function test_applying_a_preset_filters_the_list_and_shows_as_active(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Only approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->index($preset->filters)
+            ->assertSee('Alice Smith')
+            ->assertDontSee('Bob Jones')
+            ->assertSee('Only approved')     // the dropdown's current label
+            ->assertDontSee('Save preset');  // already saved
+    }
+
+    public function test_a_plain_search_still_matches_a_preset_saved_with_a_date_field(): void
+    {
+        // Saved via the form, which always submits date_field...
+        $this->savePreset('Approved', ['status' => 'approved', 'date_field' => 'submitted']);
+
+        // ...so arriving from a link without it must still count as the same view.
+        $this->index(['status' => 'approved'])
+            ->assertSee('Approved')
+            ->assertDontSee('Save preset');
+    }
+
+    public function test_presets_do_not_leak_across_pages(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'scheduled-emails',
+            'name' => 'An email preset', 'filters' => ['status' => 'pending'],
+        ]);
+
+        $this->index()->assertDontSee('An email preset');
+    }
+
+    public function test_presets_are_private_to_the_admin_who_saved_them(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true]);
+
+        $theirs = FilterPreset::create([
+            'admin_id' => $other->id, 'context' => 'user-onboardings',
+            'name' => 'Their private view', 'filters' => ['status' => 'rejected'],
+        ]);
+
+        $this->index()->assertDontSee('Their private view');
+
+        $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.filter-presets.destroy', ['context' => 'user-onboardings', 'preset' => $theirs]))
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('filter_presets', 1);
+    }
+
+    public function test_deleting_a_preset_removes_it(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Disposable', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->delete(route('admin.filter-presets.destroy', ['context' => 'user-onboardings', 'preset' => $preset]))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('filter_presets', 0);
     }
 }
