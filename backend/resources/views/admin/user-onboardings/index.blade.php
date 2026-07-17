@@ -44,6 +44,19 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-auto d-flex align-items-center gap-1">
+                <select name="date_field" class="form-select form-select-sm" style="width: 115px;"
+                        title="Which date to filter on" onchange="if (this.form.from.value || this.form.to.value) this.form.submit()">
+                    @foreach(['submitted' => 'Submitted', 'started' => 'Started', 'decided' => 'Decided'] as $value => $label)
+                        <option value="{{ $value }}" @selected(request('date_field', 'submitted') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <input type="date" name="from" class="form-control form-control-sm" value="{{ request('from') }}"
+                       title="From date" style="width: 145px;">
+                <span class="text-muted small">to</span>
+                <input type="date" name="to" class="form-control form-control-sm" value="{{ request('to') }}"
+                       title="To date" style="width: 145px;">
+            </div>
             <div class="col-auto">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="resubmitted" value="1"
@@ -58,7 +71,8 @@
             </div>
             <div class="col-auto d-flex gap-2">
                 <button class="btn btn-sm btn-primary">Search</button>
-                @if(request()->hasAny(['search', 'status', 'user_type_id', 'resubmitted']))
+                {{-- `date_field` is a modifier, not a filter — it narrows nothing on its own. --}}
+                @if(request()->hasAny(['search', 'status', 'user_type_id', 'resubmitted', 'archived', 'assigned', 'from', 'to']))
                     <a href="{{ route('admin.user-onboardings.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
                 <a href="{{ route('admin.user-onboardings.export-csv', request()->query()) }}"

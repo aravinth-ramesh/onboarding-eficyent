@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AdminPanel;
 
+use App\Http\Controllers\Concerns\ParsesDateRange;
 use App\Http\Controllers\Controller;
 use App\Mail\AdminNotificationMail;
 use App\Models\FilterPreset;
@@ -15,6 +16,8 @@ use Illuminate\View\View;
 
 class ScheduledEmailController extends Controller
 {
+    use ParsesDateRange;
+
     public function index(Request $request): View
     {
         // Explicit send-date sort is purely chronological; without it the
@@ -76,19 +79,6 @@ class ScheduledEmailController extends Controller
                 $this->parseDate($request->input('to')),
                 fn ($q, $to) => $q->where('send_at', '<=', $to->endOfDay()),
             );
-    }
-
-    /** Parse a YYYY-MM-DD filter value, ignoring anything malformed. */
-    private function parseDate(?string $value): ?\Illuminate\Support\Carbon
-    {
-        if (! filled($value)) {
-            return null;
-        }
-        try {
-            return \Illuminate\Support\Carbon::parse($value);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /**

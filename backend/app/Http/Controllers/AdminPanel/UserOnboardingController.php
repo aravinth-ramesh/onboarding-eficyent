@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AdminPanel;
 
+use App\Http\Controllers\Concerns\ParsesDateRange;
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
@@ -19,6 +20,19 @@ use Illuminate\View\View;
 
 class UserOnboardingController extends Controller
 {
+    use ParsesDateRange;
+
+    /**
+     * Date columns an admin can range on, keyed by the `date_field` param.
+     * An application has several meaningful dates, so the range filter says
+     * which one it means rather than guessing.
+     */
+    public const DATE_FIELDS = [
+        'submitted' => 'completed_at',
+        'started' => 'started_at',
+        'decided' => 'decided_at',
+    ];
+
     public function __construct(
         private NotificationService $notificationService,
         private AdminEmailService $emailService,
@@ -186,6 +200,19 @@ class UserOnboardingController extends Controller
                 $assigned === 'me' => $query->where('assigned_to', Auth::guard('admin')->id()),
                 default => $query->where('assigned_to', (int) $assigned),
             };
+        }
+
+        // Range on whichever date the admin picked (default: submitted).
+        // Rows with no date in that column drop out, which is the point — an
+        // application submitted between two dates must have been submitted.
+        $column = self::DATE_FIELDS[(string) $request->input('date_field')] ?? self::DATE_FIELDS['submitted'];
+
+        if ($from = $this->parseDate($request->input('from'))) {
+            $query->where($column, '>=', $from->startOfDay());
+        }
+
+        if ($to = $this->parseDate($request->input('to'))) {
+            $query->where($column, '<=', $to->endOfDay());
         }
 
         if ($request->filled('search')) {
