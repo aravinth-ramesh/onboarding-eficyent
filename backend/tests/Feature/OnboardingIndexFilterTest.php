@@ -950,6 +950,64 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertNotNull($this->admin->refresh()->preset_history_cleared_at);
     }
 
+    public function test_pinning_a_history_entry_floats_it_to_the_top(): void
+    {
+        $older = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Older view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00']);
+        \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Newer view'], 'status' => 302, 'created_at' => '2026-09-01 10:00:00']);
+
+        // By default newest first: Newer before Older.
+        $html = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history'))->getContent();
+        $this->assertLessThan(strpos($html, 'Older view'), strpos($html, 'Newer view'));
+
+        // Pin the older one.
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.settings.preset-history'))
+            ->post(route('admin.settings.preset-history.pin', $older->id))
+            ->assertRedirect(route('admin.settings.preset-history'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('history_pins', ['admin_id' => $this->admin->id, 'admin_activity_log_id' => $older->id]);
+
+        // Now the pinned older entry floats above the newer one.
+        $html = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history'))->getContent();
+        $this->assertLessThan(strpos($html, 'Newer view'), strpos($html, 'Older view'));
+    }
+
+    public function test_pinning_a_history_entry_is_a_toggle(): void
+    {
+        $log = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+
+        $this->actingAs($this->admin, 'admin')->post(route('admin.settings.preset-history.pin', $log->id));
+        $this->assertDatabaseHas('history_pins', ['admin_activity_log_id' => $log->id]);
+
+        $this->actingAs($this->admin, 'admin')->post(route('admin.settings.preset-history.pin', $log->id));
+        $this->assertDatabaseMissing('history_pins', ['admin_activity_log_id' => $log->id]);
+    }
+
+    public function test_cannot_pin_another_admins_history_entry(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other17@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.preset-history.pin', $theirs->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('history_pins', 0);
+    }
+
+    public function test_cannot_pin_a_non_customization_log_entry(): void
+    {
+        // A plain page visit is logged but is not a customization action.
+        $visit = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.user-onboardings.index', 'method' => 'GET', 'path' => 'admin/user-onboardings', 'status' => 200, 'created_at' => now()]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.preset-history.pin', $visit->id))
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('history_pins', 0);
+    }
+
     public function test_restoring_brings_back_cleared_history(): void
     {
         \App\Models\AdminActivityLog::create([

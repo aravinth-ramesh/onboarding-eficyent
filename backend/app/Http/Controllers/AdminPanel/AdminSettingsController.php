@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminActivityLog;
 use App\Models\FilterPreset;
+use App\Models\HistoryPin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,15 +45,19 @@ class AdminSettingsController extends Controller
         // ignored so a stray value can't produce an empty or odd view.
         $selected = $this->selectedAction($request);
 
+        $pinnedIds = $this->pinnedLogIds();
+
         $history = $this->historyQuery($selected)
             ->paginate(30)
             ->withQueryString()
             ->through(fn (AdminActivityLog $log) => [
+                'id' => $log->id,
                 'at' => $log->created_at,
                 'label' => self::HISTORY_LABELS[$log->action] ?? $log->action,
                 'detail' => $this->historyDetail($log),
                 'page' => $this->contextFromPath($log->path),
                 'ok' => $log->status < 400,
+                'pinned' => $pinnedIds->contains($log->id),
             ]);
 
         // When a clear is in effect, surface it with how many entries it hides,
@@ -133,18 +138,54 @@ class AdminSettingsController extends Controller
     }
 
     /**
-     * The current admin's history, filtered to a chosen action, newest first —
-     * and only entries after the admin's last "clear".
+     * The current admin's history, filtered to a chosen action — pinned entries
+     * first, then newest first — and only entries after the last "clear".
      */
     private function historyQuery(?string $selected)
     {
         $clearedAt = Auth::guard('admin')->user()->preset_history_cleared_at;
+        $pinnedIds = $this->pinnedLogIds();
 
         return AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
             ->whereIn('action', array_keys(self::HISTORY_LABELS))
             ->when($selected, fn ($q) => $q->where('action', $selected))
             ->when($clearedAt, fn ($q) => $q->where('created_at', '>', $clearedAt))
+            // Ids come straight from the DB, so imploding them is injection-safe.
+            ->when($pinnedIds->isNotEmpty(), fn ($q) => $q->orderByRaw(
+                'case when id in (' . $pinnedIds->map(fn ($i) => (int) $i)->implode(',') . ') then 0 else 1 end'
+            ))
             ->latest('created_at');
+    }
+
+    /** The log ids the current admin has pinned. */
+    private function pinnedLogIds(): \Illuminate\Support\Collection
+    {
+        return HistoryPin::where('admin_id', Auth::guard('admin')->id())->pluck('admin_activity_log_id');
+    }
+
+    /**
+     * Pin or unpin one history entry so it floats to the top of the admin's
+     * history view. Only the admin's own customization entries are pinnable.
+     */
+    public function toggleHistoryPin(AdminActivityLog $log): RedirectResponse
+    {
+        $adminId = Auth::guard('admin')->id();
+        abort_unless($log->admin_id === $adminId, 403);
+        abort_unless(array_key_exists($log->action, self::HISTORY_LABELS), 404);
+
+        $existing = HistoryPin::where('admin_id', $adminId)
+            ->where('admin_activity_log_id', $log->id)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+
+            return back()->with('success', 'History entry unpinned.');
+        }
+
+        HistoryPin::create(['admin_id' => $adminId, 'admin_activity_log_id' => $log->id]);
+
+        return back()->with('success', 'History entry pinned to top.');
     }
 
     /** The action to filter on, or null — only a known customization action counts. */

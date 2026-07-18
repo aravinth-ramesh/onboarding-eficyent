@@ -80,8 +80,11 @@
                 <tbody>
                     @php $pageLabels = ['user-onboardings' => 'Onboardings', 'scheduled-emails' => 'Scheduled Emails']; @endphp
                     @forelse($history as $entry)
-                        <tr class="{{ $entry['ok'] ? '' : 'text-muted' }}">
+                        <tr class="{{ $entry['ok'] ? '' : 'text-muted' }} {{ $entry['pinned'] ? 'table-warning' : '' }}">
                             <td style="white-space: nowrap;">
+                                @if($entry['pinned'])
+                                    <i class="bi bi-pin-angle-fill text-warning me-1" title="Pinned"></i>
+                                @endif
                                 {{ $entry['at']->format('M d, Y H:i') }}
                                 <div class="small text-muted">{{ $entry['at']->diffForHumans() }}</div>
                             </td>
@@ -89,9 +92,19 @@
                             <td>{{ $entry['detail'] ?? '—' }}</td>
                             <td>{{ $entry['page'] ? ($pageLabels[$entry['page']] ?? $entry['page']) : '—' }}</td>
                             <td class="text-end">
-                                @unless($entry['ok'])
-                                    <span class="badge bg-danger-subtle text-danger border">failed</span>
-                                @endunless
+                                <div class="d-flex gap-2 justify-content-end align-items-center">
+                                    @unless($entry['ok'])
+                                        <span class="badge bg-danger-subtle text-danger border">failed</span>
+                                    @endunless
+                                    <form method="POST" action="{{ route('admin.settings.preset-history.pin', $entry['id']) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-link p-0 {{ $entry['pinned'] ? 'text-warning' : 'text-secondary' }}"
+                                                title="{{ $entry['pinned'] ? 'Unpin' : 'Pin to top' }}"
+                                                aria-label="{{ $entry['pinned'] ? 'Unpin entry' : 'Pin entry to top' }}">
+                                            <i class="bi {{ $entry['pinned'] ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
