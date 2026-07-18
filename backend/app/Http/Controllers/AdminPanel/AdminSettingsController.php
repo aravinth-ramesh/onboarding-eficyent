@@ -76,7 +76,21 @@ class AdminSettingsController extends Controller
             'selectedAction' => $selected,
             'clearedAt' => $clearedAt,
             'hiddenCount' => $hiddenCount,
+            'hasPinnedHistory' => $pinnedIds->isNotEmpty(),
         ]);
+    }
+
+    /** Unpin every history entry the admin has pinned, in one go. */
+    public function unpinAllHistory(): RedirectResponse
+    {
+        $count = HistoryPin::where('admin_id', Auth::guard('admin')->id())->delete();
+
+        return back()->with(
+            $count > 0 ? 'success' : 'error',
+            $count > 0
+                ? "Unpinned all {$count} history entr" . ($count === 1 ? 'y' : 'ies') . '.'
+                : 'There were no pinned history entries.',
+        );
     }
 
     /**
