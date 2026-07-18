@@ -25,6 +25,9 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+    // Personal settings
+    Route::patch('settings/pin-shortcut', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'updatePinShortcut'])->name('settings.pin-shortcut');
+
     // User Types
     Route::resource('user-types', UserTypeController::class)->except(['show']);
 

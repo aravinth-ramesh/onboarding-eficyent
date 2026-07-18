@@ -13,9 +13,13 @@
     Must be included OUTSIDE the page's GET filter form: it carries its own
     POST forms, and browsers drop nested ones.
 --}}
-@php $canSave = ! empty($presetSummary) && ! $activePresetId; @endphp
+@php
+    $canSave = ! empty($presetSummary) && ! $activePresetId;
+    $pinShortcut = auth('admin')->user()?->pinShortcut() ?? \App\Models\Admin::DEFAULT_PIN_SHORTCUT;
+    $pinShortcutLabel = \App\Models\Admin::displayShortcut($pinShortcut);
+@endphp
 
-<div class="d-flex gap-2 align-items-center">
+<div class="d-flex gap-2 align-items-center" data-pin-shortcut="{{ $pinShortcut }}">
     @if($presets->isNotEmpty())
         @php
             $pinnedCount = $presets->where('pinned', true)->count();
@@ -177,6 +181,14 @@
                         </button>
                     </form>
                 </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <button type="button" class="dropdown-item small text-muted"
+                            data-bs-toggle="modal" data-bs-target="#pinShortcutModal">
+                        <i class="bi bi-keyboard"></i>
+                        Pin shortcut: <span class="fw-semibold preset-shortcut-label">{{ $pinShortcutLabel }}</span>
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -188,10 +200,10 @@
                 {{-- Filled pin + colour show it is pinned; the label is the action.
                      Also triggered by the Shift+P shortcut (see scripts below). --}}
                 <button type="submit" class="btn btn-sm preset-active-pin {{ $activePreset->pinned ? 'btn-warning' : 'btn-outline-secondary' }}"
-                        title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }} · Shift+P">
+                        title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }} · {{ $pinShortcutLabel }}">
                     <i class="bi {{ $activePreset->pinned ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
                     {{ $activePreset->pinned ? 'Unpin' : 'Pin' }}
-                    <kbd class="ms-1 d-none d-lg-inline" style="font-size: 0.7em;">⇧P</kbd>
+                    <kbd class="ms-1 d-none d-lg-inline preset-shortcut-kbd" style="font-size: 0.7em;">{{ $pinShortcutLabel }}</kbd>
                 </button>
             </form>
         @endif
@@ -252,6 +264,43 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Import</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Customise the pin keyboard shortcut. Always available where presets exist. --}}
+<div class="modal fade" id="pinShortcutModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('admin.settings.pin-shortcut') }}">
+            @csrf
+            @method('PATCH')
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pin Keyboard Shortcut</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                        The shortcut pins or unpins the saved view you currently have applied.
+                        Click the field and press your combination — hold a modifier (Ctrl, Alt,
+                        Shift or Cmd) and one key.
+                    </p>
+                    <input type="text" readonly class="form-control text-center fw-semibold pin-shortcut-capture"
+                           value="{{ $pinShortcutLabel }}" placeholder="Click, then press a shortcut…" aria-label="Pin shortcut">
+                    <input type="hidden" name="pin_shortcut" class="pin-shortcut-value" value="{{ $pinShortcut }}">
+                    @error('pin_shortcut')
+                        <div class="text-danger small mt-2">{{ $message }}</div>
+                    @enderror
+                    <div class="form-text">Default is Shift+P.</div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-link btn-sm text-muted pin-shortcut-reset p-0">Reset to default</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -574,13 +623,37 @@
             });
         })();
 
-        // Keyboard pin shortcut: pins/unpins the currently applied view.
-        // Ignored while typing in a field or with a modal open, and a no-op
-        // when no preset is applied (the button is absent).
+        // The physical key behind an event, modifier-independent (KeyP -> "p",
+        // Digit1 -> "1"). Using the code, not the char, keeps combos stable
+        // across Shift/Alt which would otherwise rewrite e.key.
+        function presetBaseKey(e) {
+            var c = e.code || '';
+            if (c.indexOf('Key') === 0) return c.slice(3).toLowerCase();
+            if (c.indexOf('Digit') === 0) return c.slice(5);
+            return null;
+        }
+        function presetComboLabel(combo) {
+            var labels = { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', meta: 'Cmd' };
+            return combo.split('+').map(function (p) { return labels[p] || p.toUpperCase(); }).join('+');
+        }
+
+        // Keyboard pin shortcut: fires the configured combo to pin/unpin the
+        // currently applied view. Ignored while typing in a field or with a
+        // modal open, and a no-op when no preset is applied.
         (function () {
+            var holder = document.querySelector('[data-pin-shortcut]');
+            var combo = (holder && holder.getAttribute('data-pin-shortcut')) || 'shift+p';
+            var parts = combo.split('+');
+            var wantKey = parts[parts.length - 1];
+            var want = {
+                ctrl: parts.indexOf('ctrl') !== -1, alt: parts.indexOf('alt') !== -1,
+                shift: parts.indexOf('shift') !== -1, meta: parts.indexOf('meta') !== -1,
+            };
+
             document.addEventListener('keydown', function (e) {
-                if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
-                if (!e.shiftKey || e.key.toLowerCase() !== 'p') return;
+                if (e.defaultPrevented) return;
+                if (e.ctrlKey !== want.ctrl || e.altKey !== want.alt || e.shiftKey !== want.shift || e.metaKey !== want.meta) return;
+                if (presetBaseKey(e) !== wantKey) return;
 
                 var el = document.activeElement;
                 if (el && el.closest('input, textarea, select, [contenteditable="true"]')) return;
@@ -592,6 +665,36 @@
                 e.preventDefault();
                 btn.click(); // submits the pin/unpin form for the applied view
             });
+        })();
+
+        // Capture widget in the shortcut modal: record the pressed combo.
+        (function () {
+            var capture = document.querySelector('.pin-shortcut-capture');
+            if (!capture) return;
+            var hidden = document.querySelector('.pin-shortcut-value');
+            var reset = document.querySelector('.pin-shortcut-reset');
+
+            capture.addEventListener('keydown', function (e) {
+                e.preventDefault();
+                var key = presetBaseKey(e);
+                if (!key) return; // wait for an alphanumeric key
+                var mods = [];
+                if (e.ctrlKey) mods.push('ctrl');
+                if (e.altKey) mods.push('alt');
+                if (e.shiftKey) mods.push('shift');
+                if (e.metaKey) mods.push('meta');
+                if (mods.length === 0) { capture.value = 'Add a modifier…'; return; }
+                var combo = mods.concat([key]).join('+');
+                hidden.value = combo;
+                capture.value = presetComboLabel(combo);
+            });
+
+            if (reset) {
+                reset.addEventListener('click', function () {
+                    hidden.value = ''; // controller reads empty as "reset to default"
+                    reset.closest('form').submit();
+                });
+            }
         })();
     </script>
     @endpush

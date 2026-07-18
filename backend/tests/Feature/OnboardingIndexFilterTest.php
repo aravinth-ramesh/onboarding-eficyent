@@ -856,6 +856,60 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertTrue($preset->refresh()->pinned);
     }
 
+    public function test_admin_can_set_a_custom_pin_shortcut(): void
+    {
+        $this->assertNull($this->admin->pin_shortcut);
+        $this->assertSame('shift+p', $this->admin->pinShortcut()); // default
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->patch(route('admin.settings.pin-shortcut'), ['pin_shortcut' => 'ALT+K'])
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('alt+k', $this->admin->refresh()->pin_shortcut); // normalised lower-case
+    }
+
+    public function test_custom_pin_shortcut_appears_in_the_list_view(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+        $this->admin->update(['pin_shortcut' => 'ctrl+shift+p']);
+
+        $this->index(['status' => 'approved'])
+            ->assertSee('Ctrl+Shift+P')                        // human label on the button
+            ->assertSee('data-pin-shortcut="ctrl+shift+p"', false); // combo the handler reads
+    }
+
+    public function test_pin_shortcut_requires_a_modifier(): void
+    {
+        // A bare key would fire from ordinary typing — rejected.
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.settings.pin-shortcut'), ['pin_shortcut' => 'p'])
+            ->assertSessionHasErrors('pin_shortcut');
+
+        // Rubbish is rejected too.
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.settings.pin-shortcut'), ['pin_shortcut' => 'shift+shift'])
+            ->assertSessionHasErrors('pin_shortcut');
+
+        $this->assertNull($this->admin->refresh()->pin_shortcut);
+    }
+
+    public function test_pin_shortcut_can_be_reset_to_default(): void
+    {
+        $this->admin->update(['pin_shortcut' => 'alt+k']);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.settings.pin-shortcut'), ['pin_shortcut' => ''])
+            ->assertSessionHas('success');
+
+        $this->assertNull($this->admin->refresh()->pin_shortcut);
+        $this->assertSame('shift+p', $this->admin->pinShortcut());
+    }
+
     public function test_applied_preset_pin_advertises_the_keyboard_shortcut(): void
     {
         FilterPreset::create([
@@ -863,10 +917,10 @@ class OnboardingIndexFilterTest extends TestCase
             'name' => 'Approved', 'filters' => ['status' => 'approved'],
         ]);
 
-        // Applied: the pin control names its Shift+P shortcut.
-        $this->index(['status' => 'approved'])->assertSee('Shift+P');
-        // No preset applied: no pin control, so no shortcut hint.
-        $this->index()->assertDontSee('Shift+P');
+        // Applied: the pin button carries its shortcut hint (kbd).
+        $this->index(['status' => 'approved'])->assertSee('preset-shortcut-kbd', false);
+        // No preset applied: no pin button, so no button-level hint.
+        $this->index()->assertDontSee('preset-shortcut-kbd', false);
     }
 
     public function test_unpinning_the_applied_preset_from_the_list_view(): void
