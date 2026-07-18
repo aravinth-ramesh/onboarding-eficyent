@@ -730,6 +730,24 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('data-preset-name="shouty name"', false); // lowercased for matching
     }
 
+    public function test_preset_sort_toggle_renders_and_list_defaults_to_ascending(): void
+    {
+        foreach (['Zebra view', 'Alpha view', 'Mango view', 'Beta view', 'Yellow view', 'Cherry view'] as $n) {
+            FilterPreset::create([
+                'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+                'name' => $n, 'filters' => ['status' => 'approved'],
+            ]);
+        }
+
+        $html = $this->index()
+            ->assertSee('preset-sort-toggle', false)
+            ->getContent();
+
+        // Rows are emitted name-ascending, which the toggle flips client-side.
+        $this->assertLessThan(strpos($html, 'Zebra view'), strpos($html, 'Alpha view'));
+        $this->assertLessThan(strpos($html, 'Mango view'), strpos($html, 'Beta view'));
+    }
+
     public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true]);

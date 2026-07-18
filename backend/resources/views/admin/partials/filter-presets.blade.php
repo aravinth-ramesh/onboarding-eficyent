@@ -26,9 +26,14 @@
             </button>
             <ul class="dropdown-menu" style="min-width: 280px;">
                 @if($presets->count() > 5)
-                    <li class="px-2 pb-1">
-                        <input type="search" class="form-control form-control-sm preset-filter-input"
+                    <li class="px-2 pb-1 d-flex gap-1 align-items-center">
+                        <input type="search" class="form-control form-control-sm preset-filter-input flex-grow-1"
                                placeholder="Search saved views…" aria-label="Search saved views" autocomplete="off">
+                        {{-- Rows arrive name-ascending; this toggles to descending and back. --}}
+                        <button type="button" class="btn btn-sm btn-outline-secondary preset-sort-toggle"
+                                data-dir="asc" title="Sort by name (A→Z / Z→A)" aria-label="Sort by name">
+                            <i class="bi bi-sort-alpha-down"></i>
+                        </button>
                     </li>
                     <li><hr class="dropdown-divider my-1"></li>
                 @endif
@@ -283,6 +288,31 @@
 
             // Typing/clicking inside the box must not navigate or close the menu.
             box.addEventListener('click', function (e) { e.stopPropagation(); });
+        })();
+
+        // Toggle the saved-views list between A→Z and Z→A. Reorders in place —
+        // the rows are already here, name-ascending from the server.
+        (function () {
+            var toggle = document.querySelector('.preset-sort-toggle');
+            if (!toggle) return;
+            var menu = toggle.closest('.dropdown-menu');
+            var anchor = menu.querySelector('.preset-no-matches'); // rows sit before this
+            var icon = toggle.querySelector('i');
+
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var dir = toggle.getAttribute('data-dir') === 'asc' ? 'desc' : 'asc';
+                toggle.setAttribute('data-dir', dir);
+                icon.className = dir === 'asc' ? 'bi bi-sort-alpha-down' : 'bi bi-sort-alpha-up';
+
+                Array.prototype.slice.call(menu.querySelectorAll('.preset-item'))
+                    .sort(function (a, b) {
+                        var an = a.getAttribute('data-preset-name');
+                        var bn = b.getAttribute('data-preset-name');
+                        return dir === 'asc' ? an.localeCompare(bn) : bn.localeCompare(an);
+                    })
+                    .forEach(function (li) { menu.insertBefore(li, anchor); });
+            });
         })();
     </script>
     @endpush
