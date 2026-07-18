@@ -185,11 +185,13 @@
             @php $activePreset = $presets->firstWhere('id', $activePresetId); @endphp
             <form method="POST" action="{{ route('admin.filter-presets.pin', ['context' => $context, 'preset' => $activePreset]) }}">
                 @csrf
-                {{-- Filled pin + colour show it is pinned; the label is the action. --}}
+                {{-- Filled pin + colour show it is pinned; the label is the action.
+                     Also triggered by the Shift+P shortcut (see scripts below). --}}
                 <button type="submit" class="btn btn-sm preset-active-pin {{ $activePreset->pinned ? 'btn-warning' : 'btn-outline-secondary' }}"
-                        title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }}">
+                        title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }} · Shift+P">
                     <i class="bi {{ $activePreset->pinned ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
                     {{ $activePreset->pinned ? 'Unpin' : 'Pin' }}
+                    <kbd class="ms-1 d-none d-lg-inline" style="font-size: 0.7em;">⇧P</kbd>
                 </button>
             </form>
         @endif
@@ -569,6 +571,26 @@
                     });
                     form.submit();
                 });
+            });
+        })();
+
+        // Keyboard pin shortcut: pins/unpins the currently applied view.
+        // Ignored while typing in a field or with a modal open, and a no-op
+        // when no preset is applied (the button is absent).
+        (function () {
+            document.addEventListener('keydown', function (e) {
+                if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+                if (!e.shiftKey || e.key.toLowerCase() !== 'p') return;
+
+                var el = document.activeElement;
+                if (el && el.closest('input, textarea, select, [contenteditable="true"]')) return;
+                if (document.querySelector('.modal.show')) return;
+
+                var btn = document.querySelector('.preset-active-pin');
+                if (!btn) return;
+
+                e.preventDefault();
+                btn.click(); // submits the pin/unpin form for the applied view
             });
         })();
     </script>

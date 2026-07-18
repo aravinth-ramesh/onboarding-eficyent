@@ -823,8 +823,9 @@ class OnboardingIndexFilterTest extends TestCase
             'name' => 'Approved', 'filters' => ['status' => 'approved'],
         ]);
 
-        // Not applied: no list-view pin control.
-        $this->index()->assertDontSee('preset-active-pin', false);
+        // Not applied: no list-view pin control. (Assert on the button's title,
+        // not its class — the class also appears in the always-rendered JS.)
+        $this->index()->assertDontSee('Pin this saved view to top');
 
         // Applied (filters match): the control appears, offering to pin.
         $this->index(['status' => 'approved'])
@@ -853,6 +854,19 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertTrue($preset->refresh()->pinned);
+    }
+
+    public function test_applied_preset_pin_advertises_the_keyboard_shortcut(): void
+    {
+        FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        // Applied: the pin control names its Shift+P shortcut.
+        $this->index(['status' => 'approved'])->assertSee('Shift+P');
+        // No preset applied: no pin control, so no shortcut hint.
+        $this->index()->assertDontSee('Shift+P');
     }
 
     public function test_unpinning_the_applied_preset_from_the_list_view(): void
