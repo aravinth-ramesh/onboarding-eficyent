@@ -3,6 +3,28 @@
 @section('title', 'Preset Customization History')
 
 @section('content')
+{{-- Filter by action --}}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ route('admin.settings.preset-history') }}" class="row g-2 align-items-center">
+            <div class="col-md-4 col-lg-3">
+                <select name="action" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All actions</option>
+                    @foreach($actions as $value => $label)
+                        <option value="{{ $value }}" @selected($selectedAction === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button class="btn btn-sm btn-primary">Filter</button>
+                @if($selectedAction)
+                    <a href="{{ route('admin.settings.preset-history') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                @endif
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
@@ -44,7 +66,11 @@
                     @empty
                         <tr>
                             <td colspan="5" class="text-center text-muted py-4">
-                                No preset customizations yet. Save a view, pin one, or rearrange them to see them here.
+                                @if($selectedAction)
+                                    No history for “{{ $actions[$selectedAction] }}”.
+                                @else
+                                    No preset customizations yet. Save a view, pin one, or rearrange them to see them here.
+                                @endif
                             </td>
                         </tr>
                     @endforelse

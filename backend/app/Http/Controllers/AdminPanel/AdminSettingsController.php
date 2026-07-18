@@ -38,12 +38,20 @@ class AdminSettingsController extends Controller
      * The admin's own history of preset customizations — a readable view over
      * the activity log the middleware already records for every such action.
      */
-    public function presetHistory(): View
+    public function presetHistory(Request $request): View
     {
+        // Only a known customization action narrows the list; anything else is
+        // ignored so a stray value can't produce an empty or odd view.
+        $selected = $request->filled('action') && array_key_exists($request->input('action'), self::HISTORY_LABELS)
+            ? $request->input('action')
+            : null;
+
         $history = AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
             ->whereIn('action', array_keys(self::HISTORY_LABELS))
+            ->when($selected, fn ($q) => $q->where('action', $selected))
             ->latest('created_at')
             ->paginate(30)
+            ->withQueryString()
             ->through(fn (AdminActivityLog $log) => [
                 'at' => $log->created_at,
                 'label' => self::HISTORY_LABELS[$log->action] ?? $log->action,
@@ -52,7 +60,11 @@ class AdminSettingsController extends Controller
                 'ok' => $log->status < 400,
             ]);
 
-        return view('admin.settings.preset-history', compact('history'));
+        return view('admin.settings.preset-history', [
+            'history' => $history,
+            'actions' => self::HISTORY_LABELS,
+            'selectedAction' => $selected,
+        ]);
     }
 
     /** A short human detail for a history row, pulled from the logged payload. */

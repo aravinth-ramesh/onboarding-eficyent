@@ -879,6 +879,56 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('Onboardings');     // the page the pin happened on
     }
 
+    public function test_customization_history_can_be_filtered_by_action(): void
+    {
+        // Each action carries a row-only detail — the labels themselves appear
+        // in the filter <select>, so assert on details to know which rows show.
+        $log = fn (string $action, ?array $payload = null) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => $action, 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => $payload, 'status' => 302, 'created_at' => now(),
+        ]);
+
+        $log('admin.filter-presets.store', ['name' => 'Alpha view']);
+        $log('admin.filter-presets.reorder', ['order' => [1, 2, 3]]);
+        $log('admin.settings.pin-shortcut', ['pin_shortcut' => 'alt+k']);
+
+        // Filtered to saves: only that row's detail shows.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['action' => 'admin.filter-presets.store']))
+            ->assertOk()
+            ->assertSee('Alpha view')
+            ->assertDontSee('3 views reordered')
+            ->assertDontSee('Alt+K');
+
+        // A different filter shows a different row.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['action' => 'admin.settings.pin-shortcut']))
+            ->assertSee('Alt+K')
+            ->assertDontSee('Alpha view')
+            ->assertDontSee('3 views reordered');
+
+        // No filter shows all three details.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('Alpha view')
+            ->assertSee('3 views reordered')
+            ->assertSee('Alt+K');
+    }
+
+    public function test_history_action_filter_ignores_unknown_values(): void
+    {
+        \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Kept view'], 'status' => 302, 'created_at' => now(),
+        ]);
+
+        // A bogus (or non-customization) action value falls back to "all".
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['action' => 'admin.user-onboardings.index']))
+            ->assertOk()
+            ->assertSee('Kept view'); // row detail — not narrowed away
+    }
+
     public function test_preset_history_shows_only_the_current_admins_and_only_preset_actions(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other14@test.com', 'password' => 'x', 'is_active' => true]);
