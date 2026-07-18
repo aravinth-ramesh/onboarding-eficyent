@@ -179,6 +179,19 @@
                 </li>
             </ul>
         </div>
+
+        {{-- Pin/unpin the view currently applied, without opening the dropdown. --}}
+        @if($activePresetId)
+            @php $activePreset = $presets->firstWhere('id', $activePresetId); @endphp
+            <form method="POST" action="{{ route('admin.filter-presets.pin', ['context' => $context, 'preset' => $activePreset]) }}">
+                @csrf
+                <button type="submit" class="btn btn-sm preset-active-pin {{ $activePreset->pinned ? 'btn-warning' : 'btn-outline-secondary' }}"
+                        title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }}">
+                    <i class="bi {{ $activePreset->pinned ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
+                    {{ $activePreset->pinned ? 'Pinned' : 'Pin' }}
+                </button>
+            </form>
+        @endif
     @endif
 
     @if($canSave)

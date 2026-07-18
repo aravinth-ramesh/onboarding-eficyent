@@ -816,6 +816,45 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_active_preset_can_be_pinned_from_the_list_view(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        // Not applied: no list-view pin control.
+        $this->index()->assertDontSee('preset-active-pin', false);
+
+        // Applied (filters match): the control appears, offering to pin.
+        $this->index(['status' => 'approved'])
+            ->assertSee('preset-active-pin', false)
+            ->assertSee('Pin this saved view to top')
+            ->assertSee(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $preset]), false);
+
+        // Once pinned, the same applied view offers to unpin.
+        $preset->update(['pinned' => true]);
+        $this->index(['status' => 'approved'])
+            ->assertSee('Unpin this saved view')
+            ->assertDontSee('Pin this saved view to top');
+    }
+
+    public function test_pinning_from_the_list_view_toggles_the_active_preset(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index', ['status' => 'approved']))
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $preset]))
+            ->assertRedirect(route('admin.user-onboardings.index', ['status' => 'approved'])) // back to the filtered view
+            ->assertSessionHas('success');
+
+        $this->assertTrue($preset->refresh()->pinned);
+    }
+
     public function test_pinned_first_sort_control_shows_only_when_something_is_pinned(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
