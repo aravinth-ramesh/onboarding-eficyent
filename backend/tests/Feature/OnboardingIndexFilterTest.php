@@ -816,6 +816,19 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_pinned_first_sort_control_shows_only_when_something_is_pinned(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+
+        // Assert on the button's title (unique to the control) — the class
+        // string also appears in the always-rendered JS selector.
+        $this->index()->assertDontSee('Sort pinned first, then name');
+
+        $a->update(['pinned' => true]);
+        $this->index()->assertSee('Sort pinned first, then name');
+    }
+
     public function test_pinned_count_badge_reflects_the_number_pinned(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);

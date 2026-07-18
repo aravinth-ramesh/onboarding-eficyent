@@ -53,6 +53,11 @@
                                     data-on="0" title="Show only pinned" aria-pressed="false">
                                 <i class="bi bi-pin-angle"></i> Pinned only ({{ $pinnedCount }})
                             </button>
+                            {{-- Re-cluster: pinned first (A→Z), then the rest (A→Z). --}}
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-pinned-sort"
+                                    title="Sort pinned first, then name" aria-label="Sort pinned first, then name">
+                                <i class="bi bi-pin-angle-fill"></i><i class="bi bi-sort-alpha-down"></i>
+                            </button>
                         @endif
                     </li>
                     <li><hr class="dropdown-divider my-1"></li>
@@ -424,6 +429,27 @@
                         var an = a.getAttribute('data-preset-name');
                         var bn = b.getAttribute('data-preset-name');
                         return dir === 'asc' ? an.localeCompare(bn) : bn.localeCompare(an);
+                    })
+                    .forEach(function (li) { menu.insertBefore(li, anchor); });
+            });
+        })();
+
+        // Cluster the list pinned-first, each group by name — the pinned rows
+        // (A→Z) followed by the rest (A→Z).
+        (function () {
+            var btn = document.querySelector('.preset-pinned-sort');
+            if (!btn) return;
+            var menu = btn.closest('.dropdown-menu');
+            var anchor = menu.querySelector('.preset-no-matches');
+
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                Array.prototype.slice.call(menu.querySelectorAll('.preset-item'))
+                    .sort(function (a, b) {
+                        var ap = a.getAttribute('data-preset-pinned') === '1' ? 0 : 1;
+                        var bp = b.getAttribute('data-preset-pinned') === '1' ? 0 : 1;
+                        if (ap !== bp) return ap - bp; // pinned group first
+                        return a.getAttribute('data-preset-name').localeCompare(b.getAttribute('data-preset-name'));
                     })
                     .forEach(function (li) { menu.insertBefore(li, anchor); });
             });
