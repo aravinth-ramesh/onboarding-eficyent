@@ -514,10 +514,11 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertSame('user-onboardings', $payload['context']);
         $this->assertNotEmpty($payload['exported_at']);
 
-        // Alphabetical (the ownedBy scope), and only name+filters — no ids.
+        // In the admin's saved order (here, creation order — Beta was saved
+        // first), and only name+filters — no ids.
         $this->assertSame([
-            ['name' => 'Alpha view', 'filters' => ['status' => 'approved', 'from' => '2026-08-01', 'date_field' => 'decided']],
             ['name' => 'Beta view', 'filters' => ['status' => 'rejected']],
+            ['name' => 'Alpha view', 'filters' => ['status' => 'approved', 'from' => '2026-08-01', 'date_field' => 'decided']],
         ], $payload['presets']);
 
         $body = $response->getContent();
@@ -730,9 +731,12 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('data-preset-name="shouty name"', false); // lowercased for matching
     }
 
-    public function test_preset_sort_toggle_renders_and_list_defaults_to_ascending(): void
+    public function test_presets_render_in_saved_order_with_a_sort_toggle(): void
     {
-        foreach (['Zebra view', 'Alpha view', 'Mango view', 'Beta view', 'Yellow view', 'Cherry view'] as $n) {
+        // Deliberately non-alphabetical: the list follows the saved (creation)
+        // order now, not name — the sort toggle flips to name asc/desc client-side.
+        $order = ['Zebra view', 'Alpha view', 'Mango view', 'Beta view', 'Yellow view', 'Cherry view'];
+        foreach ($order as $n) {
             FilterPreset::create([
                 'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
                 'name' => $n, 'filters' => ['status' => 'approved'],
@@ -743,9 +747,73 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('preset-sort-toggle', false)
             ->getContent();
 
-        // Rows are emitted name-ascending, which the toggle flips client-side.
-        $this->assertLessThan(strpos($html, 'Zebra view'), strpos($html, 'Alpha view'));
-        $this->assertLessThan(strpos($html, 'Mango view'), strpos($html, 'Beta view'));
+        // Rows appear in the order they were saved, not sorted by name — each
+        // name comes before the next one in the saved sequence.
+        $prev = -1;
+        foreach ($order as $name) {
+            $at = strpos($html, $name);
+            $this->assertGreaterThan($prev, $at, "\"{$name}\" out of saved order");
+            $prev = $at;
+        }
+    }
+
+    public function test_new_presets_append_to_the_end_of_the_saved_order(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'First', 'filters' => ['status' => 'approved']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Second', 'filters' => ['status' => 'rejected']]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Third', 'filters' => ['status' => 'pending']]);
+
+        $this->assertSame([1, 2, 3], [$a->position, $b->position, $c->position]);
+    }
+
+    public function test_reordering_persists_the_new_order(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'C', 'filters' => ['status' => 'pending']]);
+
+        // Move C to the front, B to the back.
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.filter-presets.reorder', ['context' => 'user-onboardings']), ['order' => [$c->id, $a->id, $b->id]])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame(1, $c->refresh()->position);
+        $this->assertSame(2, $a->refresh()->position);
+        $this->assertSame(3, $b->refresh()->position);
+
+        // The list now reads C, A, B.
+        $ordered = FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all();
+        $this->assertSame(['C', 'A', 'B'], $ordered);
+    }
+
+    public function test_reorder_ignores_ids_that_are_not_the_callers_own(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other7@test.com', 'password' => 'x', 'is_active' => true]);
+        $mineA = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        $mineB = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
+        $theirPos = $theirs->position;
+
+        // A foreign id in the list is skipped; my own presets still reorder.
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.filter-presets.reorder', ['context' => 'user-onboardings']), ['order' => [$mineB->id, $theirs->id, $mineA->id]])
+            ->assertOk();
+
+        $this->assertSame(1, $mineB->refresh()->position);
+        $this->assertSame(2, $mineA->refresh()->position);
+        $this->assertSame($theirPos, $theirs->refresh()->position); // untouched
+    }
+
+    public function test_reorder_requires_an_order_array_and_a_known_context(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.filter-presets.reorder', ['context' => 'user-onboardings']), [])
+            ->assertJsonValidationErrors('order');
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.filter-presets.reorder', ['context' => 'audit-logs']), ['order' => [1]])
+            ->assertNotFound();
     }
 
     public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void

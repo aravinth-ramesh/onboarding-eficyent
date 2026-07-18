@@ -28,13 +28,29 @@ class FilterPreset extends Model
         'context',
         'name',
         'filters',
+        'position',
     ];
 
     protected function casts(): array
     {
         return [
             'filters' => 'array',
+            'position' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // A new preset lands at the end of its admin's list for that page,
+        // unless a position was set explicitly (e.g. an import preserving one).
+        static::creating(function (self $preset) {
+            if ($preset->position === null) {
+                $preset->position = 1 + (int) static::query()
+                    ->where('admin_id', $preset->admin_id)
+                    ->where('context', $preset->context)
+                    ->max('position');
+            }
+        });
     }
 
     public function admin(): BelongsTo
@@ -59,11 +75,12 @@ class FilterPreset extends Model
         return $filters;
     }
 
-    /** One admin's presets for one page, alphabetical. */
+    /** One admin's presets for one page, in the admin's manual order. */
     public function scopeOwnedBy(Builder $query, ?int $adminId, string $context): Builder
     {
         return $query->where('admin_id', $adminId)
             ->where('context', $context)
-            ->orderBy('name');
+            ->orderBy('position')
+            ->orderBy('name'); // stable tiebreak
     }
 }

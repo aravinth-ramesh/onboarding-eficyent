@@ -216,6 +216,43 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Persist a manual ordering. `order` is the full list of preset ids in the
+     * arrangement the admin dragged/nudged them into; position follows the
+     * index. Only the caller's own presets for this page are touched — a
+     * foreign or unknown id in the list is ignored, never reordered.
+     */
+    public function reorder(Request $request, string $context): RedirectResponse|JsonResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $validated = $request->validate([
+            'order' => 'required|array',
+            'order.*' => 'integer',
+        ]);
+
+        $mine = FilterPreset::where('admin_id', Auth::guard('admin')->id())
+            ->where('context', $context)
+            ->get()
+            ->keyBy('id');
+
+        $position = 0;
+        foreach ($validated['order'] as $id) {
+            if ($preset = $mine->get($id)) {
+                $position++;
+                if ($preset->position !== $position) {
+                    $preset->update(['position' => $position]);
+                }
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back()->with('success', 'Saved view order updated.');
+    }
+
+    /**
      * Delete all of this admin's presets for one page at once. Only ever the
      * caller's own, and only for this page — one admin clearing their views
      * never touches another's, or the same admin's views on a different page.

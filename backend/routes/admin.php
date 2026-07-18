@@ -59,6 +59,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Filter Presets (saved views on list pages; {context} names the page)
     Route::get('filter-presets/{context}/export', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'export'])->name('filter-presets.export');
     Route::post('filter-presets/{context}/import', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'import'])->name('filter-presets.import');
+    Route::post('filter-presets/{context}/reorder', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'reorder'])->name('filter-presets.reorder');
     Route::post('filter-presets/{context}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'store'])->name('filter-presets.store');
     Route::post('filter-presets/{context}/{preset}/duplicate', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'duplicate'])->name('filter-presets.duplicate');
     Route::patch('filter-presets/{context}/{preset}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'rename'])->name('filter-presets.rename');

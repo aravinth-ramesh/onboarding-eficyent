@@ -24,7 +24,8 @@
                 <i class="bi bi-bookmark"></i>
                 {{ $activePresetId ? $presets->firstWhere('id', $activePresetId)->name : 'Presets' }}
             </button>
-            <ul class="dropdown-menu" style="min-width: 280px;">
+            <ul class="dropdown-menu" style="min-width: 300px;"
+                data-reorder-url="{{ route('admin.filter-presets.reorder', ['context' => $context]) }}">
                 @if($presets->count() > 5)
                     <li class="px-2 pb-1 d-flex gap-1 align-items-center">
                         <input type="search" class="form-control form-control-sm preset-filter-input flex-grow-1"
@@ -38,7 +39,21 @@
                     <li><hr class="dropdown-divider my-1"></li>
                 @endif
                 @foreach($presets as $preset)
-                    <li class="d-flex align-items-center preset-item" data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}">
+                    <li class="d-flex align-items-center preset-item"
+                        data-preset-id="{{ $preset->id }}"
+                        data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}">
+                        @if($presets->count() > 1)
+                            <span class="d-inline-flex flex-column ps-2 preset-move-controls">
+                                <button type="button" class="btn btn-link text-secondary p-0 preset-move-btn" data-dir="up"
+                                        title="Move up" aria-label="Move up" style="line-height: 1;">
+                                    <i class="bi bi-caret-up-fill" style="font-size: 0.7rem;"></i>
+                                </button>
+                                <button type="button" class="btn btn-link text-secondary p-0 preset-move-btn" data-dir="down"
+                                        title="Move down" aria-label="Move down" style="line-height: 1;">
+                                    <i class="bi bi-caret-down-fill" style="font-size: 0.7rem;"></i>
+                                </button>
+                            </span>
+                        @endif
                         <a class="dropdown-item text-truncate {{ $preset->id === $activePresetId ? 'active' : '' }}"
                            href="{{ route("admin.{$context}.index", $preset->filters) }}">
                             {{ $preset->name }}
@@ -313,6 +328,64 @@
                     })
                     .forEach(function (li) { menu.insertBefore(li, anchor); });
             });
+        })();
+
+        // Manual up/down reordering. Moves the row in place and persists the new
+        // order, so the dropdown stays open across several nudges.
+        (function () {
+            var moveBtn = document.querySelector('.preset-move-btn');
+            if (!moveBtn) return;
+            var menu = moveBtn.closest('.dropdown-menu');
+            var anchor = menu.querySelector('.preset-no-matches');
+            var url = menu.getAttribute('data-reorder-url');
+            var token = (document.querySelector('meta[name="csrf-token"]') || {}).content;
+
+            function items() {
+                return Array.prototype.slice.call(menu.querySelectorAll('.preset-item'));
+            }
+
+            // Disable the up arrow on the first row and the down arrow on the last.
+            function refreshEnds() {
+                var rows = items();
+                rows.forEach(function (li, i) {
+                    var up = li.querySelector('.preset-move-btn[data-dir="up"]');
+                    var down = li.querySelector('.preset-move-btn[data-dir="down"]');
+                    if (up) up.disabled = i === 0;
+                    if (down) down.disabled = i === rows.length - 1;
+                });
+            }
+
+            function persist() {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: JSON.stringify({ order: items().map(function (li) { return Number(li.getAttribute('data-preset-id')); }) }),
+                });
+            }
+
+            menu.addEventListener('click', function (e) {
+                var btn = e.target.closest('.preset-move-btn');
+                if (!btn) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                var li = btn.closest('.preset-item');
+                if (btn.getAttribute('data-dir') === 'up') {
+                    var prev = li.previousElementSibling;
+                    if (prev && prev.classList.contains('preset-item')) menu.insertBefore(li, prev);
+                } else {
+                    var next = li.nextElementSibling;
+                    if (next && next.classList.contains('preset-item')) menu.insertBefore(next, li);
+                }
+                refreshEnds();
+                persist();
+            });
+
+            refreshEnds();
         })();
     </script>
     @endpush
