@@ -3,6 +3,22 @@
 @section('title', 'Preset Customization History')
 
 @section('content')
+@if($clearedAt)
+    <div class="alert alert-secondary d-flex justify-content-between align-items-center py-2 mb-3">
+        <span class="small mb-0">
+            <i class="bi bi-eraser"></i>
+            History cleared {{ $clearedAt->diffForHumans() }} —
+            {{ $hiddenCount }} earlier {{ \Illuminate\Support\Str::plural('entry', $hiddenCount) }} hidden from this view.
+        </span>
+        <form method="POST" action="{{ route('admin.settings.preset-history.restore') }}" class="ms-3">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-counterclockwise"></i> Restore
+            </button>
+        </form>
+    </div>
+@endif
+
 {{-- Filter by action --}}
 <div class="card mb-3">
     <div class="card-body py-2">

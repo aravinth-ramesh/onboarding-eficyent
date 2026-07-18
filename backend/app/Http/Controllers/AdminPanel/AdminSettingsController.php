@@ -55,11 +55,35 @@ class AdminSettingsController extends Controller
                 'ok' => $log->status < 400,
             ]);
 
+        // When a clear is in effect, surface it with how many entries it hides,
+        // so the admin can restore them (the audit rows were never deleted).
+        $clearedAt = Auth::guard('admin')->user()->preset_history_cleared_at;
+        $hiddenCount = $clearedAt
+            ? AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
+                ->whereIn('action', array_keys(self::HISTORY_LABELS))
+                ->where('created_at', '<=', $clearedAt)
+                ->count()
+            : 0;
+
         return view('admin.settings.preset-history', [
             'history' => $history,
             'actions' => self::HISTORY_LABELS,
             'selectedAction' => $selected,
+            'clearedAt' => $clearedAt,
+            'hiddenCount' => $hiddenCount,
         ]);
+    }
+
+    /**
+     * Undo a clear: bring back everything hidden by the cut-off. Non-destructive
+     * all along — clearing only moved the cut-off, so this just removes it.
+     */
+    public function restorePresetHistory(): RedirectResponse
+    {
+        Auth::guard('admin')->user()->update(['preset_history_cleared_at' => null]);
+
+        return redirect()->route('admin.settings.preset-history')
+            ->with('success', 'Customization history restored.');
     }
 
     /**

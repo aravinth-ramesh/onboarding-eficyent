@@ -31,6 +31,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::get('settings/preset-history', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'presetHistory'])->name('settings.preset-history');
     Route::get('settings/preset-history/export', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'exportPresetHistory'])->name('settings.preset-history.export');
     Route::post('settings/preset-history/clear', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'clearPresetHistory'])->name('settings.preset-history.clear');
+    Route::post('settings/preset-history/restore', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'restorePresetHistory'])->name('settings.preset-history.restore');
 
     // User Types
     Route::resource('user-types', UserTypeController::class)->except(['show']);

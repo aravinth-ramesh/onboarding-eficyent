@@ -950,6 +950,50 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertNotNull($this->admin->refresh()->preset_history_cleared_at);
     }
 
+    public function test_restoring_brings_back_cleared_history(): void
+    {
+        \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Old view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00',
+        ]);
+
+        // Clear, then confirm it is hidden and the page offers a Restore.
+        $this->admin->update(['preset_history_cleared_at' => '2026-09-01 12:00:00']);
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('History cleared')
+            ->assertSee('1 earlier entry hidden from this view')
+            ->assertDontSee('Old view');
+
+        // Restore.
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.settings.preset-history'))
+            ->post(route('admin.settings.preset-history.restore'))
+            ->assertRedirect(route('admin.settings.preset-history'))
+            ->assertSessionHas('success');
+
+        $this->assertNull($this->admin->refresh()->preset_history_cleared_at);
+
+        // The entry is back and the banner is gone.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('Old view')
+            ->assertDontSee('History cleared');
+    }
+
+    public function test_restore_control_only_shows_when_history_is_cleared(): void
+    {
+        \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'A view'], 'status' => 302, 'created_at' => now(),
+        ]);
+
+        // Not cleared: no Restore banner.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertDontSee('History cleared');
+    }
+
     public function test_clearing_history_is_per_admin(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other16@test.com', 'password' => 'x', 'is_active' => true]);
