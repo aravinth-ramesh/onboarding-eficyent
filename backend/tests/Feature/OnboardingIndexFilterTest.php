@@ -856,6 +856,52 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertTrue($preset->refresh()->pinned);
     }
 
+    public function test_preset_customization_history_lists_the_admins_actions(): void
+    {
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'],
+        ]);
+
+        // Real actions — the LogAdminActivity middleware records each one.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $preset]));
+        $this->actingAs($this->admin, 'admin')
+            ->patch(route('admin.settings.pin-shortcut'), ['pin_shortcut' => 'alt+k']);
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertOk()
+            ->assertSee('Preset Customization History')
+            ->assertSee('Pinned or unpinned a saved view')
+            ->assertSee('Changed the pin shortcut')
+            ->assertSee('Alt+K')            // detail pulled from the logged payload
+            ->assertSee('Onboardings');     // the page the pin happened on
+    }
+
+    public function test_preset_history_shows_only_the_current_admins_and_only_preset_actions(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other14@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
+
+        // Another admin pins their own preset.
+        $this->actingAs($other, 'admin')
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $theirs]));
+
+        // This admin does something non-preset (visits a list) and one preset save.
+        $this->actingAs($this->admin, 'admin')->get(route('admin.user-onboardings.index'));
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.store', ['context' => 'user-onboardings', 'status' => 'approved']), ['name' => 'My view']);
+
+        $response = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history'))->assertOk();
+
+        $response->assertSee('Saved a preset');        // mine
+        $response->assertSee('“My view”');             // my payload detail
+        $response->assertDontSee('Theirs');            // not another admin's
+        // GET list-view visits are not customizations, so they never appear.
+        $response->assertDontSee('user-onboardings.index');
+    }
+
     public function test_reset_all_customizations_restores_defaults_but_keeps_presets(): void
     {
         // Custom shortcut, a pinned+reordered onboardings set, and a pinned

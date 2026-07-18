@@ -4,13 +4,89 @@ namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\AdminActivityLog;
 use App\Models\FilterPreset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class AdminSettingsController extends Controller
 {
+    /**
+     * The customization actions and their labels, keyed by the route name the
+     * activity-log middleware records — which carries the group's "admin."
+     * prefix.
+     */
+    private const HISTORY_LABELS = [
+        'admin.filter-presets.store' => 'Saved a preset',
+        'admin.filter-presets.rename' => 'Renamed a preset',
+        'admin.filter-presets.duplicate' => 'Duplicated a preset',
+        'admin.filter-presets.destroy' => 'Deleted a preset',
+        'admin.filter-presets.destroy-all' => 'Deleted all saved views',
+        'admin.filter-presets.import' => 'Imported presets',
+        'admin.filter-presets.pin' => 'Pinned or unpinned a saved view',
+        'admin.filter-presets.bulk-pin' => 'Bulk pin / unpin',
+        'admin.filter-presets.unpin-all' => 'Unpinned all saved views',
+        'admin.filter-presets.reorder' => 'Reordered saved views',
+        'admin.filter-presets.reset-order' => 'Reset order to A→Z',
+        'admin.settings.pin-shortcut' => 'Changed the pin shortcut',
+        'admin.settings.reset-preset-customizations' => 'Reset all customizations',
+    ];
+
+    /**
+     * The admin's own history of preset customizations — a readable view over
+     * the activity log the middleware already records for every such action.
+     */
+    public function presetHistory(): View
+    {
+        $history = AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
+            ->whereIn('action', array_keys(self::HISTORY_LABELS))
+            ->latest('created_at')
+            ->paginate(30)
+            ->through(fn (AdminActivityLog $log) => [
+                'at' => $log->created_at,
+                'label' => self::HISTORY_LABELS[$log->action] ?? $log->action,
+                'detail' => $this->historyDetail($log),
+                'page' => $this->contextFromPath($log->path),
+                'ok' => $log->status < 400,
+            ]);
+
+        return view('admin.settings.preset-history', compact('history'));
+    }
+
+    /** A short human detail for a history row, pulled from the logged payload. */
+    private function historyDetail(AdminActivityLog $log): ?string
+    {
+        $p = $log->payload ?? [];
+
+        return match ($log->action) {
+            'admin.filter-presets.store', 'admin.filter-presets.rename', 'admin.filter-presets.duplicate'
+                => isset($p['name']) ? '“' . $p['name'] . '”' : null,
+            'admin.filter-presets.bulk-pin'
+                => (isset($p['ids']) ? count((array) $p['ids']) . ' view(s) ' : '')
+                    . (($p['pinned'] ?? null) ? 'pinned' : 'unpinned'),
+            'admin.filter-presets.reorder'
+                => isset($p['order']) ? count((array) $p['order']) . ' views reordered' : null,
+            'admin.settings.pin-shortcut'
+                => filled($p['pin_shortcut'] ?? null)
+                    ? Admin::displayShortcut(strtolower($p['pin_shortcut']))
+                    : 'reset to default',
+            default => null,
+        };
+    }
+
+    /** The list page a customization happened on, parsed from the request path. */
+    private function contextFromPath(?string $path): ?string
+    {
+        if ($path && preg_match('#filter-presets/([a-z-]+)#', $path, $m)
+            && array_key_exists($m[1], FilterPreset::CONTEXTS)) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
     /**
      * Reset everything the admin has customised about their saved views —
      * across every page — back to defaults: alphabetical order, nothing

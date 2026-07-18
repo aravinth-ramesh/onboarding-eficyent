@@ -190,6 +190,11 @@
                     </button>
                 </li>
                 <li>
+                    <a class="dropdown-item small text-muted" href="{{ route('admin.settings.preset-history') }}">
+                        <i class="bi bi-clock-history"></i> Customization history
+                    </a>
+                </li>
+                <li>
                     <form method="POST" action="{{ route('admin.settings.reset-preset-customizations') }}"
                           onsubmit="return confirm('Reset all your preset customisations — ordering and pins on every page, and the pin shortcut — back to defaults? Your saved views are kept.')">
                         @csrf
