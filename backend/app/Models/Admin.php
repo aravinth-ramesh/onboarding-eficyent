@@ -19,6 +19,7 @@ class Admin extends Authenticatable
         'password',
         'is_active',
         'pin_shortcut',
+        'preset_history_cleared_at',
     ];
 
     /** The admin's pin shortcut (normalised, e.g. "shift+p"), or the default. */
@@ -47,6 +48,7 @@ class Admin extends Authenticatable
         return [
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'preset_history_cleared_at' => 'datetime',
         ];
     }
 

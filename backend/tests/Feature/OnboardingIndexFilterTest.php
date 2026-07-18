@@ -915,6 +915,56 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('Alt+K');
     }
 
+    public function test_clearing_history_hides_earlier_entries_but_keeps_the_audit_log(): void
+    {
+        $log = fn (array $payload, string $at) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => $payload, 'status' => 302, 'created_at' => $at,
+        ]);
+
+        $log(['name' => 'Old view'], '2026-09-01 09:00:00');
+
+        // Before clearing, the old entry shows.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('Old view');
+
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-01 12:00:00'));
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.settings.preset-history'))
+            ->post(route('admin.settings.preset-history.clear'))
+            ->assertRedirect(route('admin.settings.preset-history'))
+            ->assertSessionHas('success');
+
+        // A later action, after the clear.
+        $log(['name' => 'New view'], '2026-09-01 15:00:00');
+
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('New view')       // after the clear — still shown
+            ->assertDontSee('Old view');  // before the clear — hidden from the view
+
+        // The audit rows themselves are untouched: both store entries survive in
+        // the log (clearing only moves the admin's own view cut-off forward).
+        $this->assertSame(2, \App\Models\AdminActivityLog::where('action', 'admin.filter-presets.store')->count());
+        $this->assertNotNull($this->admin->refresh()->preset_history_cleared_at);
+    }
+
+    public function test_clearing_history_is_per_admin(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other16@test.com', 'password' => 'x', 'is_active' => true]);
+        \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Their view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00']);
+
+        // This admin clears their (empty) history.
+        $this->actingAs($this->admin, 'admin')->post(route('admin.settings.preset-history.clear'));
+
+        // The other admin's history is unaffected — no cut-off was set for them.
+        $this->assertNull($other->refresh()->preset_history_cleared_at);
+        $this->actingAs($other, 'admin')
+            ->get(route('admin.settings.preset-history'))
+            ->assertSee('Their view');
+    }
+
     public function test_customization_history_exports_as_csv(): void
     {
         $log = fn (string $action, ?array $payload, string $path) => \App\Models\AdminActivityLog::create([

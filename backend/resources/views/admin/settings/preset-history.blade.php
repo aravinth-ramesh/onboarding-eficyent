@@ -34,10 +34,19 @@
             </div>
         </div>
         @if($history->total() > 0)
-            <a href="{{ route('admin.settings.preset-history.export', request()->only('action')) }}"
-               class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
-                <i class="bi bi-filetype-csv"></i> Export CSV
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('admin.settings.preset-history.export', request()->only('action')) }}"
+                   class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <form method="POST" action="{{ route('admin.settings.preset-history.clear') }}"
+                      onsubmit="return confirm('Clear your customization history? It disappears from this view; the admin audit log is not affected.')">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Clear from your view (audit log kept)">
+                        <i class="bi bi-eraser"></i> Clear history
+                    </button>
+                </form>
+            </div>
         @endif
     </div>
     <div class="card-body p-0">

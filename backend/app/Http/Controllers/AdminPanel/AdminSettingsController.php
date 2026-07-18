@@ -95,12 +95,31 @@ class AdminSettingsController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    /** The current admin's history, filtered to a chosen action, newest first. */
+    /**
+     * Clear the admin's customization history — from their view only. This
+     * records a cut-off timestamp; the append-only admin_activity_logs audit
+     * trail (also shown on the Admin Activity page) is never deleted.
+     */
+    public function clearPresetHistory(): RedirectResponse
+    {
+        Auth::guard('admin')->user()->update(['preset_history_cleared_at' => now()]);
+
+        return redirect()->route('admin.settings.preset-history')
+            ->with('success', 'Customization history cleared from your view. The admin audit log is unaffected.');
+    }
+
+    /**
+     * The current admin's history, filtered to a chosen action, newest first —
+     * and only entries after the admin's last "clear".
+     */
     private function historyQuery(?string $selected)
     {
+        $clearedAt = Auth::guard('admin')->user()->preset_history_cleared_at;
+
         return AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
             ->whereIn('action', array_keys(self::HISTORY_LABELS))
             ->when($selected, fn ($q) => $q->where('action', $selected))
+            ->when($clearedAt, fn ($q) => $q->where('created_at', '>', $clearedAt))
             ->latest('created_at');
     }
 
