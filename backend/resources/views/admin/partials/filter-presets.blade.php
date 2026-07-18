@@ -87,6 +87,16 @@
                     <span class="dropdown-item-text small text-muted">No saved views match.</span>
                 </li>
                 <li><hr class="dropdown-divider"></li>
+                @if($presets->count() > 1)
+                    <li>
+                        <form method="POST" action="{{ route('admin.filter-presets.reset-order', ['context' => $context]) }}">
+                            @csrf
+                            <button type="submit" class="dropdown-item small text-muted">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset order (A→Z)
+                            </button>
+                        </form>
+                    </li>
+                @endif
                 <li>
                     <a class="dropdown-item small text-muted"
                        href="{{ route('admin.filter-presets.export', ['context' => $context]) }}">

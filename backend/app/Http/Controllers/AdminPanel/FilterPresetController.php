@@ -253,6 +253,36 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Reset the manual ordering back to the default: alphabetical by name.
+     * This is the order presets displayed in before manual reordering existed,
+     * so "default" means A→Z. Only the caller's own presets for this page.
+     */
+    public function resetOrder(string $context): RedirectResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $presets = FilterPreset::where('admin_id', Auth::guard('admin')->id())
+            ->where('context', $context)
+            ->orderBy('name')
+            ->get();
+
+        $position = 0;
+        foreach ($presets as $preset) {
+            $position++;
+            if ($preset->position !== $position) {
+                $preset->update(['position' => $position]);
+            }
+        }
+
+        return back()->with(
+            $presets->isNotEmpty() ? 'success' : 'error',
+            $presets->isNotEmpty()
+                ? 'Saved view order reset to alphabetical.'
+                : 'There were no saved views to reset.',
+        );
+    }
+
+    /**
      * Delete all of this admin's presets for one page at once. Only ever the
      * caller's own, and only for this page — one admin clearing their views
      * never touches another's, or the same admin's views on a different page.

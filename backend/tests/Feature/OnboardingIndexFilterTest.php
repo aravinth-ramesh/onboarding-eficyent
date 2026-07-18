@@ -816,6 +816,58 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_reset_order_restores_alphabetical_positions(): void
+    {
+        // Saved out of alphabetical order, then manually shuffled further.
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Charlie', 'filters' => ['status' => 'approved']]);
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Alpha', 'filters' => ['status' => 'rejected']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Bravo', 'filters' => ['status' => 'pending']]);
+
+        // Currently in creation order: Charlie, Alpha, Bravo.
+        $this->assertSame(['Charlie', 'Alpha', 'Bravo'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.reset-order', ['context' => 'user-onboardings']))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        // Back to A→Z.
+        $this->assertSame([1, 2, 3], [$a->refresh()->position, $b->refresh()->position, $c->refresh()->position]);
+        $this->assertSame(['Alpha', 'Bravo', 'Charlie'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+    }
+
+    public function test_reset_order_only_touches_the_callers_own_presets(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other8@test.com', 'password' => 'x', 'is_active' => true]);
+        // Their list is out of order and must stay that way.
+        $theirZ = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Zulu', 'filters' => ['status' => 'approved']]);
+        $theirA = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Able', 'filters' => ['status' => 'rejected']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Mine', 'filters' => ['status' => 'approved']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.reset-order', ['context' => 'user-onboardings']))
+            ->assertSessionHas('success');
+
+        // Other admin's Zulu-before-Able order is untouched.
+        $this->assertSame(['Zulu', 'Able'], FilterPreset::ownedBy($other->id, 'user-onboardings')->pluck('name')->all());
+        $this->assertLessThan($theirA->refresh()->position, $theirZ->refresh()->position);
+    }
+
+    public function test_reset_order_with_nothing_to_reset_reports_it(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.reset-order', ['context' => 'user-onboardings']))
+            ->assertSessionHas('error');
+    }
+
+    public function test_reset_order_rejects_an_unknown_context(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.reset-order', ['context' => 'audit-logs']))
+            ->assertNotFound();
+    }
+
     public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true]);
