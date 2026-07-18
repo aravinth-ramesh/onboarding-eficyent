@@ -29,6 +29,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::patch('settings/pin-shortcut', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'updatePinShortcut'])->name('settings.pin-shortcut');
     Route::post('settings/reset-preset-customizations', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'resetPresetCustomizations'])->name('settings.reset-preset-customizations');
     Route::get('settings/preset-history', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'presetHistory'])->name('settings.preset-history');
+    Route::get('settings/preset-history/export', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'exportPresetHistory'])->name('settings.preset-history.export');
 
     // User Types
     Route::resource('user-types', UserTypeController::class)->except(['show']);

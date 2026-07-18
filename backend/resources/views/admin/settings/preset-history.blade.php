@@ -33,6 +33,12 @@
                 Your saved-view changes — pins, ordering, imports and the pin shortcut. Read-only.
             </div>
         </div>
+        @if($history->total() > 0)
+            <a href="{{ route('admin.settings.preset-history.export', request()->only('action')) }}"
+               class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
+                <i class="bi bi-filetype-csv"></i> Export CSV
+            </a>
+        @endif
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">

@@ -42,14 +42,9 @@ class AdminSettingsController extends Controller
     {
         // Only a known customization action narrows the list; anything else is
         // ignored so a stray value can't produce an empty or odd view.
-        $selected = $request->filled('action') && array_key_exists($request->input('action'), self::HISTORY_LABELS)
-            ? $request->input('action')
-            : null;
+        $selected = $this->selectedAction($request);
 
-        $history = AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
-            ->whereIn('action', array_keys(self::HISTORY_LABELS))
-            ->when($selected, fn ($q) => $q->where('action', $selected))
-            ->latest('created_at')
+        $history = $this->historyQuery($selected)
             ->paginate(30)
             ->withQueryString()
             ->through(fn (AdminActivityLog $log) => [
@@ -65,6 +60,56 @@ class AdminSettingsController extends Controller
             'actions' => self::HISTORY_LABELS,
             'selectedAction' => $selected,
         ]);
+    }
+
+    /**
+     * Stream the customization history as CSV — same admin, same action filter
+     * as the page, so what you see is what you export. Page labels are used so
+     * the file is readable, not the raw route names.
+     */
+    public function exportPresetHistory(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $selected = $this->selectedAction($request);
+        $pages = ['user-onboardings' => 'Onboardings', 'scheduled-emails' => 'Scheduled Emails'];
+        $filename = 'preset-history-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () use ($selected, $pages) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['When (UTC)', 'Action', 'Details', 'Page', 'Status']);
+
+            $this->historyQuery($selected)
+                ->lazy()
+                ->each(function (AdminActivityLog $log) use ($out, $pages) {
+                    $page = $this->contextFromPath($log->path);
+                    fputcsv($out, [
+                        $log->created_at->toDateTimeString(),
+                        self::HISTORY_LABELS[$log->action] ?? $log->action,
+                        // Strip the display quotes so the CSV cell is plain.
+                        trim((string) $this->historyDetail($log), '“”'),
+                        $page ? ($pages[$page] ?? $page) : '',
+                        $log->status < 400 ? 'ok' : 'failed',
+                    ]);
+                });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /** The current admin's history, filtered to a chosen action, newest first. */
+    private function historyQuery(?string $selected)
+    {
+        return AdminActivityLog::where('admin_id', Auth::guard('admin')->id())
+            ->whereIn('action', array_keys(self::HISTORY_LABELS))
+            ->when($selected, fn ($q) => $q->where('action', $selected))
+            ->latest('created_at');
+    }
+
+    /** The action to filter on, or null — only a known customization action counts. */
+    private function selectedAction(Request $request): ?string
+    {
+        return $request->filled('action') && array_key_exists($request->input('action'), self::HISTORY_LABELS)
+            ? $request->input('action')
+            : null;
     }
 
     /** A short human detail for a history row, pulled from the logged payload. */

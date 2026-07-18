@@ -915,6 +915,52 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('Alt+K');
     }
 
+    public function test_customization_history_exports_as_csv(): void
+    {
+        $log = fn (string $action, ?array $payload, string $path) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => $action, 'method' => 'POST',
+            'path' => $path, 'payload' => $payload, 'status' => 302, 'created_at' => now(),
+        ]);
+
+        $log('admin.filter-presets.store', ['name' => 'Alpha view'], 'admin/filter-presets/user-onboardings');
+        $log('admin.settings.pin-shortcut', ['pin_shortcut' => 'alt+k'], 'admin/settings/pin-shortcut');
+        // Another admin's action must not leak into my export.
+        $other = Admin::create(['name' => 'Other', 'email' => 'other15@test.com', 'password' => 'x', 'is_active' => true]);
+        \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Their view'], 'status' => 302, 'created_at' => now()]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history.export'));
+
+        $response->assertOk();
+        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $this->assertStringContainsString('preset-history-', $response->headers->get('content-disposition'));
+
+        $csv = $response->streamedContent();
+        // fputcsv wraps fields containing spaces; the detail's display quotes are stripped.
+        $this->assertStringContainsString('"When (UTC)",Action,Details,Page,Status', $csv);
+        $this->assertStringContainsString('"Saved a preset","Alpha view",Onboardings', $csv);
+        $this->assertStringContainsString('"Changed the pin shortcut",Alt+K', $csv);
+        $this->assertStringNotContainsString('Their view', $csv); // scoped to me
+    }
+
+    public function test_customization_history_export_follows_the_action_filter(): void
+    {
+        $log = fn (string $action, ?array $payload) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => $action, 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => $payload, 'status' => 302, 'created_at' => now(),
+        ]);
+
+        $log('admin.filter-presets.store', ['name' => 'Alpha view']);
+        $log('admin.filter-presets.reorder', ['order' => [1, 2, 3]]);
+
+        $csv = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history.export', ['action' => 'admin.filter-presets.store']))
+            ->streamedContent();
+
+        $this->assertStringContainsString('Alpha view', $csv);
+        $this->assertStringNotContainsString('3 views reordered', $csv); // filtered out
+    }
+
     public function test_history_action_filter_ignores_unknown_values(): void
     {
         \App\Models\AdminActivityLog::create([
