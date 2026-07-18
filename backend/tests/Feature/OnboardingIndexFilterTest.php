@@ -973,6 +973,60 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertLessThan(strpos($html, 'Newer view'), strpos($html, 'Older view'));
     }
 
+    public function test_bulk_pin_history_pins_the_selected_entries(): void
+    {
+        $a = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'A'], 'status' => 302, 'created_at' => now()]);
+        $b = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+        $c = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.reorder', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['order' => [1]], 'status' => 302, 'created_at' => now()]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.settings.preset-history'))
+            ->post(route('admin.settings.preset-history.bulk-pin'), ['ids' => [$a->id, $c->id], 'pinned' => '1'])
+            ->assertRedirect(route('admin.settings.preset-history'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('history_pins', ['admin_activity_log_id' => $a->id]);
+        $this->assertDatabaseHas('history_pins', ['admin_activity_log_id' => $c->id]);
+        $this->assertDatabaseMissing('history_pins', ['admin_activity_log_id' => $b->id]);
+    }
+
+    public function test_bulk_pin_history_can_unpin(): void
+    {
+        $a = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+        \App\Models\HistoryPin::create(['admin_id' => $this->admin->id, 'admin_activity_log_id' => $a->id]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.preset-history.bulk-pin'), ['ids' => [$a->id], 'pinned' => '0'])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('history_pins', 0);
+    }
+
+    public function test_bulk_pin_history_ignores_foreign_and_non_customization_ids(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other18@test.com', 'password' => 'x', 'is_active' => true]);
+        $mine = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+        $theirs = \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
+        $visit = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.user-onboardings.index', 'method' => 'GET', 'path' => 'admin/user-onboardings', 'status' => 200, 'created_at' => now()]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.preset-history.bulk-pin'), ['ids' => [$mine->id, $theirs->id, $visit->id], 'pinned' => '1'])
+            ->assertSessionHas('success');
+
+        // Only my customization entry is pinned; the foreign and the page-visit are skipped.
+        $this->assertDatabaseHas('history_pins', ['admin_activity_log_id' => $mine->id]);
+        $this->assertDatabaseMissing('history_pins', ['admin_activity_log_id' => $theirs->id]);
+        $this->assertDatabaseMissing('history_pins', ['admin_activity_log_id' => $visit->id]);
+        $this->assertDatabaseCount('history_pins', 1);
+    }
+
+    public function test_bulk_pin_history_requires_ids_and_a_flag(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.preset-history.bulk-pin'), ['pinned' => '1'])
+            ->assertSessionHasErrors('ids');
+    }
+
     public function test_pinning_a_history_entry_is_a_toggle(): void
     {
         $log = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);

@@ -65,11 +65,26 @@
             </div>
         @endif
     </div>
+    {{-- Bulk pin bar — appears when rows are ticked --}}
+    <div class="card-body py-2 border-bottom d-none history-bulk-bar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted"><span class="history-bulk-count">0</span> selected</span>
+            <button type="button" class="btn btn-sm btn-outline-warning history-bulk-pin" data-pinned="1">
+                <i class="bi bi-pin-angle-fill"></i> Pin
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary history-bulk-pin" data-pinned="0">
+                <i class="bi bi-pin-angle"></i> Unpin
+            </button>
+        </div>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 32px;">
+                            <input type="checkbox" class="form-check-input" id="historySelectAll" title="Select all">
+                        </th>
                         <th style="white-space: nowrap;">When</th>
                         <th>Action</th>
                         <th>Details</th>
@@ -81,6 +96,10 @@
                     @php $pageLabels = ['user-onboardings' => 'Onboardings', 'scheduled-emails' => 'Scheduled Emails']; @endphp
                     @forelse($history as $entry)
                         <tr class="{{ $entry['ok'] ? '' : 'text-muted' }} {{ $entry['pinned'] ? 'table-warning' : '' }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input history-check" value="{{ $entry['id'] }}"
+                                       aria-label="Select entry">
+                            </td>
                             <td style="white-space: nowrap;">
                                 @if($entry['pinned'])
                                     <i class="bi bi-pin-angle-fill text-warning me-1" title="Pinned"></i>
@@ -109,7 +128,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 @if($selectedAction)
                                     No history for “{{ $actions[$selectedAction] }}”.
                                 @else
@@ -126,4 +145,62 @@
         <div class="card-footer">{{ $history->links() }}</div>
     @endif
 </div>
+
+{{-- JS collects the checked ids into this before submitting (rows carry their
+     own pin forms, so no nesting). --}}
+<form method="POST" action="{{ route('admin.settings.preset-history.bulk-pin') }}" id="historyBulkPinForm" class="d-none">
+    @csrf
+    <input type="hidden" name="pinned" id="historyBulkPinnedValue" value="1">
+    <div id="historyBulkPinIds"></div>
+</form>
+
+@push('scripts')
+<script>
+    (function () {
+        var form = document.getElementById('historyBulkPinForm');
+        if (!form) return;
+        var checks = document.querySelectorAll('.history-check');
+        if (checks.length === 0) return;
+        var bar = document.querySelector('.history-bulk-bar');
+        var count = document.querySelector('.history-bulk-count');
+        var selectAll = document.getElementById('historySelectAll');
+        var idsBox = document.getElementById('historyBulkPinIds');
+        var pinnedValue = document.getElementById('historyBulkPinnedValue');
+
+        function selected() {
+            return Array.prototype.filter.call(checks, function (c) { return c.checked; });
+        }
+        function refresh() {
+            var n = selected().length;
+            count.textContent = n;
+            bar.classList.toggle('d-none', n === 0);
+        }
+
+        checks.forEach(function (c) { c.addEventListener('change', refresh); });
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checks.forEach(function (c) { c.checked = selectAll.checked; });
+                refresh();
+            });
+        }
+
+        document.querySelectorAll('.history-bulk-pin').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var picked = selected();
+                if (picked.length === 0) return;
+                pinnedValue.value = btn.getAttribute('data-pinned');
+                idsBox.innerHTML = '';
+                picked.forEach(function (c) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids[]';
+                    input.value = c.value;
+                    idsBox.appendChild(input);
+                });
+                form.submit();
+            });
+        });
+    })();
+</script>
+@endpush
 @endsection

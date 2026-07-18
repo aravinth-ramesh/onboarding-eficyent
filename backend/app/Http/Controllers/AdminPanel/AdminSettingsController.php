@@ -188,6 +188,44 @@ class AdminSettingsController extends Controller
         return back()->with('success', 'History entry pinned to top.');
     }
 
+    /**
+     * Pin (or unpin) several selected history entries at once. Only the admin's
+     * own customization entries are eligible; any other id in the list matches
+     * nothing and is silently ignored.
+     */
+    public function bulkPinHistory(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'pinned' => 'required|boolean',
+        ]);
+
+        $adminId = Auth::guard('admin')->id();
+
+        $eligible = AdminActivityLog::where('admin_id', $adminId)
+            ->whereIn('action', array_keys(self::HISTORY_LABELS))
+            ->whereIn('id', $validated['ids'])
+            ->pluck('id');
+
+        if ($request->boolean('pinned')) {
+            $eligible->each(fn ($id) => HistoryPin::firstOrCreate([
+                'admin_id' => $adminId, 'admin_activity_log_id' => $id,
+            ]));
+        } else {
+            HistoryPin::where('admin_id', $adminId)->whereIn('admin_activity_log_id', $eligible)->delete();
+        }
+
+        $count = $eligible->count();
+
+        return back()->with(
+            $count > 0 ? 'success' : 'error',
+            $count > 0
+                ? "{$count} entr" . ($count === 1 ? 'y' : 'ies') . ($request->boolean('pinned') ? ' pinned.' : ' unpinned.')
+                : 'No history entries were updated.',
+        );
+    }
+
     /** The action to filter on, or null — only a known customization action counts. */
     private function selectedAction(Request $request): ?string
     {
