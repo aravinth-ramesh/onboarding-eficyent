@@ -268,6 +268,36 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Pin (or unpin) several selected presets at once. Scoped to the caller
+     * and page in the query itself, so ids that aren't theirs simply match
+     * nothing — a foreign id in the list can never be flipped.
+     */
+    public function bulkPin(Request $request, string $context): RedirectResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'pinned' => 'required|boolean',
+        ]);
+
+        $pinned = $request->boolean('pinned');
+
+        $count = FilterPreset::where('admin_id', Auth::guard('admin')->id())
+            ->where('context', $context)
+            ->whereIn('id', $validated['ids'])
+            ->update(['pinned' => $pinned]);
+
+        return back()->with(
+            $count > 0 ? 'success' : 'error',
+            $count > 0
+                ? ($pinned ? "{$count} preset(s) pinned to top." : "{$count} preset(s) unpinned.")
+                : 'No saved views were updated.',
+        );
+    }
+
+    /**
      * Reset the manual ordering back to the default: alphabetical by name.
      * This is the order presets displayed in before manual reordering existed,
      * so "default" means A→Z. Only the caller's own presets for this page.

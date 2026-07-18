@@ -816,6 +816,82 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_bulk_pin_pins_the_selected_presets(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'C', 'filters' => ['status' => 'pending']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'user-onboardings']), ['ids' => [$a->id, $c->id], 'pinned' => '1'])
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertTrue($a->refresh()->pinned);
+        $this->assertTrue($c->refresh()->pinned);
+        $this->assertFalse($b->refresh()->pinned);
+        // Pinned pair floats to the top.
+        $this->assertSame(['A', 'C', 'B'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+    }
+
+    public function test_bulk_pin_can_unpin_the_selected_presets(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected'], 'pinned' => true]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'user-onboardings']), ['ids' => [$a->id, $b->id], 'pinned' => '0'])
+            ->assertSessionHas('success');
+
+        $this->assertFalse($a->refresh()->pinned);
+        $this->assertFalse($b->refresh()->pinned);
+    }
+
+    public function test_bulk_pin_never_touches_another_admins_presets(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other10@test.com', 'password' => 'x', 'is_active' => true]);
+        $mine = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Mine', 'filters' => ['status' => 'approved']]);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
+
+        // A foreign id in the list matches nothing and is silently left alone.
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'user-onboardings']), ['ids' => [$mine->id, $theirs->id], 'pinned' => '1'])
+            ->assertSessionHas('success');
+
+        $this->assertTrue($mine->refresh()->pinned);
+        $this->assertFalse($theirs->refresh()->pinned);
+    }
+
+    public function test_bulk_pin_requires_ids_and_a_pinned_flag(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'user-onboardings']), ['pinned' => '1'])
+            ->assertSessionHasErrors('ids');
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'user-onboardings']), ['ids' => [1]])
+            ->assertSessionHasErrors('pinned');
+    }
+
+    public function test_bulk_pin_rejects_an_unknown_context(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.bulk-pin', ['context' => 'audit-logs']), ['ids' => [1], 'pinned' => '1'])
+            ->assertNotFound();
+    }
+
+    public function test_bulk_select_controls_render_with_more_than_one_preset(): void
+    {
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+
+        $this->index()
+            ->assertSee('preset-check', false)
+            ->assertSee('preset-bulk-pin', false)
+            ->assertSee('presetBulkPinForm', false);
+    }
+
     public function test_pinned_only_toggle_renders_only_when_a_pin_exists(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Alpha', 'filters' => ['status' => 'approved']]);

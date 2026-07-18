@@ -61,6 +61,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('filter-presets/{context}/import', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'import'])->name('filter-presets.import');
     Route::post('filter-presets/{context}/reorder', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'reorder'])->name('filter-presets.reorder');
     Route::post('filter-presets/{context}/reset-order', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'resetOrder'])->name('filter-presets.reset-order');
+    Route::post('filter-presets/{context}/bulk-pin', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'bulkPin'])->name('filter-presets.bulk-pin');
     Route::post('filter-presets/{context}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'store'])->name('filter-presets.store');
     Route::post('filter-presets/{context}/{preset}/duplicate', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'duplicate'])->name('filter-presets.duplicate');
     Route::post('filter-presets/{context}/{preset}/pin', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'togglePin'])->name('filter-presets.pin');

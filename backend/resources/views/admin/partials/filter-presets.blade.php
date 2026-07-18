@@ -48,11 +48,28 @@
                     </li>
                     <li><hr class="dropdown-divider my-1"></li>
                 @endif
+                @if($presets->count() > 1)
+                    <li class="px-2 pb-1 d-none preset-bulk-bar">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted"><span class="preset-bulk-count">0</span> selected</span>
+                            <button type="button" class="btn btn-sm btn-outline-warning preset-bulk-pin" data-pinned="1">
+                                <i class="bi bi-pin-angle-fill"></i> Pin
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-bulk-pin" data-pinned="0">
+                                <i class="bi bi-pin-angle"></i> Unpin
+                            </button>
+                        </div>
+                    </li>
+                @endif
                 @foreach($presets as $preset)
                     <li class="d-flex align-items-center preset-item"
                         data-preset-id="{{ $preset->id }}"
                         data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}"
                         data-preset-pinned="{{ $preset->pinned ? '1' : '0' }}">
+                        @if($presets->count() > 1)
+                            <input type="checkbox" class="form-check-input mt-0 ms-2 preset-check"
+                                   value="{{ $preset->id }}" aria-label="Select preset {{ $preset->name }}">
+                        @endif
                         @if($presets->count() > 1)
                             <span class="d-inline-flex flex-column ps-2 preset-move-controls">
                                 <button type="button" class="btn btn-link text-secondary p-0 preset-move-btn" data-dir="up"
@@ -155,6 +172,17 @@
 
     <span class="text-muted" style="font-size: 0.8rem;">Saved views are private to your account.</span>
 </div>
+
+@if($presets->count() > 1)
+    {{-- JS collects the checked ids into this before submitting. Outside the
+         dropdown list, whose rows carry their own forms. --}}
+    <form method="POST" action="{{ route('admin.filter-presets.bulk-pin', ['context' => $context]) }}"
+          id="presetBulkPinForm" class="d-none">
+        @csrf
+        <input type="hidden" name="pinned" id="presetBulkPinnedValue" value="1">
+        <div id="presetBulkPinIds"></div>
+    </form>
+@endif
 
 {{-- Import modal — always rendered, since it works with zero existing presets --}}
 <div class="modal fade" id="importPresetsModal" tabindex="-1" aria-hidden="true">
@@ -438,6 +466,51 @@
             });
 
             refreshEnds();
+        })();
+
+        // Bulk pin/unpin. Checkboxes reveal a bar; its buttons submit the checked
+        // ids through a hidden form (rows carry their own forms, so no nesting).
+        (function () {
+            var form = document.getElementById('presetBulkPinForm');
+            if (!form) return;
+            var checks = document.querySelectorAll('.preset-check');
+            var bar = document.querySelector('.preset-bulk-bar');
+            var count = document.querySelector('.preset-bulk-count');
+            var idsBox = document.getElementById('presetBulkPinIds');
+            var pinnedValue = document.getElementById('presetBulkPinnedValue');
+
+            function selected() {
+                return Array.prototype.filter.call(checks, function (c) { return c.checked; });
+            }
+            function refresh() {
+                var n = selected().length;
+                count.textContent = n;
+                bar.classList.toggle('d-none', n === 0);
+            }
+
+            checks.forEach(function (c) {
+                c.addEventListener('change', refresh);
+                // Ticking a box must not close the menu.
+                c.addEventListener('click', function (e) { e.stopPropagation(); });
+            });
+
+            document.querySelectorAll('.preset-bulk-pin').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var picked = selected();
+                    if (picked.length === 0) return;
+                    pinnedValue.value = btn.getAttribute('data-pinned');
+                    idsBox.innerHTML = '';
+                    picked.forEach(function (c) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'ids[]';
+                        input.value = c.value;
+                        idsBox.appendChild(input);
+                    });
+                    form.submit();
+                });
+            });
         })();
     </script>
     @endpush
