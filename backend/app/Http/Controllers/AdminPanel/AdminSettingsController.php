@@ -4,12 +4,41 @@ namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\FilterPreset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AdminSettingsController extends Controller
 {
+    /**
+     * Reset everything the admin has customised about their saved views —
+     * across every page — back to defaults: alphabetical order, nothing
+     * pinned, and the default pin shortcut. The saved views themselves are
+     * kept; only their arrangement and the shortcut are reset.
+     */
+    public function resetPresetCustomizations(): RedirectResponse
+    {
+        $adminId = Auth::guard('admin')->id();
+
+        foreach (array_keys(FilterPreset::CONTEXTS) as $context) {
+            $position = 0;
+            FilterPreset::where('admin_id', $adminId)
+                ->where('context', $context)
+                ->orderBy('name')
+                ->get()
+                ->each(function (FilterPreset $preset) use (&$position) {
+                    $position++;
+                    $preset->update(['position' => $position, 'pinned' => false]);
+                });
+        }
+
+        Auth::guard('admin')->user()->update(['pin_shortcut' => null]);
+
+        return back()->with('success',
+            'Preset customisations reset — alphabetical order, nothing pinned, default shortcut. Your saved views were kept.');
+    }
+
     /**
      * Save the admin's keyboard shortcut for pinning the applied saved view.
      * The combo is one or more modifiers plus a single key, e.g. "shift+p" or

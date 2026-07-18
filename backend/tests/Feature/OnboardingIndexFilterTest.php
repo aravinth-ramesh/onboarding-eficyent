@@ -856,6 +856,53 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertTrue($preset->refresh()->pinned);
     }
 
+    public function test_reset_all_customizations_restores_defaults_but_keeps_presets(): void
+    {
+        // Custom shortcut, a pinned+reordered onboardings set, and a pinned
+        // scheduled-emails preset on another page.
+        $this->admin->update(['pin_shortcut' => 'alt+k']);
+
+        $z = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Zulu', 'filters' => ['status' => 'approved'], 'pinned' => true, 'position' => 1]);
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Able', 'filters' => ['status' => 'rejected'], 'pinned' => false, 'position' => 2]);
+        $email = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Blast', 'filters' => ['status' => 'pending'], 'pinned' => true, 'position' => 5]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.settings.reset-preset-customizations'))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        // Shortcut back to default.
+        $this->assertNull($this->admin->refresh()->pin_shortcut);
+
+        // Onboardings: nothing pinned, order alphabetical (Able before Zulu).
+        $this->assertFalse($z->refresh()->pinned);
+        $this->assertFalse($a->refresh()->pinned);
+        $this->assertSame(['Able', 'Zulu'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+
+        // The other page is reset too (spans every context).
+        $this->assertFalse($email->refresh()->pinned);
+        $this->assertSame(1, $email->position);
+
+        // The saved views themselves survive.
+        $this->assertDatabaseCount('filter_presets', 3);
+    }
+
+    public function test_reset_all_customizations_leaves_other_admins_alone(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other13@test.com', 'password' => 'x', 'is_active' => true, 'pin_shortcut' => 'alt+j']);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true, 'position' => 3]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.settings.reset-preset-customizations'))
+            ->assertSessionHas('success');
+
+        // Untouched.
+        $this->assertSame('alt+j', $other->refresh()->pin_shortcut);
+        $this->assertTrue($theirs->refresh()->pinned);
+        $this->assertSame(3, $theirs->position);
+    }
+
     public function test_admin_can_set_a_custom_pin_shortcut(): void
     {
         $this->assertNull($this->admin->pin_shortcut);

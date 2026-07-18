@@ -189,6 +189,15 @@
                         Pin shortcut: <span class="fw-semibold preset-shortcut-label">{{ $pinShortcutLabel }}</span>
                     </button>
                 </li>
+                <li>
+                    <form method="POST" action="{{ route('admin.settings.reset-preset-customizations') }}"
+                          onsubmit="return confirm('Reset all your preset customisations — ordering and pins on every page, and the pin shortcut — back to defaults? Your saved views are kept.')">
+                        @csrf
+                        <button type="submit" class="dropdown-item small text-muted">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset all customizations
+                        </button>
+                    </form>
+                </li>
             </ul>
         </div>
 
