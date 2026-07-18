@@ -45,9 +45,10 @@ class AdminSettingsController extends Controller
         // ignored so a stray value can't produce an empty or odd view.
         $selected = $this->selectedAction($request);
 
+        $search = $this->searchTerm($request);
         $pinnedIds = $this->pinnedLogIds();
 
-        $history = $this->historyQuery($selected)
+        $history = $this->historyQuery($selected, $search)
             ->paginate(30)
             ->withQueryString()
             ->through(fn (AdminActivityLog $log) => [
@@ -74,6 +75,7 @@ class AdminSettingsController extends Controller
             'history' => $history,
             'actions' => self::HISTORY_LABELS,
             'selectedAction' => $selected,
+            'search' => $search,
             'clearedAt' => $clearedAt,
             'hiddenCount' => $hiddenCount,
             'hasPinnedHistory' => $pinnedIds->isNotEmpty(),
@@ -113,14 +115,15 @@ class AdminSettingsController extends Controller
     public function exportPresetHistory(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $selected = $this->selectedAction($request);
+        $search = $this->searchTerm($request);
         $pages = ['user-onboardings' => 'Onboardings', 'scheduled-emails' => 'Scheduled Emails'];
         $filename = 'preset-history-' . now()->format('Y-m-d') . '.csv';
 
-        return response()->streamDownload(function () use ($selected, $pages) {
+        return response()->streamDownload(function () use ($selected, $search, $pages) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['When (UTC)', 'Action', 'Details', 'Page', 'Status']);
 
-            $this->historyQuery($selected)
+            $this->historyQuery($selected, $search)
                 ->lazy()
                 ->each(function (AdminActivityLog $log) use ($out, $pages) {
                     $page = $this->contextFromPath($log->path);
@@ -152,10 +155,11 @@ class AdminSettingsController extends Controller
     }
 
     /**
-     * The current admin's history, filtered to a chosen action — pinned entries
-     * first, then newest first — and only entries after the last "clear".
+     * The current admin's history, filtered to a chosen action and free-text
+     * search — pinned entries first, then newest first — and only entries after
+     * the last "clear".
      */
-    private function historyQuery(?string $selected)
+    private function historyQuery(?string $selected, ?string $search = null)
     {
         $clearedAt = Auth::guard('admin')->user()->preset_history_cleared_at;
         $pinnedIds = $this->pinnedLogIds();
@@ -164,11 +168,33 @@ class AdminSettingsController extends Controller
             ->whereIn('action', array_keys(self::HISTORY_LABELS))
             ->when($selected, fn ($q) => $q->where('action', $selected))
             ->when($clearedAt, fn ($q) => $q->where('created_at', '>', $clearedAt))
+            ->when($search, function ($q) use ($search) {
+                // Match the detail text (in the payload), the page (in the path)
+                // and the action label (mapped in PHP, so resolve it to actions).
+                $like = '%' . $search . '%';
+                $actions = array_keys(array_filter(
+                    self::HISTORY_LABELS,
+                    fn ($label) => str_contains(strtolower($label), strtolower($search)),
+                ));
+
+                $q->where(function ($sub) use ($like, $actions) {
+                    $sub->where('payload', 'like', $like)->orWhere('path', 'like', $like);
+                    if ($actions) {
+                        $sub->orWhereIn('action', $actions);
+                    }
+                });
+            })
             // Ids come straight from the DB, so imploding them is injection-safe.
             ->when($pinnedIds->isNotEmpty(), fn ($q) => $q->orderByRaw(
                 'case when id in (' . $pinnedIds->map(fn ($i) => (int) $i)->implode(',') . ') then 0 else 1 end'
             ))
             ->latest('created_at');
+    }
+
+    /** The free-text history search term, or null. */
+    private function searchTerm(Request $request): ?string
+    {
+        return $request->filled('search') ? trim($request->input('search')) : null;
     }
 
     /** The log ids the current admin has pinned. */

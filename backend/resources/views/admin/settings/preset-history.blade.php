@@ -19,10 +19,14 @@
     </div>
 @endif
 
-{{-- Filter by action --}}
+{{-- Search & filter --}}
 <div class="card mb-3">
     <div class="card-body py-2">
         <form method="GET" action="{{ route('admin.settings.preset-history') }}" class="row g-2 align-items-center">
+            <div class="col-md-4 col-lg-3">
+                <input type="search" name="search" class="form-control form-control-sm"
+                       placeholder="Search name, page or action" value="{{ $search }}">
+            </div>
             <div class="col-md-4 col-lg-3">
                 <select name="action" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All actions</option>
@@ -32,8 +36,8 @@
                 </select>
             </div>
             <div class="col-auto d-flex gap-2">
-                <button class="btn btn-sm btn-primary">Filter</button>
-                @if($selectedAction)
+                <button class="btn btn-sm btn-primary">Search</button>
+                @if($selectedAction || $search)
                     <a href="{{ route('admin.settings.preset-history') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
             </div>
@@ -60,7 +64,7 @@
                     </form>
                 @endif
                 @if($history->total() > 0)
-                    <a href="{{ route('admin.settings.preset-history.export', request()->only('action')) }}"
+                    <a href="{{ route('admin.settings.preset-history.export', request()->only('action', 'search')) }}"
                        class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
                         <i class="bi bi-filetype-csv"></i> Export CSV
                     </a>
@@ -139,7 +143,9 @@
                     @empty
                         <tr>
                             <td colspan="6" class="text-center text-muted py-4">
-                                @if($selectedAction)
+                                @if($search)
+                                    No history matches “{{ $search }}”{{ $selectedAction ? ' for ' . $actions[$selectedAction] : '' }}.
+                                @elseif($selectedAction)
                                     No history for “{{ $actions[$selectedAction] }}”.
                                 @else
                                     No preset customizations yet. Save a view, pin one, or rearrange them to see them here.

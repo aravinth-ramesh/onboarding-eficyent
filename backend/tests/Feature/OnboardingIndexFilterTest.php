@@ -879,6 +879,60 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('Onboardings');     // the page the pin happened on
     }
 
+    public function test_customization_history_can_be_searched(): void
+    {
+        $log = fn (string $action, ?array $payload, string $path) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => $action, 'method' => 'POST',
+            'path' => $path, 'payload' => $payload, 'status' => 302, 'created_at' => now(),
+        ]);
+
+        $log('admin.filter-presets.store', ['name' => 'Q4 review queue'], 'admin/filter-presets/user-onboardings');
+        $log('admin.filter-presets.store', ['name' => 'Pending blasts'], 'admin/filter-presets/scheduled-emails');
+        $log('admin.settings.pin-shortcut', ['pin_shortcut' => 'alt+k'], 'admin/settings/pin-shortcut');
+
+        // By preset name (in the payload).
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['search' => 'Q4']))
+            ->assertOk()
+            ->assertSee('Q4 review queue')
+            ->assertDontSee('Pending blasts');
+
+        // By page (in the path).
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['search' => 'scheduled-emails']))
+            ->assertSee('Pending blasts')
+            ->assertDontSee('Q4 review queue');
+
+        // By action label ("shortcut" resolves to the pin-shortcut action).
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['search' => 'shortcut']))
+            ->assertSee('Alt+K')
+            ->assertDontSee('Q4 review queue');
+    }
+
+    public function test_history_search_combines_with_the_action_filter_and_export(): void
+    {
+        $log = fn (array $payload) => \App\Models\AdminActivityLog::create([
+            'admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST',
+            'path' => 'admin/filter-presets/user-onboardings', 'payload' => $payload, 'status' => 302, 'created_at' => now(),
+        ]);
+        $log(['name' => 'Approved corporates']);
+        \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.reorder', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['order' => [1], 'note' => 'Approved something'], 'status' => 302, 'created_at' => now()]);
+
+        // search "Approved" + action=store -> only the store row.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history', ['search' => 'Approved', 'action' => 'admin.filter-presets.store']))
+            ->assertSee('Approved corporates')
+            ->assertDontSee('1 views reordered');
+
+        // The CSV export follows the search.
+        $csv = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.settings.preset-history.export', ['search' => 'corporates']))
+            ->streamedContent();
+        $this->assertStringContainsString('Approved corporates', $csv);
+        $this->assertStringNotContainsString('reordered', $csv);
+    }
+
     public function test_customization_history_can_be_filtered_by_action(): void
     {
         // Each action carries a row-only detail — the labels themselves appear
