@@ -816,6 +816,66 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_unpin_all_clears_every_pin_for_this_page(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected'], 'pinned' => true]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'C', 'filters' => ['status' => 'pending']]); // not pinned
+
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.unpin-all', ['context' => 'user-onboardings']))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertFalse($a->refresh()->pinned);
+        $this->assertFalse($b->refresh()->pinned);
+        $this->assertFalse($c->refresh()->pinned);
+    }
+
+    public function test_unpin_all_leaves_other_admins_and_pages_alone(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other11@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+        $myEmail = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Email', 'filters' => ['status' => 'pending'], 'pinned' => true]);
+        $mine = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Mine', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.unpin-all', ['context' => 'user-onboardings']))
+            ->assertSessionHas('success');
+
+        $this->assertFalse($mine->refresh()->pinned);       // cleared
+        $this->assertTrue($theirs->refresh()->pinned);      // other admin untouched
+        $this->assertTrue($myEmail->refresh()->pinned);     // my other page untouched
+    }
+
+    public function test_unpin_all_with_no_pins_reports_it(): void
+    {
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.unpin-all', ['context' => 'user-onboardings']))
+            ->assertSessionHas('error');
+    }
+
+    public function test_unpin_all_rejects_an_unknown_context(): void
+    {
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.unpin-all', ['context' => 'audit-logs']))
+            ->assertNotFound();
+    }
+
+    public function test_unpin_all_control_shows_only_when_something_is_pinned(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+
+        $this->index()->assertDontSee('Unpin all');
+
+        $a->update(['pinned' => true]);
+        $this->index()->assertSee('Unpin all');
+    }
+
     public function test_bulk_pin_pins_the_selected_presets(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);

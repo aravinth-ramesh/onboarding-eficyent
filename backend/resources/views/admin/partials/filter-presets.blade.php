@@ -126,6 +126,16 @@
                     <span class="dropdown-item-text small text-muted">No saved views match.</span>
                 </li>
                 <li><hr class="dropdown-divider"></li>
+                @if($hasPinned)
+                    <li>
+                        <form method="POST" action="{{ route('admin.filter-presets.unpin-all', ['context' => $context]) }}">
+                            @csrf
+                            <button type="submit" class="dropdown-item small text-muted">
+                                <i class="bi bi-pin-angle"></i> Unpin all
+                            </button>
+                        </form>
+                    </li>
+                @endif
                 @if($presets->count() > 1)
                     <li>
                         <form method="POST" action="{{ route('admin.filter-presets.reset-order', ['context' => $context]) }}">

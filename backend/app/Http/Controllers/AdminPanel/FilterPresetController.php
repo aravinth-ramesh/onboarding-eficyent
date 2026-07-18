@@ -298,6 +298,27 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Unpin every pinned preset for this page in one go — no selection needed.
+     * Scoped to the caller and page, so it clears only their own pins.
+     */
+    public function unpinAll(string $context): RedirectResponse
+    {
+        abort_unless(array_key_exists($context, FilterPreset::CONTEXTS), 404);
+
+        $count = FilterPreset::where('admin_id', Auth::guard('admin')->id())
+            ->where('context', $context)
+            ->where('pinned', true)
+            ->update(['pinned' => false]);
+
+        return back()->with(
+            $count > 0 ? 'success' : 'error',
+            $count > 0
+                ? "Unpinned all {$count} pinned view(s)."
+                : 'There were no pinned views to unpin.',
+        );
+    }
+
+    /**
      * Reset the manual ordering back to the default: alphabetical by name.
      * This is the order presets displayed in before manual reordering existed,
      * so "default" means A→Z. Only the caller's own presets for this page.
