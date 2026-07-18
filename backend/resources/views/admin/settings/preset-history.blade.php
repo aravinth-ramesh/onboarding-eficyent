@@ -64,7 +64,7 @@
                     </form>
                 @endif
                 @if($history->total() > 0)
-                    <a href="{{ route('admin.settings.preset-history.export', request()->only('action', 'search')) }}"
+                    <a href="{{ route('admin.settings.preset-history.export', request()->only('action', 'search', 'sort')) }}"
                        class="btn btn-sm btn-outline-success" title="Export the current view as CSV">
                         <i class="bi bi-filetype-csv"></i> Export CSV
                     </a>
@@ -99,7 +99,14 @@
                         <th style="width: 32px;">
                             <input type="checkbox" class="form-check-input" id="historySelectAll" title="Select all">
                         </th>
-                        <th style="white-space: nowrap;">When</th>
+                        <th style="white-space: nowrap;">
+                            @php $nextSort = $sort === 'asc' ? 'desc' : 'asc'; @endphp
+                            <a href="{{ route('admin.settings.preset-history', array_merge(request()->only('search', 'action'), ['sort' => $nextSort])) }}"
+                               class="text-decoration-none text-reset" title="Sort by date">
+                                When
+                                <i class="bi {{ $sort === 'asc' ? 'bi-caret-up-fill' : 'bi-caret-down-fill' }}"></i>
+                            </a>
+                        </th>
                         <th>Action</th>
                         <th>Details</th>
                         <th>Page</th>

@@ -879,6 +879,31 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertSee('Onboardings');     // the page the pin happened on
     }
 
+    public function test_customization_history_sorts_by_date_both_ways(): void
+    {
+        \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Older view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00']);
+        \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Newer view'], 'status' => 302, 'created_at' => '2026-09-01 10:00:00']);
+
+        // Default: newest first.
+        $desc = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history'))->getContent();
+        $this->assertLessThan(strpos($desc, 'Older view'), strpos($desc, 'Newer view'));
+
+        // sort=asc: oldest first.
+        $asc = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history', ['sort' => 'asc']))->getContent();
+        $this->assertLessThan(strpos($asc, 'Newer view'), strpos($asc, 'Older view'));
+    }
+
+    public function test_pinned_entries_stay_on_top_regardless_of_date_sort(): void
+    {
+        $old = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Older view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00']);
+        \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Newer view'], 'status' => 302, 'created_at' => '2026-09-01 10:00:00']);
+        \App\Models\HistoryPin::create(['admin_id' => $this->admin->id, 'admin_activity_log_id' => $old->id]);
+
+        // Even sorting newest-first, the pinned older entry stays above the newer.
+        $html = $this->actingAs($this->admin, 'admin')->get(route('admin.settings.preset-history', ['sort' => 'desc']))->getContent();
+        $this->assertLessThan(strpos($html, 'Newer view'), strpos($html, 'Older view'));
+    }
+
     public function test_customization_history_can_be_searched(): void
     {
         $log = fn (string $action, ?array $payload, string $path) => \App\Models\AdminActivityLog::create([

@@ -46,9 +46,10 @@ class AdminSettingsController extends Controller
         $selected = $this->selectedAction($request);
 
         $search = $this->searchTerm($request);
+        $sort = $this->sortDir($request);
         $pinnedIds = $this->pinnedLogIds();
 
-        $history = $this->historyQuery($selected, $search)
+        $history = $this->historyQuery($selected, $search, $sort)
             ->paginate(30)
             ->withQueryString()
             ->through(fn (AdminActivityLog $log) => [
@@ -76,6 +77,7 @@ class AdminSettingsController extends Controller
             'actions' => self::HISTORY_LABELS,
             'selectedAction' => $selected,
             'search' => $search,
+            'sort' => $sort,
             'clearedAt' => $clearedAt,
             'hiddenCount' => $hiddenCount,
             'hasPinnedHistory' => $pinnedIds->isNotEmpty(),
@@ -116,10 +118,11 @@ class AdminSettingsController extends Controller
     {
         $selected = $this->selectedAction($request);
         $search = $this->searchTerm($request);
+        $sort = $this->sortDir($request);
         $pages = ['user-onboardings' => 'Onboardings', 'scheduled-emails' => 'Scheduled Emails'];
         $filename = 'preset-history-' . now()->format('Y-m-d') . '.csv';
 
-        return response()->streamDownload(function () use ($selected, $search, $pages) {
+        return response()->streamDownload(function () use ($selected, $search, $sort, $pages) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['When (UTC)', 'Action', 'Details', 'Page', 'Status']);
 
@@ -159,7 +162,7 @@ class AdminSettingsController extends Controller
      * search — pinned entries first, then newest first — and only entries after
      * the last "clear".
      */
-    private function historyQuery(?string $selected, ?string $search = null)
+    private function historyQuery(?string $selected, ?string $search = null, string $sort = 'desc')
     {
         $clearedAt = Auth::guard('admin')->user()->preset_history_cleared_at;
         $pinnedIds = $this->pinnedLogIds();
@@ -188,7 +191,13 @@ class AdminSettingsController extends Controller
             ->when($pinnedIds->isNotEmpty(), fn ($q) => $q->orderByRaw(
                 'case when id in (' . $pinnedIds->map(fn ($i) => (int) $i)->implode(',') . ') then 0 else 1 end'
             ))
-            ->latest('created_at');
+            ->orderBy('created_at', $sort === 'asc' ? 'asc' : 'desc');
+    }
+
+    /** The date sort direction: 'asc' (oldest first) or 'desc' (newest first, default). */
+    private function sortDir(Request $request): string
+    {
+        return $request->input('sort') === 'asc' ? 'asc' : 'desc';
     }
 
     /** The free-text history search term, or null. */
