@@ -26,22 +26,33 @@
             </button>
             <ul class="dropdown-menu" style="min-width: 300px;"
                 data-reorder-url="{{ route('admin.filter-presets.reorder', ['context' => $context]) }}">
-                @if($presets->count() > 5)
+                @php $hasPinned = $presets->contains('pinned', true); @endphp
+                @if($presets->count() > 5 || $hasPinned)
                     <li class="px-2 pb-1 d-flex gap-1 align-items-center">
-                        <input type="search" class="form-control form-control-sm preset-filter-input flex-grow-1"
-                               placeholder="Search saved views…" aria-label="Search saved views" autocomplete="off">
-                        {{-- Rows arrive name-ascending; this toggles to descending and back. --}}
-                        <button type="button" class="btn btn-sm btn-outline-secondary preset-sort-toggle"
-                                data-dir="asc" title="Sort by name (A→Z / Z→A)" aria-label="Sort by name">
-                            <i class="bi bi-sort-alpha-down"></i>
-                        </button>
+                        @if($presets->count() > 5)
+                            <input type="search" class="form-control form-control-sm preset-filter-input flex-grow-1"
+                                   placeholder="Search saved views…" aria-label="Search saved views" autocomplete="off">
+                            {{-- Rows arrive name-ascending; this toggles to descending and back. --}}
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-sort-toggle"
+                                    data-dir="asc" title="Sort by name (A→Z / Z→A)" aria-label="Sort by name">
+                                <i class="bi bi-sort-alpha-down"></i>
+                            </button>
+                        @endif
+                        @if($hasPinned)
+                            {{-- Show only pinned rows; toggles off to show all again. --}}
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-pinned-toggle {{ $presets->count() > 5 ? '' : 'flex-grow-1 text-start' }}"
+                                    data-on="0" title="Show only pinned" aria-pressed="false">
+                                <i class="bi bi-pin-angle"></i> Pinned only
+                            </button>
+                        @endif
                     </li>
                     <li><hr class="dropdown-divider my-1"></li>
                 @endif
                 @foreach($presets as $preset)
                     <li class="d-flex align-items-center preset-item"
                         data-preset-id="{{ $preset->id }}"
-                        data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}">
+                        data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}"
+                        data-preset-pinned="{{ $preset->pinned ? '1' : '0' }}">
                         @if($presets->count() > 1)
                             <span class="d-inline-flex flex-column ps-2 preset-move-controls">
                                 <button type="button" class="btn btn-link text-secondary p-0 preset-move-btn" data-dir="up"
@@ -302,28 +313,48 @@
             });
         });
 
-        // Live filter of the saved-views list by name. Client-side: the presets
-        // are already on the page, so there is nothing to fetch.
+        // Live client-side filtering of the saved-views list — the presets are
+        // already on the page. The name search and the pinned-only toggle both
+        // feed one apply() so they combine.
         (function () {
-            var box = document.querySelector('.preset-filter-input');
-            if (!box) return;
-            var menu = box.closest('.dropdown-menu');
+            var menu = document.querySelector('.dropdown-menu .preset-item');
+            menu = menu && menu.closest('.dropdown-menu');
+            var box = menu && menu.querySelector('.preset-filter-input');
+            var pinToggle = menu && menu.querySelector('.preset-pinned-toggle');
+            if (!menu || (!box && !pinToggle)) return;
+
             var items = menu.querySelectorAll('.preset-item');
             var empty = menu.querySelector('.preset-no-matches');
 
-            box.addEventListener('input', function () {
-                var q = box.value.trim().toLowerCase();
+            function apply() {
+                var q = box ? box.value.trim().toLowerCase() : '';
+                var pinnedOnly = pinToggle && pinToggle.getAttribute('data-on') === '1';
                 var shown = 0;
                 items.forEach(function (li) {
-                    var match = li.getAttribute('data-preset-name').indexOf(q) !== -1;
-                    li.classList.toggle('d-none', !match);
-                    if (match) shown++;
+                    var nameOk = li.getAttribute('data-preset-name').indexOf(q) !== -1;
+                    var pinOk = !pinnedOnly || li.getAttribute('data-preset-pinned') === '1';
+                    var visible = nameOk && pinOk;
+                    li.classList.toggle('d-none', !visible);
+                    if (visible) shown++;
                 });
                 if (empty) empty.classList.toggle('d-none', shown !== 0);
-            });
+            }
 
-            // Typing/clicking inside the box must not navigate or close the menu.
-            box.addEventListener('click', function (e) { e.stopPropagation(); });
+            if (box) {
+                box.addEventListener('input', apply);
+                // Typing/clicking inside the box must not navigate or close the menu.
+                box.addEventListener('click', function (e) { e.stopPropagation(); });
+            }
+            if (pinToggle) {
+                pinToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var on = pinToggle.getAttribute('data-on') === '1' ? '0' : '1';
+                    pinToggle.setAttribute('data-on', on);
+                    pinToggle.setAttribute('aria-pressed', on === '1' ? 'true' : 'false');
+                    pinToggle.classList.toggle('active', on === '1');
+                    apply();
+                });
+            }
         })();
 
         // Toggle the saved-views list between A→Z and Z→A. Reorders in place —

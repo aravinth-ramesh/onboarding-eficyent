@@ -816,6 +816,24 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_pinned_only_toggle_renders_only_when_a_pin_exists(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Alpha', 'filters' => ['status' => 'approved']]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Bravo', 'filters' => ['status' => 'rejected']]);
+
+        // No pins yet: no "Pinned only" control, and rows are flagged unpinned.
+        $this->index()
+            ->assertDontSee('Pinned only')
+            ->assertSee('data-preset-pinned="0"', false);
+
+        // Pin one: the toggle appears, and that row is flagged pinned.
+        $a->update(['pinned' => true]);
+        $this->index()
+            ->assertSee('Pinned only')
+            ->assertSee('preset-pinned-toggle', false)
+            ->assertSee('data-preset-pinned="1"', false);
+    }
+
     public function test_pinning_floats_a_preset_to_the_top(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
