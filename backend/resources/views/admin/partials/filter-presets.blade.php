@@ -17,14 +17,23 @@
 
 <div class="d-flex gap-2 align-items-center">
     @if($presets->isNotEmpty())
+        {{-- auto-close="outside" keeps the menu open while typing in the search box --}}
         <div class="dropdown">
-            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside">
                 <i class="bi bi-bookmark"></i>
                 {{ $activePresetId ? $presets->firstWhere('id', $activePresetId)->name : 'Presets' }}
             </button>
             <ul class="dropdown-menu" style="min-width: 280px;">
+                @if($presets->count() > 5)
+                    <li class="px-2 pb-1">
+                        <input type="search" class="form-control form-control-sm preset-filter-input"
+                               placeholder="Search saved views…" aria-label="Search saved views" autocomplete="off">
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                @endif
                 @foreach($presets as $preset)
-                    <li class="d-flex align-items-center">
+                    <li class="d-flex align-items-center preset-item" data-preset-name="{{ \Illuminate\Support\Str::lower($preset->name) }}">
                         <a class="dropdown-item text-truncate {{ $preset->id === $activePresetId ? 'active' : '' }}"
                            href="{{ route("admin.{$context}.index", $preset->filters) }}">
                             {{ $preset->name }}
@@ -54,6 +63,9 @@
                         </form>
                     </li>
                 @endforeach
+                <li class="preset-no-matches d-none">
+                    <span class="dropdown-item-text small text-muted">No saved views match.</span>
+                </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <a class="dropdown-item small text-muted"
@@ -248,6 +260,30 @@
                 input.select();
             });
         });
+
+        // Live filter of the saved-views list by name. Client-side: the presets
+        // are already on the page, so there is nothing to fetch.
+        (function () {
+            var box = document.querySelector('.preset-filter-input');
+            if (!box) return;
+            var menu = box.closest('.dropdown-menu');
+            var items = menu.querySelectorAll('.preset-item');
+            var empty = menu.querySelector('.preset-no-matches');
+
+            box.addEventListener('input', function () {
+                var q = box.value.trim().toLowerCase();
+                var shown = 0;
+                items.forEach(function (li) {
+                    var match = li.getAttribute('data-preset-name').indexOf(q) !== -1;
+                    li.classList.toggle('d-none', !match);
+                    if (match) shown++;
+                });
+                if (empty) empty.classList.toggle('d-none', shown !== 0);
+            });
+
+            // Typing/clicking inside the box must not navigate or close the menu.
+            box.addEventListener('click', function (e) { e.stopPropagation(); });
+        })();
     </script>
     @endpush
 @endif

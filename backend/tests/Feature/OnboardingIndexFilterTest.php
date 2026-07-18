@@ -711,6 +711,25 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertSame(['from' => '2026-08-01', 'to' => '2026-08-31', 'date_field' => 'decided'], $theirs->firstWhere('name', 'Beta')->filters);
     }
 
+    public function test_preset_search_box_appears_only_once_the_list_is_long(): void
+    {
+        $make = fn (string $name) => FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => $name, 'filters' => ['status' => 'approved'],
+        ]);
+
+        // A short list needs no search box.
+        collect(['One', 'Two', 'Three'])->each($make);
+        $this->index()->assertDontSee('Search saved views');
+
+        // Past the threshold it appears, and each row carries a lowercased key.
+        collect(['Four', 'Five', 'SHOUTY Name'])->each($make);
+        $this->index()
+            ->assertSee('Search saved views')
+            ->assertSee('preset-filter-input', false)
+            ->assertSee('data-preset-name="shouty name"', false); // lowercased for matching
+    }
+
     public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void
     {
         $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true]);
