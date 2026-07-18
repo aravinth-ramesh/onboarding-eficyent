@@ -17,16 +17,25 @@
 
 <div class="d-flex gap-2 align-items-center">
     @if($presets->isNotEmpty())
+        @php
+            $pinnedCount = $presets->where('pinned', true)->count();
+            $hasPinned = $pinnedCount > 0;
+        @endphp
         {{-- auto-close="outside" keeps the menu open while typing in the search box --}}
         <div class="dropdown">
             <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
                     data-bs-toggle="dropdown" data-bs-auto-close="outside">
                 <i class="bi bi-bookmark"></i>
                 {{ $activePresetId ? $presets->firstWhere('id', $activePresetId)->name : 'Presets' }}
+                @if($hasPinned)
+                    <span class="badge bg-warning-subtle text-warning-emphasis border ms-1 preset-pinned-count"
+                          title="{{ $pinnedCount }} pinned">
+                        <i class="bi bi-pin-angle-fill"></i> {{ $pinnedCount }}
+                    </span>
+                @endif
             </button>
             <ul class="dropdown-menu" style="min-width: 300px;"
                 data-reorder-url="{{ route('admin.filter-presets.reorder', ['context' => $context]) }}">
-                @php $hasPinned = $presets->contains('pinned', true); @endphp
                 @if($presets->count() > 5 || $hasPinned)
                     <li class="px-2 pb-1 d-flex gap-1 align-items-center">
                         @if($presets->count() > 5)
@@ -42,7 +51,7 @@
                             {{-- Show only pinned rows; toggles off to show all again. --}}
                             <button type="button" class="btn btn-sm btn-outline-secondary preset-pinned-toggle {{ $presets->count() > 5 ? '' : 'flex-grow-1 text-start' }}"
                                     data-on="0" title="Show only pinned" aria-pressed="false">
-                                <i class="bi bi-pin-angle"></i> Pinned only
+                                <i class="bi bi-pin-angle"></i> Pinned only ({{ $pinnedCount }})
                             </button>
                         @endif
                     </li>

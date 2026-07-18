@@ -816,6 +816,28 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_pinned_count_badge_reflects_the_number_pinned(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'C', 'filters' => ['status' => 'pending']]);
+
+        // Nothing pinned: no count badge or pinned-only label.
+        $this->index()->assertDontSee('preset-pinned-count', false)->assertDontSee('Pinned only');
+
+        // Pin two: the badge shows 2, and only this admin's pins on this page count.
+        $a->update(['pinned' => true]);
+        $b->update(['pinned' => true]);
+        // A pin belonging to someone else, and to another page, must not inflate it.
+        $other = Admin::create(['name' => 'Other', 'email' => 'other12@test.com', 'password' => 'x', 'is_active' => true]);
+        FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Email', 'filters' => ['status' => 'pending'], 'pinned' => true]);
+
+        $this->index()
+            ->assertSee('preset-pinned-count', false)
+            ->assertSee('Pinned only (2)');
+    }
+
     public function test_unpin_all_clears_every_pin_for_this_page(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved'], 'pinned' => true]);
