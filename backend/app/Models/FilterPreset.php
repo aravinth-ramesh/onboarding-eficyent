@@ -29,6 +29,7 @@ class FilterPreset extends Model
         'name',
         'filters',
         'position',
+        'pinned',
     ];
 
     protected function casts(): array
@@ -36,6 +37,7 @@ class FilterPreset extends Model
         return [
             'filters' => 'array',
             'position' => 'integer',
+            'pinned' => 'boolean',
         ];
     }
 
@@ -75,12 +77,16 @@ class FilterPreset extends Model
         return $filters;
     }
 
-    /** One admin's presets for one page, in the admin's manual order. */
+    /**
+     * One admin's presets for one page: pinned first, then the admin's manual
+     * order, with name as a stable tiebreak.
+     */
     public function scopeOwnedBy(Builder $query, ?int $adminId, string $context): Builder
     {
         return $query->where('admin_id', $adminId)
             ->where('context', $context)
+            ->orderByDesc('pinned')
             ->orderBy('position')
-            ->orderBy('name'); // stable tiebreak
+            ->orderBy('name');
     }
 }

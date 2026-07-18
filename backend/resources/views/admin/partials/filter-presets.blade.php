@@ -56,8 +56,19 @@
                         @endif
                         <a class="dropdown-item text-truncate {{ $preset->id === $activePresetId ? 'active' : '' }}"
                            href="{{ route("admin.{$context}.index", $preset->filters) }}">
+                            @if($preset->pinned)
+                                <i class="bi bi-pin-angle-fill text-warning me-1" title="Pinned"></i>
+                            @endif
                             {{ $preset->name }}
                         </a>
+                        <form method="POST" action="{{ route('admin.filter-presets.pin', ['context' => $context, 'preset' => $preset]) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-link p-0 px-1 {{ $preset->pinned ? 'text-warning' : 'text-secondary' }}"
+                                    title="{{ $preset->pinned ? 'Unpin' : 'Pin to top' }}"
+                                    aria-label="{{ $preset->pinned ? 'Unpin preset' : 'Pin preset to top' }}">
+                                <i class="bi {{ $preset->pinned ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
+                            </button>
+                        </form>
                         <button type="button" class="btn btn-sm btn-link text-secondary p-0 px-1 preset-rename-btn"
                                 title="Rename preset"
                                 data-bs-toggle="modal" data-bs-target="#renamePresetModal"

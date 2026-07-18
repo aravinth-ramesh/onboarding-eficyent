@@ -216,6 +216,21 @@ class FilterPresetController extends Controller
     }
 
     /**
+     * Pin a preset to the top of the list, or unpin it. Pinned presets float
+     * above the manual ordering; several may be pinned at once.
+     */
+    public function togglePin(string $context, FilterPreset $preset): RedirectResponse
+    {
+        $this->guard($context, $preset);
+
+        $preset->update(['pinned' => ! $preset->pinned]);
+
+        return back()->with('success', $preset->pinned
+            ? "Preset \"{$preset->name}\" pinned to top."
+            : "Preset \"{$preset->name}\" unpinned.");
+    }
+
+    /**
      * Persist a manual ordering. `order` is the full list of preset ids in the
      * arrangement the admin dragged/nudged them into; position follows the
      * index. Only the caller's own presets for this page are touched — a

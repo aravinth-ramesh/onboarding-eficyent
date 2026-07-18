@@ -816,6 +816,71 @@ class OnboardingIndexFilterTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_pinning_floats_a_preset_to_the_top(): void
+    {
+        $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
+        $b = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
+        $c = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'C', 'filters' => ['status' => 'pending']]);
+
+        // Pin C — it jumps above A and B without changing anyone's position.
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index'))
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $c]))
+            ->assertRedirect(route('admin.user-onboardings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertTrue($c->refresh()->pinned);
+        $this->assertSame(['C', 'A', 'B'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+        $this->assertSame(3, $c->position); // position untouched; it floats via the flag
+    }
+
+    public function test_pinning_is_a_toggle(): void
+    {
+        $preset = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $preset]))
+            ->assertSessionHas('success');
+
+        $this->assertFalse($preset->refresh()->pinned);
+    }
+
+    public function test_several_pins_cluster_at_top_in_their_own_order(): void
+    {
+        foreach (['A', 'B', 'C', 'D'] as $n) {
+            FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => $n, 'filters' => ['status' => 'approved']]);
+        }
+        // Pin D then B: pinned group keeps position order (B before D), not pin order.
+        FilterPreset::where('name', 'D')->update(['pinned' => true]);
+        FilterPreset::where('name', 'B')->update(['pinned' => true]);
+
+        $this->assertSame(['B', 'D', 'A', 'C'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+    }
+
+    public function test_pinned_preset_stays_on_top_after_reset_order(): void
+    {
+        $z = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Zulu', 'filters' => ['status' => 'approved'], 'pinned' => true]);
+        FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Able', 'filters' => ['status' => 'rejected']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.reset-order', ['context' => 'user-onboardings']));
+
+        // Reset sorts by name, but the pin still wins — Zulu stays first.
+        $this->assertSame(['Zulu', 'Able'], FilterPreset::ownedBy($this->admin->id, 'user-onboardings')->pluck('name')->all());
+    }
+
+    public function test_cannot_pin_another_admins_preset(): void
+    {
+        $other = Admin::create(['name' => 'Other', 'email' => 'other9@test.com', 'password' => 'x', 'is_active' => true]);
+        $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $theirs]))
+            ->assertForbidden();
+
+        $this->assertFalse($theirs->refresh()->pinned);
+    }
+
     public function test_reset_order_restores_alphabetical_positions(): void
     {
         // Saved out of alphabetical order, then manually shuffled further.
