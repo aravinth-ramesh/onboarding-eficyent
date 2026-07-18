@@ -855,6 +855,28 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertTrue($preset->refresh()->pinned);
     }
 
+    public function test_unpinning_the_applied_preset_from_the_list_view(): void
+    {
+        // Already pinned and applied — the list-view control offers "Unpin".
+        $preset = FilterPreset::create([
+            'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
+            'name' => 'Approved', 'filters' => ['status' => 'approved'], 'pinned' => true,
+        ]);
+
+        $this->index(['status' => 'approved'])
+            ->assertSee('preset-active-pin', false)
+            ->assertSee('Unpin this saved view'); // the pinned-state control's tooltip
+
+        // Clicking it unpins and returns to the same filtered view.
+        $this->actingAs($this->admin, 'admin')
+            ->from(route('admin.user-onboardings.index', ['status' => 'approved']))
+            ->post(route('admin.filter-presets.pin', ['context' => 'user-onboardings', 'preset' => $preset]))
+            ->assertRedirect(route('admin.user-onboardings.index', ['status' => 'approved']))
+            ->assertSessionHas('success');
+
+        $this->assertFalse($preset->refresh()->pinned);
+    }
+
     public function test_pinned_first_sort_control_shows_only_when_something_is_pinned(): void
     {
         $a = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);

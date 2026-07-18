@@ -185,10 +185,11 @@
             @php $activePreset = $presets->firstWhere('id', $activePresetId); @endphp
             <form method="POST" action="{{ route('admin.filter-presets.pin', ['context' => $context, 'preset' => $activePreset]) }}">
                 @csrf
+                {{-- Filled pin + colour show it is pinned; the label is the action. --}}
                 <button type="submit" class="btn btn-sm preset-active-pin {{ $activePreset->pinned ? 'btn-warning' : 'btn-outline-secondary' }}"
                         title="{{ $activePreset->pinned ? 'Unpin this saved view' : 'Pin this saved view to top' }}">
                     <i class="bi {{ $activePreset->pinned ? 'bi-pin-fill' : 'bi-pin-angle' }}"></i>
-                    {{ $activePreset->pinned ? 'Pinned' : 'Pin' }}
+                    {{ $activePreset->pinned ? 'Unpin' : 'Pin' }}
                 </button>
             </form>
         @endif
