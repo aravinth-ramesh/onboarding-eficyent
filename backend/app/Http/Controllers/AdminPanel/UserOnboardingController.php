@@ -296,6 +296,12 @@ class UserOnboardingController extends Controller
             });
         }
 
+        // Four-eyes checker/compliance queues: applications handed off for a
+        // decision, or escalated to compliance.
+        if (in_array($request->input('approval'), ['pending_approval', 'escalated'], true)) {
+            $query->where('approval_state', $request->input('approval'));
+        }
+
         return $query;
     }
 
@@ -645,6 +651,36 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', 'Application rejected — the client has been notified by email.');
+    }
+
+    public function submitForApproval(UserOnboarding $userOnboarding): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        try {
+            $this->onboardingService->submitForApproval($userOnboarding, Auth::guard('admin')->user());
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Submitted for approval — a second reviewer can now make the decision.');
+    }
+
+    public function escalate(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $validated = $request->validate(['comment' => 'nullable|string|max:2000']);
+
+        try {
+            $this->onboardingService->escalate($userOnboarding, Auth::guard('admin')->user(), $validated['comment'] ?? null);
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Escalated to compliance for review.');
     }
 
     public function auditLogs(Request $request): View

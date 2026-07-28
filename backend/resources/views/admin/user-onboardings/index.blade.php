@@ -51,6 +51,13 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-md-3 col-lg-2">
+                <select name="approval" class="form-select form-select-sm" onchange="this.form.submit()" title="Four-eyes approval stage">
+                    <option value="">Any approval stage</option>
+                    <option value="pending_approval" @selected(request('approval') === 'pending_approval')>Awaiting approval</option>
+                    <option value="escalated" @selected(request('approval') === 'escalated')>Escalated to compliance</option>
+                </select>
+            </div>
             <div class="col-auto d-flex align-items-center gap-1">
                 <select name="date_field" class="form-select form-select-sm" style="width: 115px;"
                         title="Which date to filter on" onchange="if (this.form.from.value || this.form.to.value) this.form.submit()">

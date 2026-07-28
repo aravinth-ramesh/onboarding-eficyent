@@ -226,21 +226,79 @@
                 </dl>
 
                 @if($userOnboarding->status === 'completed')
-                    {{-- Awaiting decision --}}
+                    @php
+                        $meDecide = auth('admin')->user();
+                        $canSubmit = $meDecide?->hasAbility(\App\Enums\Ability::SUBMIT_FOR_APPROVAL);
+                        $canApprove = $meDecide?->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING);
+                        $canReject = $meDecide?->hasAbility(\App\Enums\Ability::REJECT_ONBOARDING);
+                        $canEscalate = $meDecide?->hasAbility(\App\Enums\Ability::ESCALATE_ONBOARDING);
+                        $isMaker = $userOnboarding->submitted_for_approval_by
+                            && (int) $userOnboarding->submitted_for_approval_by === (int) $meDecide?->id;
+                        $decideProgress = $userOnboarding->sectionReviewProgress();
+                        $sectionsDone = $decideProgress['total'] === 0 || $decideProgress['complete'];
+                    @endphp
                     <hr>
-                    <div class="d-flex gap-2">
-                        <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
-                              onsubmit="return confirm('Approve this application? The client will be notified by email.')">
-                            @csrf
-                            <button class="btn btn-success btn-sm">
-                                <i class="bi bi-check-circle"></i> Approve
+
+                    {{-- Where the application sits in the four-eyes hand-off. --}}
+                    @if($userOnboarding->isEscalated())
+                        <div class="p-2 rounded bg-warning-subtle border mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-flag-fill text-warning"></i> <strong>Escalated to compliance</strong>
+                            @if($userOnboarding->submittedForApprovalBy)
+                                <div class="text-muted">Submitted by {{ $userOnboarding->submittedForApprovalBy->name }}</div>
+                            @endif
+                        </div>
+                    @elseif($userOnboarding->approval_state === 'pending_approval')
+                        <div class="p-2 rounded bg-info-subtle border mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-hourglass-split text-info"></i> <strong>Awaiting a second reviewer</strong>
+                            <div class="text-muted">
+                                Submitted for approval by {{ $userOnboarding->submittedForApprovalBy->name ?? 'a reviewer' }}
+                                {{ $userOnboarding->submitted_for_approval_at?->diffForHumans() }}
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="d-flex flex-wrap gap-2">
+                        {{-- Maker step: hand off for approval once every section is reviewed. --}}
+                        @if($canSubmit && $userOnboarding->approval_state !== 'pending_approval')
+                            <form method="POST" action="{{ route('admin.user-onboardings.submit-for-approval', $userOnboarding) }}">
+                                @csrf
+                                <button class="btn btn-primary btn-sm" @disabled(!$sectionsDone)
+                                        title="{{ $sectionsDone ? 'Hand off for a second reviewer to approve' : 'Review every section first' }}">
+                                    <i class="bi bi-send-check"></i> Submit for approval
+                                </button>
+                            </form>
+                        @endif
+
+                        {{-- Checker step: a second reviewer approves or rejects. --}}
+                        @if($canApprove)
+                            <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
+                                  onsubmit="return confirm('Approve this application? The client will be notified by email.')">
+                                @csrf
+                                <button class="btn btn-success btn-sm" @disabled($isMaker || !$sectionsDone)
+                                        title="{{ $isMaker ? 'You submitted this — a different reviewer must approve (four-eyes)' : (!$sectionsDone ? 'Every section must be reviewed first' : 'Approve') }}">
+                                    <i class="bi bi-check-circle"></i> Approve
+                                </button>
+                            </form>
+                        @endif
+                        @if($canReject)
+                            <button type="button" class="btn btn-outline-danger btn-sm" @disabled($isMaker)
+                                    title="{{ $isMaker ? 'You submitted this — a different reviewer must decide (four-eyes)' : 'Reject' }}"
+                                    data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="bi bi-x-circle"></i> Reject
                             </button>
-                        </form>
-                        <button type="button" class="btn btn-outline-danger btn-sm"
-                                data-bs-toggle="modal" data-bs-target="#rejectModal">
-                            <i class="bi bi-x-circle"></i> Reject
-                        </button>
+                        @endif
+
+                        {{-- Refer to compliance. --}}
+                        @if($canEscalate && !$userOnboarding->isEscalated())
+                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#escalateModal">
+                                <i class="bi bi-flag"></i> Escalate
+                            </button>
+                        @endif
                     </div>
+                    @if($isMaker)
+                        <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> You submitted this for approval, so a second reviewer must make the decision.</div>
+                    @endif
                 @elseif(in_array($userOnboarding->status, ['approved', 'rejected']))
                     <hr>
                     <div class="p-2 rounded {{ $userOnboarding->status === 'approved' ? 'bg-success-subtle' : 'bg-danger-subtle' }}" style="font-size: 0.85rem;">
@@ -311,7 +369,9 @@
                                 'approved' => ['icon' => 'bi-check-circle-fill', 'class' => 'text-success', 'label' => 'Approved'],
                                 'rejected' => ['icon' => 'bi-x-circle-fill', 'class' => 'text-danger', 'label' => 'Rejected'],
                                 'reopened' => ['icon' => 'bi-unlock', 'class' => 'text-secondary', 'label' => 'Reopened by client'],
-                            ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst($log->event)];
+                                'submitted_for_approval' => ['icon' => 'bi-send-check', 'class' => 'text-primary', 'label' => 'Submitted for approval'],
+                                'escalated' => ['icon' => 'bi-flag-fill', 'class' => 'text-warning', 'label' => 'Escalated to compliance'],
+                            ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst(str_replace('_', ' ', $log->event))];
                         @endphp
                         <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
                             <i class="bi {{ $meta['icon'] }} {{ $meta['class'] }}"></i>
@@ -916,6 +976,38 @@
         </form>
     </div>
 </div>
+
+{{-- Escalate to Compliance Modal --}}
+@if($userOnboarding->status === 'completed' && auth('admin')->user()?->hasAbility(\App\Enums\Ability::ESCALATE_ONBOARDING))
+<div class="modal fade" id="escalateModal" tabindex="-1" aria-labelledby="escalateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('admin.user-onboardings.escalate', $userOnboarding) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="escalateModalLabel">Escalate to Compliance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Refer <strong>{{ $userOnboarding->reference }}</strong> to compliance for the decision.
+                        It stays in the review queue, flagged for the compliance team.
+                    </p>
+                    <div class="mb-0">
+                        <label for="escalateComment" class="form-label">Note <span class="text-muted">(optional)</span></label>
+                        <textarea class="form-control" id="escalateComment" name="comment" rows="3"
+                            placeholder="Why does this need compliance review?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Escalate</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 
 {{-- Request Change Modal --}}
 <div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">

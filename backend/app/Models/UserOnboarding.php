@@ -22,6 +22,9 @@ class UserOnboarding extends Model
         'decided_at',
         'decided_by',
         'decision_comment',
+        'approval_state',
+        'submitted_for_approval_by',
+        'submitted_for_approval_at',
         'assigned_to',
         'reopened_at',
         'archived_at',
@@ -35,9 +38,27 @@ class UserOnboarding extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'decided_at' => 'datetime',
+            'submitted_for_approval_at' => 'datetime',
             'reopened_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
+    }
+
+    /** The reviewer (maker) who submitted this application for approval. */
+    public function submittedForApprovalBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'submitted_for_approval_by');
+    }
+
+    /** Handed off by a reviewer and awaiting a second person's decision. */
+    public function isAwaitingApproval(): bool
+    {
+        return in_array($this->approval_state, ['pending_approval', 'escalated'], true);
+    }
+
+    public function isEscalated(): bool
+    {
+        return $this->approval_state === 'escalated';
     }
 
     public function archivedBy(): BelongsTo

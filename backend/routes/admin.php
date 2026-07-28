@@ -101,6 +101,9 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::delete('user-onboardings/{userOnboarding}/notes/{note}', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'destroy'])->name('user-onboardings.notes.destroy');
     Route::post('user-onboardings/{userOnboarding}/approve', [UserOnboardingController::class, 'approve'])->name('user-onboardings.approve')->middleware('ability:' . Ability::APPROVE_ONBOARDING);
     Route::post('user-onboardings/{userOnboarding}/reject', [UserOnboardingController::class, 'reject'])->name('user-onboardings.reject')->middleware('ability:' . Ability::REJECT_ONBOARDING);
+    // Four-eyes: reviewer hands off (maker) → a different checker decides.
+    Route::post('user-onboardings/{userOnboarding}/submit-for-approval', [UserOnboardingController::class, 'submitForApproval'])->name('user-onboardings.submit-for-approval')->middleware('ability:' . Ability::SUBMIT_FOR_APPROVAL);
+    Route::post('user-onboardings/{userOnboarding}/escalate', [UserOnboardingController::class, 'escalate'])->name('user-onboardings.escalate')->middleware('ability:' . Ability::ESCALATE_ONBOARDING);
     Route::get('user-onboardings/{userOnboarding}/answers/{answer}/history', [UserOnboardingController::class, 'answerHistory'])->name('user-onboardings.answers.history');
     Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change');
     // Sectioned review — per-section progress and per-document verdicts.
