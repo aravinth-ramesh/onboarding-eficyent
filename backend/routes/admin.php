@@ -103,6 +103,9 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('user-onboardings/{userOnboarding}/reject', [UserOnboardingController::class, 'reject'])->name('user-onboardings.reject')->middleware('ability:' . Ability::REJECT_ONBOARDING);
     Route::get('user-onboardings/{userOnboarding}/answers/{answer}/history', [UserOnboardingController::class, 'answerHistory'])->name('user-onboardings.answers.history');
     Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change');
+    // Sectioned review — per-section progress and per-document verdicts.
+    Route::post('user-onboardings/{userOnboarding}/sections/{group}/review', [UserOnboardingController::class, 'reviewSection'])->name('user-onboardings.sections.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/documents/{file}/review', [UserOnboardingController::class, 'reviewDocument'])->name('user-onboardings.documents.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
     Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question');
     Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question');
     Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email');

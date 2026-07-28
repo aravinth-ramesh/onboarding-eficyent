@@ -135,4 +135,53 @@ class UserOnboarding extends Model
     {
         return $this->hasMany(UserAnswer::class);
     }
+
+    /** Reviewer-side per-section progress markers for this application. */
+    public function sectionReviews(): HasMany
+    {
+        return $this->hasMany(OnboardingSectionReview::class);
+    }
+
+    /**
+     * The sections (QuestionGroups) this application actually contains, in
+     * display order, each paired with its saved review marker (or null). This
+     * is the reviewer's checklist — built from the answers on record so it only
+     * ever lists sections the client filled in.
+     *
+     * @return \Illuminate\Support\Collection<int, object{group: QuestionGroup, review: ?OnboardingSectionReview}>
+     */
+    public function reviewSections(): \Illuminate\Support\Collection
+    {
+        $reviews = $this->sectionReviews->keyBy('question_group_id');
+
+        return $this->answers
+            ->filter(fn ($a) => $a->question && $a->question->group)
+            ->map(fn ($a) => $a->question->group)
+            ->unique('id')
+            ->sortBy('order')
+            ->values()
+            ->map(fn ($group) => (object) [
+                'group' => $group,
+                'review' => $reviews->get($group->id),
+            ]);
+    }
+
+    /**
+     * Review progress as {done, total, complete}. `complete` means every
+     * section has been marked reviewed — the gate for a final decision.
+     *
+     * @return array{done: int, total: int, complete: bool}
+     */
+    public function sectionReviewProgress(): array
+    {
+        $sections = $this->reviewSections();
+        $total = $sections->count();
+        $done = $sections->filter(fn ($s) => $s->review?->status === 'completed')->count();
+
+        return [
+            'done' => $done,
+            'total' => $total,
+            'complete' => $total > 0 && $done === $total,
+        ];
+    }
 }

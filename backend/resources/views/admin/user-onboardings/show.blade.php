@@ -447,12 +447,66 @@
                     fn($a) => $a->question->order ?? 0,
                 ])
                 ->groupBy(fn($a) => $a->question->group->id);
+
+            $me = auth('admin')->user();
+            $canReview = $me?->hasAbility(\App\Enums\Ability::REVIEW_ONBOARDING);
+            $reviewByGroup = $userOnboarding->sectionReviews->keyBy('question_group_id');
+            $sectionProgress = $userOnboarding->sectionReviewProgress();
+            $sectionBadges = [
+                'pending' => ['Not started', 'bg-light text-muted border'],
+                'in_progress' => ['In review', 'bg-info-subtle text-info-emphasis border'],
+                'completed' => ['Reviewed', 'bg-success-subtle text-success border'],
+            ];
         @endphp
 
+        {{-- Reviewer progress across the application's sections. Persists so a
+             long review can be picked up again on another day. --}}
+        @if($sectionProgress['total'] > 0)
+            <div class="section-review-progress mb-4" id="section-review-progress">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold">Review progress</span>
+                    <span class="text-muted small">{{ $sectionProgress['done'] }} of {{ $sectionProgress['total'] }} sections reviewed</span>
+                </div>
+                <div class="progress" style="height: 8px;" role="progressbar" aria-valuenow="{{ $sectionProgress['done'] }}" aria-valuemin="0" aria-valuemax="{{ $sectionProgress['total'] }}">
+                    <div class="progress-bar {{ $sectionProgress['complete'] ? 'bg-success' : '' }}" style="width: {{ $sectionProgress['total'] ? round($sectionProgress['done'] / $sectionProgress['total'] * 100) : 0 }}%;"></div>
+                </div>
+                @if($sectionProgress['complete'])
+                    <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> All sections reviewed — ready for a decision.</div>
+                @endif
+            </div>
+        @endif
+
         @forelse($grouped as $groupId => $groupAnswers)
-            @php $groupName = $groupAnswers->first()->question->group->name; @endphp
-            <div class="{{ !$loop->first ? 'mt-4' : '' }}">
-                <div class="submitted-answers-section-label">{{ $groupName }}</div>
+            @php
+                $groupName = $groupAnswers->first()->question->group->name;
+                $review = $reviewByGroup->get($groupId);
+                $reviewStatus = $review->status ?? 'pending';
+                [$badgeLabel, $badgeClass] = $sectionBadges[$reviewStatus];
+            @endphp
+            <div class="{{ !$loop->first ? 'mt-4' : '' }}" id="section-{{ $groupId }}">
+                <div class="submitted-answers-section-label d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <span>
+                        {{ $groupName }}
+                        <span class="badge {{ $badgeClass }} ms-1 align-middle">{{ $badgeLabel }}</span>
+                    </span>
+                    @if($canReview)
+                        <form method="POST" action="{{ route('admin.user-onboardings.sections.review', [$userOnboarding, $groupId]) }}" class="section-review-form d-flex align-items-center gap-1">
+                            @csrf
+                            <input type="text" name="note" class="form-control form-control-sm section-review-note" placeholder="Note (optional)" value="{{ $review->note ?? '' }}" style="max-width: 200px;">
+                            <select name="status" class="form-select form-select-sm" style="width: auto;">
+                                <option value="pending" @selected($reviewStatus === 'pending')>Not started</option>
+                                <option value="in_progress" @selected($reviewStatus === 'in_progress')>In review</option>
+                                <option value="completed" @selected($reviewStatus === 'completed')>Reviewed</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                        </form>
+                    @endif
+                </div>
+                @if($review && $review->reviewed_at)
+                    <div class="small text-muted mb-1">
+                        <i class="bi bi-check2"></i> Reviewed {{ $review->reviewed_at->diffForHumans() }}{{ $review->reviewer ? ' by ' . $review->reviewer->name : '' }}
+                    </div>
+                @endif
                 <table class="submitted-answers-table">
                     <tbody>
                         @foreach($groupAnswers as $answer)
@@ -634,6 +688,94 @@
             <div class="text-center text-muted py-4">
                 <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
                 No answers submitted yet.
+            </div>
+        @endforelse
+    </div>
+</div>
+
+{{-- Documents — every file the client uploaded, in one place, with a reviewer
+     verdict per file. Grouped by the section the file belongs to. --}}
+@php
+    $docAnswers = $userOnboarding->answers
+        ->filter(fn($a) => $a->question && $a->question->type === 'file' && $a->files->count())
+        ->sortBy([
+            fn($a) => $a->question->group->order ?? 0,
+            fn($a) => $a->question->order ?? 0,
+        ]);
+    $allFiles = $docAnswers->flatMap(fn($a) => $a->files);
+    $docDecisionBadges = [
+        'verified' => ['Verified', 'bg-success-subtle text-success border'],
+        'rejected' => ['Rejected', 'bg-danger-subtle text-danger border'],
+        'resubmit_requested' => ['Resubmission requested', 'bg-warning-subtle text-warning-emphasis border'],
+    ];
+    $verifiedCount = $allFiles->where('review_decision', 'verified')->count();
+@endphp
+<div class="card mb-4" id="documents">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Documents</span>
+        <span class="badge bg-secondary">{{ $verifiedCount }}/{{ $allFiles->count() }} verified</span>
+    </div>
+    <div class="card-body">
+        @forelse($docAnswers->groupBy(fn($a) => $a->question->group->id) as $groupId => $groupAnswers)
+            @php $docGroupName = $groupAnswers->first()->question->group->name; @endphp
+            <div class="{{ !$loop->first ? 'mt-4' : '' }}">
+                <div class="submitted-answers-section-label">{{ $docGroupName }}</div>
+                @foreach($groupAnswers as $answer)
+                    @foreach($answer->files as $file)
+                        @php
+                            $decision = $file->review_decision;
+                            $decisionMeta = $decision ? ($docDecisionBadges[$decision] ?? null) : null;
+                        @endphp
+                        <div class="document-row border rounded p-2 mb-2">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <div class="text-muted small">{{ $answer->question->label }}</div>
+                                    <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                        <i class="bi bi-paperclip"></i>
+                                        {{ $file->original_filename }}
+                                        <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                    </a>
+                                    @switch($file->validation_status)
+                                        @case('passed')
+                                            <span class="badge bg-success-subtle text-success border ms-1" title="{{ $file->validation_summary }}">AI verified</span>
+                                            @break
+                                        @case('needs_review')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">Needs review</span>
+                                            @break
+                                        @case('type_mismatch')
+                                        @case('expired')
+                                        @case('stale')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">{{ ['type_mismatch' => 'Wrong document type', 'expired' => 'Expired', 'stale' => 'Outdated'][$file->validation_status] }} — justified</span>
+                                            @break
+                                    @endswitch
+                                    @if($decisionMeta)
+                                        <span class="badge {{ $decisionMeta[1] }} ms-1">{{ $decisionMeta[0] }}</span>
+                                    @endif
+                                </div>
+                                @if($canReview)
+                                    <form method="POST" action="{{ route('admin.user-onboardings.documents.review', [$userOnboarding, $file]) }}" class="document-review-form d-flex align-items-center gap-1">
+                                        @csrf
+                                        <input type="text" name="review_note" class="form-control form-control-sm" placeholder="Note (optional)" value="{{ $file->review_note }}" style="max-width: 180px;">
+                                        <button type="submit" name="review_decision" value="verified" class="btn btn-sm btn-outline-success" title="Verify"><i class="bi bi-check-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="rejected" class="btn btn-sm btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="resubmit_requested" class="btn btn-sm btn-outline-warning" title="Request new"><i class="bi bi-arrow-repeat"></i></button>
+                                    </form>
+                                @endif
+                            </div>
+                            @if($file->review_note)
+                                <div class="small text-muted fst-italic mt-1"><i class="bi bi-chat-left-text"></i> {{ $file->review_note }}</div>
+                            @endif
+                            @if($file->reviewed_at && $decision)
+                                <div class="small text-muted mt-1">{{ $file->reviewer?->name ? $file->reviewer->name . ' · ' : '' }}{{ $file->reviewed_at->diffForHumans() }}</div>
+                            @endif
+                        </div>
+                    @endforeach
+                @endforeach
+            </div>
+        @empty
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-folder2-open" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                No documents uploaded.
             </div>
         @endforelse
     </div>

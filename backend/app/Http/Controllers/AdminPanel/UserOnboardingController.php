@@ -9,7 +9,10 @@ use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AnswerAuditLog;
+use App\Models\AnswerFile;
 use App\Models\FilterPreset;
+use App\Models\OnboardingSectionReview;
+use App\Models\QuestionGroup;
 use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
@@ -311,6 +314,8 @@ class UserOnboardingController extends Controller
             'notes.admin',
             'messages.admin',
             'assignee',
+            'answers.files.reviewer',
+            'sectionReviews',
         ]);
 
         // Viewing the thread counts as reading the client's messages.
@@ -366,6 +371,73 @@ class UserOnboardingController extends Controller
             ->paginate(20);
 
         return view('admin.user-onboardings.answer-history', compact('userOnboarding', 'answer', 'logs'));
+    }
+
+    /**
+     * Record where a reviewer has reached on a section (QuestionGroup) of this
+     * application, so a long review can be paused and resumed. Only marks
+     * belonging to sections the application actually contains are accepted.
+     */
+    public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,in_progress,completed'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        // The section must be one the client actually answered — no marking
+        // progress on groups that aren't part of this application.
+        $belongs = $userOnboarding->answers()
+            ->whereHas('question', fn ($q) => $q->where('question_group_id', $group->id))
+            ->exists();
+        abort_unless($belongs, 404);
+
+        $completed = $validated['status'] === 'completed';
+
+        OnboardingSectionReview::updateOrCreate(
+            ['user_onboarding_id' => $userOnboarding->id, 'question_group_id' => $group->id],
+            [
+                'status' => $validated['status'],
+                'note' => $validated['note'] ?? null,
+                'reviewed_by' => Auth::guard('admin')->id(),
+                'reviewed_at' => $completed ? now() : null,
+            ],
+        );
+
+        return redirect()
+            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+            ->with('success', $completed ? 'Section marked as reviewed.' : 'Section progress saved.');
+    }
+
+    /**
+     * A reviewer's verdict on a single uploaded document — verified, rejected,
+     * or a resubmission requested — distinct from the automated validation.
+     */
+    public function reviewDocument(Request $request, UserOnboarding $userOnboarding, AnswerFile $file): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        // The file must hang off an answer belonging to this application.
+        $file->loadMissing('answer');
+        abort_unless($file->answer && (int) $file->answer->user_onboarding_id === (int) $userOnboarding->id, 404);
+
+        $validated = $request->validate([
+            'review_decision' => ['required', 'in:verified,rejected,resubmit_requested'],
+            'review_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $file->update([
+            'review_decision' => $validated['review_decision'],
+            'review_note' => $validated['review_note'] ?? null,
+            'reviewed_at' => now(),
+            'reviewed_by' => Auth::guard('admin')->id(),
+        ]);
+
+        return redirect()
+            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#documents')
+            ->with('success', 'Document review saved.');
     }
 
     public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse
