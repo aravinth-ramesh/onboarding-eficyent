@@ -204,7 +204,8 @@
 </div>
 @endif
 
-{{-- Team workload --}}
+{{-- Team workload — managers/admins only --}}
+@if(auth('admin')->user()->hasAbility(\App\Enums\Ability::VIEW_WORKLOAD))
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Team Workload</span>
@@ -255,6 +256,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="row g-3 mb-4">
     <div class="col-lg-5">

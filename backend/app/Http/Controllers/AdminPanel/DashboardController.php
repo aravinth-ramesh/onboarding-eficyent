@@ -10,12 +10,20 @@ use App\Models\QuestionGroup;
 use App\Models\User;
 use App\Models\UserOnboarding;
 use App\Models\UserType;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(): View|RedirectResponse
     {
+        // Analysts don't get the global platform dashboard — their home is the
+        // queue of companies assigned to them.
+        if (Auth::guard('admin')->user()->seesOnlyAssignedOnboardings()) {
+            return redirect()->route('admin.user-onboardings.index');
+        }
+
         $stats = [
             'users' => User::count(),
             'user_types' => UserType::count(),

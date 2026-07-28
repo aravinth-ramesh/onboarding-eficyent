@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\AdminPanel;
 
+use App\Enums\Ability;
 use App\Http\Controllers\Concerns\ParsesDateRange;
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AnswerAuditLog;
@@ -50,7 +52,7 @@ class UserOnboardingController extends Controller
     {
         $onboardings = $this->filteredQuery($request)->with('assignee')->latest()->paginate(20)->withQueryString();
         $userTypes = UserType::orderBy('order')->get();
-        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
+        $admins = Admin::reviewers()->get();
 
         // Saved views for whoever is looking, and which one (if any) the
         // current filters match, so it can be shown as selected.
@@ -339,7 +341,7 @@ class UserOnboardingController extends Controller
             ->filter()
             ->toArray();
 
-        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
+        $admins = Admin::reviewers()->get();
 
         return view('admin.user-onboardings.show', compact(
             'userOnboarding',
@@ -432,7 +434,14 @@ class UserOnboardingController extends Controller
     public function assign(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
         $validated = $request->validate([
-            'assigned_to' => 'nullable|exists:admins,id',
+            // Only an active reviewer (analyst or manager) may hold a company.
+            'assigned_to' => ['nullable', \Illuminate\Validation\Rule::exists('admins', 'id')->where(
+                fn ($q) => $q->where('is_active', true)->whereIn('role', [
+                    \App\Enums\AdminRole::Analyst->value, \App\Enums\AdminRole::Manager->value,
+                ]),
+            )],
+        ], [
+            'assigned_to.exists' => 'You can only assign a company to an active analyst or manager.',
         ]);
 
         $newAssignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
@@ -457,6 +466,41 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $newAssignee ? 'Application assigned.' : 'Assignment cleared.');
+    }
+
+    /**
+     * Assign (or clear the assignment of) several companies at once — a
+     * manager distributing a batch of work. Only the caller's visible rows and
+     * an active-reviewer target are honoured. No per-company email is sent for
+     * a batch; the assignee sees the new work in their queue.
+     */
+    public function bulkAssign(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:user_onboardings,id',
+            'assigned_to' => ['nullable', \Illuminate\Validation\Rule::exists('admins', 'id')->where(
+                fn ($q) => $q->where('is_active', true)->whereIn('role', [
+                    \App\Enums\AdminRole::Analyst->value, \App\Enums\AdminRole::Manager->value,
+                ]),
+            )],
+        ], [
+            'assigned_to.exists' => 'You can only assign companies to an active analyst or manager.',
+        ]);
+
+        $assignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
+
+        $count = UserOnboarding::visibleTo(Auth::guard('admin')->user())
+            ->whereIn('id', $validated['ids'])
+            ->update(['assigned_to' => $assignee]);
+
+        return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'assigned_to', '_token']))
+            ->with(
+                $count > 0 ? 'success' : 'error',
+                $count > 0
+                    ? "{$count} " . str('company')->plural($count) . ' ' . ($assignee ? 'assigned.' : 'unassigned.')
+                    : 'No companies were updated.',
+            );
     }
 
     public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse

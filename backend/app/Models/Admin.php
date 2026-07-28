@@ -35,6 +35,22 @@ class Admin extends Authenticatable
         return $this->role === $role;
     }
 
+    /** Whether an onboarding may be assigned to this admin for review. */
+    public function canReceiveAssignments(): bool
+    {
+        return $this->is_active
+            && $this->role instanceof AdminRole
+            && $this->role->canReceiveAssignments();
+    }
+
+    /** Active staff who can be assigned companies to review (analysts + managers). */
+    public function scopeReviewers($query)
+    {
+        return $query->where('is_active', true)
+            ->whereIn('role', [AdminRole::Analyst->value, AdminRole::Manager->value])
+            ->orderBy('name');
+    }
+
     /**
      * Roles this admin is allowed to grant others: a super admin can grant any
      * role; everyone else only roles strictly below their own level. Prevents

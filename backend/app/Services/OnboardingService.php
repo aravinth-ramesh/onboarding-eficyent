@@ -236,7 +236,10 @@ class OnboardingService
         }
 
         try {
+            // Route new work to the least-loaded active analyst (the front-line
+            // review pool). If there are none, leave it for a manager to assign.
             $assignee = Admin::where('is_active', true)
+                ->where('role', \App\Enums\AdminRole::Analyst->value)
                 ->withCount(['assignedOnboardings as open_count' => fn ($q) => $q->where('status', 'completed')])
                 ->orderBy('open_count')
                 ->orderBy('id')

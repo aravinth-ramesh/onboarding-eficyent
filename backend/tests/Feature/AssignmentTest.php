@@ -25,8 +25,8 @@ class AssignmentTest extends TestCase
 
         Mail::fake();
 
-        $this->alice = Admin::create(['name' => 'Alice Admin', 'email' => 'alice@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
-        $this->bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        $this->alice = Admin::create(['name' => 'Alice Admin', 'email' => 'alice@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::Manager]);
+        $this->bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::Analyst]);
 
         $user = User::create(['email' => 'client@test.com', 'name' => 'Test Client', 'position' => 'CFO']);
         $type = UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
@@ -81,12 +81,16 @@ class AssignmentTest extends TestCase
             'started_at' => now(),
         ]);
 
+        // Bob (analyst) filtering "me" sees his assigned company. (He can't see
+        // the unassigned one at all — analysts are scoped to their assignments.)
         $this->actingAs($this->bob, 'admin')
             ->get(route('admin.user-onboardings.index', ['assigned' => 'me']))
             ->assertSee('Test Client')
             ->assertDontSee('Other Client');
 
-        $this->actingAs($this->bob, 'admin')
+        // Alice (manager) sees all, so the "unassigned" filter surfaces the
+        // company nobody holds.
+        $this->actingAs($this->alice, 'admin')
             ->get(route('admin.user-onboardings.index', ['assigned' => 'unassigned']))
             ->assertSee('Other Client')
             ->assertDontSee('Test Client');

@@ -42,6 +42,16 @@ enum AdminRole: string
     }
 
     /**
+     * Roles that do front-line company review and so can have onboardings
+     * assigned to them. Compliance/Admin/Super Admin oversee and decide, but
+     * are not part of the day-to-day assignment pool.
+     */
+    public function canReceiveAssignments(): bool
+    {
+        return in_array($this, [self::Analyst, self::Manager], true);
+    }
+
+    /**
      * The abilities this role grants. Consumed by AuthServiceProvider to define
      * a Gate per ability, and by the UserOnboarding policy. Keep ability names
      * in sync with the Ability constants below.

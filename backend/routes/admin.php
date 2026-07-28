@@ -87,6 +87,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Must precede the {userOnboarding} wildcard.
     Route::get('user-onboardings/export-csv', [UserOnboardingController::class, 'exportCsv'])->name('user-onboardings.export-csv');
     Route::post('user-onboardings/bulk-decision', [UserOnboardingController::class, 'bulkDecision'])->name('user-onboardings.bulk-decision')->middleware('ability:' . Ability::APPROVE_ONBOARDING);
+    Route::post('user-onboardings/bulk-assign', [UserOnboardingController::class, 'bulkAssign'])->name('user-onboardings.bulk-assign')->middleware('ability:' . Ability::ASSIGN_ONBOARDING);
     Route::post('user-onboardings/bulk-email', [UserOnboardingController::class, 'bulkEmail'])->name('user-onboardings.bulk-email')->middleware('ability:' . Ability::MANAGE_EMAILS);
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
     Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');

@@ -28,9 +28,9 @@ class AutoAssignmentTest extends TestCase
         Mail::fake();
         config(['onboarding.auto_assign_submissions' => true]);
 
-        $this->alice = Admin::create(['name' => 'Alice Admin', 'email' => 'alice@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
-        $this->bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
-        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        $this->alice = Admin::create(['name' => 'Alice Admin', 'email' => 'alice@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::Analyst]);
+        $this->bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::Analyst]);
+        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false, 'role' => \App\Enums\AdminRole::Analyst]);
 
         $this->service = app(OnboardingService::class);
 
