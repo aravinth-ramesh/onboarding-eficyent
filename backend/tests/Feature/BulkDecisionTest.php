@@ -24,7 +24,7 @@ class BulkDecisionTest extends TestCase
 
         Mail::fake();
 
-        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $this->service = app(OnboardingService::class);
 
         OnboardingStep::query()->delete();

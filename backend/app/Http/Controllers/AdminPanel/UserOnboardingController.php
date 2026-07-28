@@ -229,7 +229,9 @@ class UserOnboardingController extends Controller
 
     private function filteredQuery(Request $request)
     {
-        $query = UserOnboarding::with(['user', 'userType', 'subcategory']);
+        // Analysts only ever see their own assignments; other roles see all.
+        $query = UserOnboarding::with(['user', 'userType', 'subcategory'])
+            ->visibleTo(Auth::guard('admin')->user());
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -294,6 +296,8 @@ class UserOnboardingController extends Controller
 
     public function show(UserOnboarding $userOnboarding): View
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $userOnboarding->load([
             'user',
             'userType',

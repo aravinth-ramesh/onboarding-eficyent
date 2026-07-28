@@ -416,62 +416,69 @@
             </div>
         </div>
 
+        @php
+            $me = auth('admin')->user();
+            $can = fn ($ability) => $me?->hasAbility($ability);
+        @endphp
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                 <i class="bi bi-grid-1x2"></i> Dashboard
             </a>
 
-            <div class="sidebar-heading">Configuration</div>
+            @if($can(\App\Enums\Ability::MANAGE_TEMPLATES) || $can(\App\Enums\Ability::MANAGE_EMAILS))
+                <div class="sidebar-heading">Configuration</div>
+            @endif
 
-            <a href="{{ route('admin.user-types.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-types.*') ? 'active' : '' }}">
-                <i class="bi bi-people"></i> User Types
-            </a>
+            @if($can(\App\Enums\Ability::MANAGE_TEMPLATES))
+                <a href="{{ route('admin.user-types.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-types.*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i> User Types
+                </a>
+                <a href="{{ route('admin.question-groups.index') }}" class="sidebar-link {{ request()->routeIs('admin.question-groups.*') ? 'active' : '' }}">
+                    <i class="bi bi-collection"></i> Question Groups
+                </a>
+                <a href="{{ route('admin.questions.index') }}" class="sidebar-link {{ request()->routeIs('admin.questions.*') ? 'active' : '' }}">
+                    <i class="bi bi-question-circle"></i> Questions
+                </a>
+                <a href="{{ route('admin.conditional-rules.index') }}" class="sidebar-link {{ request()->routeIs('admin.conditional-rules.*') ? 'active' : '' }}">
+                    <i class="bi bi-diagram-3"></i> Conditional Rules
+                </a>
+                <a href="{{ route('admin.onboarding-steps.index') }}" class="sidebar-link {{ request()->routeIs('admin.onboarding-steps.*') ? 'active' : '' }}">
+                    <i class="bi bi-list-ol"></i> Onboarding Steps
+                </a>
+                <a href="{{ route('admin.country-registrations.index') }}" class="sidebar-link {{ request()->routeIs('admin.country-registrations.*') ? 'active' : '' }}">
+                    <i class="bi bi-globe2"></i> Country Registrations
+                </a>
+                <a href="{{ route('admin.email-templates.index') }}" class="sidebar-link {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
+                    <i class="bi bi-envelope-paper"></i> Email Templates
+                </a>
+            @endif
 
-            <a href="{{ route('admin.question-groups.index') }}" class="sidebar-link {{ request()->routeIs('admin.question-groups.*') ? 'active' : '' }}">
-                <i class="bi bi-collection"></i> Question Groups
-            </a>
-
-            <a href="{{ route('admin.questions.index') }}" class="sidebar-link {{ request()->routeIs('admin.questions.*') ? 'active' : '' }}">
-                <i class="bi bi-question-circle"></i> Questions
-            </a>
-
-            <a href="{{ route('admin.conditional-rules.index') }}" class="sidebar-link {{ request()->routeIs('admin.conditional-rules.*') ? 'active' : '' }}">
-                <i class="bi bi-diagram-3"></i> Conditional Rules
-            </a>
-
-            <a href="{{ route('admin.onboarding-steps.index') }}" class="sidebar-link {{ request()->routeIs('admin.onboarding-steps.*') ? 'active' : '' }}">
-                <i class="bi bi-list-ol"></i> Onboarding Steps
-            </a>
-
-            <a href="{{ route('admin.country-registrations.index') }}" class="sidebar-link {{ request()->routeIs('admin.country-registrations.*') ? 'active' : '' }}">
-                <i class="bi bi-globe2"></i> Country Registrations
-            </a>
-
-            <a href="{{ route('admin.email-templates.index') }}" class="sidebar-link {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
-                <i class="bi bi-envelope-paper"></i> Email Templates
-            </a>
-
-            <a href="{{ route('admin.scheduled-emails.index') }}" class="sidebar-link {{ request()->routeIs('admin.scheduled-emails.*') ? 'active' : '' }}">
-                <i class="bi bi-clock-history"></i> Scheduled Emails
-            </a>
+            @if($can(\App\Enums\Ability::MANAGE_EMAILS))
+                <a href="{{ route('admin.scheduled-emails.index') }}" class="sidebar-link {{ request()->routeIs('admin.scheduled-emails.*') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history"></i> Scheduled Emails
+                </a>
+            @endif
 
             <div class="sidebar-heading">Monitoring</div>
 
             <a href="{{ route('admin.user-onboardings.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-onboardings.*') ? 'active' : '' }}">
-                <i class="bi bi-clipboard-check"></i> User Onboardings
+                <i class="bi bi-clipboard-check"></i> Onboardings
             </a>
 
-            <a href="{{ route('admin.document-reviews.index') }}" class="sidebar-link {{ request()->routeIs('admin.document-reviews.*') ? 'active' : '' }}">
-                <i class="bi bi-file-earmark-check"></i> Document Reviews
-            </a>
+            @if($can(\App\Enums\Ability::TUNE_DOCUMENT_POLICY))
+                <a href="{{ route('admin.document-reviews.index') }}" class="sidebar-link {{ request()->routeIs('admin.document-reviews.*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-check"></i> Document Reviews
+                </a>
+            @endif
 
-            <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
-                <i class="bi bi-journal-text"></i> Audit Logs
-            </a>
-
-            <a href="{{ route('admin.admin-activity.index') }}" class="sidebar-link {{ request()->routeIs('admin.admin-activity.*') ? 'active' : '' }}">
-                <i class="bi bi-person-lines-fill"></i> Admin Activity
-            </a>
+            @if($can(\App\Enums\Ability::VIEW_ACTIVITY_LOG))
+                <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
+                    <i class="bi bi-journal-text"></i> Audit Logs
+                </a>
+                <a href="{{ route('admin.admin-activity.index') }}" class="sidebar-link {{ request()->routeIs('admin.admin-activity.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-lines-fill"></i> Admin Activity
+                </a>
+            @endif
         </nav>
 
         <div class="sidebar-footer">
@@ -479,7 +486,7 @@
                 <div class="sidebar-user-avatar">{{ strtoupper(substr(auth('admin')->user()->name ?? auth('admin')->user()->email, 0, 1)) }}</div>
                 <div class="sidebar-user-info">
                     <div class="sidebar-user-name">{{ auth('admin')->user()->name ?? 'Admin' }}</div>
-                    <div class="sidebar-user-email">{{ auth('admin')->user()->email }}</div>
+                    <div class="sidebar-user-email">{{ $me?->role?->label() ?? auth('admin')->user()->email }}</div>
                 </div>
                 <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
                     @csrf

@@ -55,6 +55,24 @@ class UserOnboarding extends Model
         return $this->belongsTo(Admin::class, 'assigned_to');
     }
 
+    /**
+     * Restrict a query to the onboardings an admin may see. Analysts see only
+     * companies assigned to them; every other role sees all.
+     */
+    public function scopeVisibleTo($query, Admin $admin)
+    {
+        return $query->when(
+            $admin->seesOnlyAssignedOnboardings(),
+            fn ($q) => $q->where('assigned_to', $admin->id),
+        );
+    }
+
+    /** Whether the given admin is allowed to open this specific onboarding. */
+    public function isVisibleTo(Admin $admin): bool
+    {
+        return ! $admin->seesOnlyAssignedOnboardings() || $this->assigned_to === $admin->id;
+    }
+
     public function reviewLogs(): HasMany
     {
         return $this->hasMany(OnboardingReviewLog::class)->orderBy('created_at')->orderBy('id');

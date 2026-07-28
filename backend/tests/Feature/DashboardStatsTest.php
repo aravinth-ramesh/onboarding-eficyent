@@ -23,7 +23,7 @@ class DashboardStatsTest extends TestCase
 
         Mail::fake();
 
-        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $this->service = app(OnboardingService::class);
 
         OnboardingStep::query()->delete();
@@ -72,8 +72,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_dashboard_shows_per_admin_workload(): void
     {
-        $bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true]);
-        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false]);
+        $bob = Admin::create(['name' => 'Bob Admin', 'email' => 'bob@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         // Reviewer decides one; Bob holds one open; one open is unassigned.
         config(['onboarding.auto_assign_submissions' => false]);

@@ -40,8 +40,7 @@ class DocumentReviewTest extends TestCase
             'name' => 'Reviewer',
             'email' => 'reviewer@test.com',
             'password' => 'secret-password',
-            'is_active' => true,
-        ]);
+            'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
     }
 
     private function makeFlaggedFile(): AnswerFile

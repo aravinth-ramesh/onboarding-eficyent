@@ -27,9 +27,9 @@ class SubmissionNotificationTest extends TestCase
         $this->user = User::create(['email' => 'client@test.com', 'name' => 'Test Client', 'position' => 'CFO']);
         $this->service = app(OnboardingService::class);
 
-        Admin::create(['name' => 'Reviewer One', 'email' => 'one@test.com', 'password' => 'x', 'is_active' => true]);
-        Admin::create(['name' => 'Reviewer Two', 'email' => 'two@test.com', 'password' => 'x', 'is_active' => true]);
-        Admin::create(['name' => 'Gone', 'email' => 'inactive@test.com', 'password' => 'x', 'is_active' => false]);
+        Admin::create(['name' => 'Reviewer One', 'email' => 'one@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        Admin::create(['name' => 'Reviewer Two', 'email' => 'two@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        Admin::create(['name' => 'Gone', 'email' => 'inactive@test.com', 'password' => 'x', 'is_active' => false, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         // A deterministic two-step master flow (the data migrations leave a
         // variable number of steps on a fresh DB).

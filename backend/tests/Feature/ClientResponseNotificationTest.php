@@ -40,8 +40,8 @@ class ClientResponseNotificationTest extends TestCase
         OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'component_key' => 'review', 'order' => 1, 'is_active' => true]);
 
         $this->user = User::create(['email' => 'client@test.com', 'name' => 'Test Client', 'position' => 'CFO']);
-        $this->requester = Admin::create(['name' => 'Requester', 'email' => 'requester@test.com', 'password' => 'x', 'is_active' => true]);
-        $this->other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->requester = Admin::create(['name' => 'Requester', 'email' => 'requester@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        $this->other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $this->onboarding = app(OnboardingService::class)->initializeForUser($this->user);
 

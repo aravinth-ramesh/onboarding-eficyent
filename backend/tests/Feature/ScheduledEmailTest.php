@@ -26,7 +26,7 @@ class ScheduledEmailTest extends TestCase
 
         Mail::fake();
 
-        $this->admin = Admin::create(['name' => 'Sender', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Sender', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $type = UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
 
         $alice = User::create(['email' => 'alice@test.com', 'name' => 'Alice', 'position' => 'CFO']);
@@ -593,7 +593,7 @@ class ScheduledEmailTest extends TestCase
 
     public function test_presets_are_private_to_the_admin_who_saved_them(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $theirs = \App\Models\FilterPreset::create([
             'admin_id' => $other->id, 'context' => 'scheduled-emails',

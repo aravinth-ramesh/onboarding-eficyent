@@ -28,8 +28,7 @@ class AdminQuestionPolicyTest extends TestCase
             'name' => 'Admin',
             'email' => 'admin@test.com',
             'password' => 'secret-password',
-            'is_active' => true,
-        ]);
+            'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $this->group = QuestionGroup::create(['name' => 'Docs', 'slug' => 'docs', 'order' => 1, 'is_active' => true]);
     }
 
