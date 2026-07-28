@@ -419,6 +419,10 @@
         @php
             $me = auth('admin')->user();
             $can = fn ($ability) => $me?->hasAbility($ability);
+            // Four-eyes checker badge: applications awaiting this admin's sign-off.
+            $awaitingApprovalCount = $me && $can(\App\Enums\Ability::APPROVE_ONBOARDING)
+                ? \App\Models\UserOnboarding::awaitingApprovalBy($me)->count()
+                : 0;
         @endphp
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
@@ -463,6 +467,9 @@
 
             <a href="{{ route('admin.user-onboardings.index') }}" class="sidebar-link {{ request()->routeIs('admin.user-onboardings.*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard-check"></i> Onboardings
+                @if($awaitingApprovalCount > 0)
+                    <span class="badge bg-info-subtle text-info-emphasis border ms-auto" title="{{ $awaitingApprovalCount }} awaiting your approval">{{ $awaitingApprovalCount }}</span>
+                @endif
             </a>
 
             @if($can(\App\Enums\Ability::TUNE_DOCUMENT_POLICY))

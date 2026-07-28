@@ -523,11 +523,21 @@ class UserOnboardingController extends Controller
         ]);
 
         $newAssignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
-        $changed = $newAssignee !== $userOnboarding->assigned_to;
+        $previousAssignee = $userOnboarding->assigned_to;
+        $changed = $newAssignee !== $previousAssignee;
 
         $userOnboarding->update(['assigned_to' => $newAssignee]);
 
         $actingAdmin = Auth::guard('admin')->user();
+
+        // Record the reassignment on the review timeline (who → whom).
+        if ($changed) {
+            $userOnboarding->reviewLogs()->create([
+                'event' => $newAssignee ? 'assigned' : 'unassigned',
+                'admin_id' => $actingAdmin->id,
+                'comment' => $this->assignmentComment($previousAssignee, $newAssignee),
+            ]);
+        }
 
         // Notify the new assignee — unless they assigned it to themselves.
         if ($changed && $newAssignee !== null && $newAssignee !== $actingAdmin->id) {
@@ -567,10 +577,31 @@ class UserOnboardingController extends Controller
         ]);
 
         $assignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
+        $actor = Auth::guard('admin')->user();
 
-        $count = UserOnboarding::visibleTo(Auth::guard('admin')->user())
+        // Fetch first so we can record a per-application reassignment trail.
+        $targets = UserOnboarding::visibleTo($actor)
             ->whereIn('id', $validated['ids'])
-            ->update(['assigned_to' => $assignee]);
+            ->get(['id', 'assigned_to']);
+
+        UserOnboarding::whereIn('id', $targets->pluck('id'))->update(['assigned_to' => $assignee]);
+
+        $now = now();
+        $logs = $targets
+            ->filter(fn ($o) => $o->assigned_to !== $assignee)
+            ->map(fn ($o) => [
+                'user_onboarding_id' => $o->id,
+                'event' => $assignee ? 'assigned' : 'unassigned',
+                'admin_id' => $actor->id,
+                'comment' => $this->assignmentComment($o->assigned_to, $assignee),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->values()->all();
+        if ($logs) {
+            \App\Models\OnboardingReviewLog::insert($logs);
+        }
+
+        $count = $targets->count();
 
         return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'assigned_to', '_token']))
             ->with(
@@ -579,6 +610,23 @@ class UserOnboardingController extends Controller
                     ? "{$count} " . str('company')->plural($count) . ' ' . ($assignee ? 'assigned.' : 'unassigned.')
                     : 'No companies were updated.',
             );
+    }
+
+    /** Human-readable description of an assignment change for the timeline. */
+    private function assignmentComment(?int $from, ?int $to): string
+    {
+        $name = fn (?int $id) => $id ? (Admin::find($id)?->name ?? 'a reviewer') : null;
+        $fromName = $name($from);
+        $toName = $name($to);
+
+        if ($to === null) {
+            return $fromName ? "Unassigned from {$fromName}" : 'Unassigned';
+        }
+        if ($from === null) {
+            return "Assigned to {$toName}";
+        }
+
+        return "Reassigned from {$fromName} to {$toName}";
     }
 
     public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse

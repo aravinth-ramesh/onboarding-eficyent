@@ -18,9 +18,11 @@ class DashboardController extends Controller
 {
     public function index(): View|RedirectResponse
     {
+        $admin = Auth::guard('admin')->user();
+
         // Analysts don't get the global platform dashboard — their home is the
         // queue of companies assigned to them.
-        if (Auth::guard('admin')->user()->seesOnlyAssignedOnboardings()) {
+        if ($admin->seesOnlyAssignedOnboardings()) {
             return redirect()->route('admin.user-onboardings.index');
         }
 
@@ -54,6 +56,18 @@ class DashboardController extends Controller
                 ->get(),
             'workload' => $this->teamWorkload(),
             'unassignedOpen' => UserOnboarding::where('status', 'completed')->whereNull('assigned_to')->count(),
+            // Four-eyes checker queue: applications handed off for a decision,
+            // excluding any this admin submitted themselves.
+            'approvalQueue' => $admin->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING)
+                ? UserOnboarding::awaitingApprovalBy($admin)
+                    ->with(['user', 'submittedForApprovalBy'])
+                    ->orderByRaw("approval_state = 'escalated' desc")
+                    ->orderBy('submitted_for_approval_at')
+                    ->limit(10)->get()
+                : collect(),
+            'approvalQueueTotal' => $admin->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING)
+                ? UserOnboarding::awaitingApprovalBy($admin)->count()
+                : 0,
             // Client responses no admin has acknowledged yet — a real work
             // queue: entries leave once someone marks them checked.
             'clientResponses' => \App\Models\AdminNotification::with(['user.onboarding', 'userAnswer.question', 'adminQuestion'])

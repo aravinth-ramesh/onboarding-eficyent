@@ -197,6 +197,7 @@
                                 Archived
                             </span>
                         @endif
+                        @include('admin.user-onboardings._aging-badge', ['aging' => $userOnboarding->reviewAging()])
                     </dd>
 
                     <dt class="text-muted" style="font-size: 0.8rem;">Assigned To</dt>
@@ -371,6 +372,8 @@
                                 'reopened' => ['icon' => 'bi-unlock', 'class' => 'text-secondary', 'label' => 'Reopened by client'],
                                 'submitted_for_approval' => ['icon' => 'bi-send-check', 'class' => 'text-primary', 'label' => 'Submitted for approval'],
                                 'escalated' => ['icon' => 'bi-flag-fill', 'class' => 'text-warning', 'label' => 'Escalated to compliance'],
+                                'assigned' => ['icon' => 'bi-person-check', 'class' => 'text-secondary', 'label' => 'Assigned'],
+                                'unassigned' => ['icon' => 'bi-person-dash', 'class' => 'text-secondary', 'label' => 'Unassigned'],
                             ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst(str_replace('_', ' ', $log->event))];
                         @endphp
                         <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">

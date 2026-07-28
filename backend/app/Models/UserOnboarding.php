@@ -61,6 +61,52 @@ class UserOnboarding extends Model
         return $this->approval_state === 'escalated';
     }
 
+    /**
+     * How long this application has been waiting at its current review stage,
+     * and whether that breaches the SLA. Only submitted applications awaiting a
+     * decision age; returns null once decided or still in draft.
+     *
+     * @return array{days: int, threshold: int, overdue: bool, stage: string}|null
+     */
+    public function reviewAging(): ?array
+    {
+        if ($this->status !== 'completed') {
+            return null;
+        }
+
+        $awaitingApproval = $this->isAwaitingApproval();
+        $since = $awaitingApproval
+            ? ($this->submitted_for_approval_at ?? $this->completed_at ?? $this->started_at)
+            : ($this->completed_at ?? $this->started_at);
+
+        if (! $since) {
+            return null;
+        }
+
+        $threshold = (int) config($awaitingApproval ? 'onboarding.sla.approval_days' : 'onboarding.sla.review_days');
+        $days = (int) $since->diffInDays(now());
+
+        return [
+            'days' => $days,
+            'threshold' => $threshold,
+            'overdue' => $days >= $threshold,
+            'stage' => $awaitingApproval ? 'approval' : 'review',
+        ];
+    }
+
+    /**
+     * Applications waiting for the given admin to approve them: handed off for
+     * a decision, but not by this admin (four-eyes — you can't approve your
+     * own submission).
+     */
+    public function scopeAwaitingApprovalBy($query, Admin $admin)
+    {
+        return $query->where('status', 'completed')
+            ->whereIn('approval_state', ['pending_approval', 'escalated'])
+            ->where(fn ($q) => $q->whereNull('submitted_for_approval_by')
+                ->orWhere('submitted_for_approval_by', '!=', $admin->id));
+    }
+
     public function archivedBy(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'archived_by');

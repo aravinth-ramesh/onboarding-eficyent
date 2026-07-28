@@ -206,6 +206,12 @@
                                 <span class="badge badge-{{ $onboarding->status }}">
                                     {{ ucfirst(str_replace('_', ' ', $onboarding->status)) }}
                                 </span>
+                                @if($onboarding->approval_state === 'escalated')
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border" title="Escalated to compliance"><i class="bi bi-flag-fill"></i></span>
+                                @elseif($onboarding->approval_state === 'pending_approval')
+                                    <span class="badge bg-info-subtle text-info-emphasis border" title="Awaiting a second reviewer"><i class="bi bi-hourglass-split"></i></span>
+                                @endif
+                                @include('admin.user-onboardings._aging-badge', ['aging' => $onboarding->reviewAging()])
                             </td>
                             <td>
                                 @if($onboarding->assignee)
