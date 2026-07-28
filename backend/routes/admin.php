@@ -28,13 +28,6 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Personal settings
     Route::patch('settings/pin-shortcut', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'updatePinShortcut'])->name('settings.pin-shortcut');
     Route::post('settings/reset-preset-customizations', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'resetPresetCustomizations'])->name('settings.reset-preset-customizations');
-    Route::get('settings/preset-history', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'presetHistory'])->name('settings.preset-history');
-    Route::get('settings/preset-history/export', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'exportPresetHistory'])->name('settings.preset-history.export');
-    Route::post('settings/preset-history/clear', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'clearPresetHistory'])->name('settings.preset-history.clear');
-    Route::post('settings/preset-history/restore', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'restorePresetHistory'])->name('settings.preset-history.restore');
-    Route::post('settings/preset-history/bulk-pin', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'bulkPinHistory'])->name('settings.preset-history.bulk-pin');
-    Route::post('settings/preset-history/unpin-all', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'unpinAllHistory'])->name('settings.preset-history.unpin-all');
-    Route::post('settings/preset-history/{log}/pin', [\App\Http\Controllers\AdminPanel\AdminSettingsController::class, 'toggleHistoryPin'])->name('settings.preset-history.pin');
 
     // User Types
     Route::resource('user-types', UserTypeController::class)->except(['show']);
