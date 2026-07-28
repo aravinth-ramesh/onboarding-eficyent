@@ -479,6 +479,13 @@
                     <i class="bi bi-person-lines-fill"></i> Admin Activity
                 </a>
             @endif
+
+            @if($can(\App\Enums\Ability::MANAGE_USERS))
+                <div class="sidebar-heading">Administration</div>
+                <a href="{{ route('admin.users.index') }}" class="sidebar-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                    <i class="bi bi-people-fill"></i> Staff
+                </a>
+            @endif
         </nav>
 
         <div class="sidebar-footer">

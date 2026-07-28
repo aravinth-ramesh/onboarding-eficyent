@@ -106,6 +106,16 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question');
     Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email');
 
+    // Staff / user management (Admin / Super Admin)
+    Route::middleware('ability:' . Ability::MANAGE_USERS)->group(function () {
+        Route::get('users', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'create'])->name('users.create');
+        Route::post('users', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'store'])->name('users.store');
+        Route::get('users/{admin}/edit', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{admin}', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'update'])->name('users.update');
+        Route::post('users/{admin}/toggle', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'toggleStatus'])->name('users.toggle');
+    });
+
     // Monitoring — audit trails (Compliance / Admin+)
     Route::middleware('ability:' . Ability::VIEW_ACTIVITY_LOG)->group(function () {
         Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');

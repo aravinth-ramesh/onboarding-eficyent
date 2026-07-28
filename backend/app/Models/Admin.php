@@ -35,6 +35,31 @@ class Admin extends Authenticatable
         return $this->role === $role;
     }
 
+    /**
+     * Roles this admin is allowed to grant others: a super admin can grant any
+     * role; everyone else only roles strictly below their own level. Prevents
+     * privilege escalation via user management.
+     *
+     * @return array<int, AdminRole>
+     */
+    public function assignableRoles(): array
+    {
+        return collect(AdminRole::cases())
+            ->filter(fn (AdminRole $r) => $this->isRole(AdminRole::SuperAdmin) || $r->level() < $this->role->level())
+            ->values()
+            ->all();
+    }
+
+    /** Whether this admin may edit/deactivate the given target (never themselves). */
+    public function canManage(self $target): bool
+    {
+        if ($this->id === $target->id) {
+            return false;
+        }
+
+        return $this->isRole(AdminRole::SuperAdmin) || $target->role->level() < $this->role->level();
+    }
+
     /** Analysts are scoped to their own assignments; everyone else sees more. */
     public function seesOnlyAssignedOnboardings(): bool
     {
