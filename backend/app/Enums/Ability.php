@@ -3,9 +3,11 @@
 namespace App\Enums;
 
 /**
- * The named permissions in the admin panel. Each becomes a Gate ability
- * (AuthServiceProvider), granted to roles via AdminRole::abilities(). Reference
- * these constants everywhere instead of raw strings so a typo is a hard error.
+ * The named permissions in the admin panel, granted to roles via
+ * AdminRole::abilities() and enforced by the RequireAbility middleware
+ * (route alias `ability:<name>`) and Admin::hasAbility() checks in
+ * controllers/views. Reference these constants everywhere instead of raw
+ * strings so a typo is a hard error.
  */
 final class Ability
 {
@@ -29,7 +31,6 @@ final class Ability
     public const TUNE_DOCUMENT_POLICY = 'platform.tune-document-policy';
     public const VIEW_ACTIVITY_LOG = 'platform.view-activity-log';
     public const MANAGE_USERS = 'platform.manage-users';
-    public const MANAGE_ROLES = 'platform.manage-roles';
 
     /** Every ability — used to grant Super Admin the full set. */
     public static function all(): array
@@ -50,7 +51,6 @@ final class Ability
             self::TUNE_DOCUMENT_POLICY,
             self::VIEW_ACTIVITY_LOG,
             self::MANAGE_USERS,
-            self::MANAGE_ROLES,
         ];
     }
 }

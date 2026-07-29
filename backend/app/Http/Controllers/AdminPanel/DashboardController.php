@@ -54,7 +54,9 @@ class DashboardController extends Controller
                 ->latest('created_at')->latest('id')
                 ->limit(8)
                 ->get(),
-            'workload' => $this->teamWorkload(),
+            'workload' => $admin->hasAbility(\App\Enums\Ability::VIEW_WORKLOAD)
+                ? $this->teamWorkload()
+                : collect(),
             'unassignedOpen' => UserOnboarding::where('status', 'completed')->whereNull('assigned_to')->count(),
             // Four-eyes checker queue: applications handed off for a decision,
             // excluding any this admin submitted themselves.

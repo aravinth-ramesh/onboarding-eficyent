@@ -56,7 +56,7 @@ class BulkDecisionTest extends TestCase
                 'ids' => [$a->id, $b->id, $inProgress->id],
             ])
             ->assertRedirect(route('admin.user-onboardings.index'))
-            ->assertSessionHas('success', '2 application(s) approved. 1 skipped (not awaiting review).');
+            ->assertSessionHas('success', "2 application(s) approved. 1 skipped (couldn't be approved — already decided, awaiting a second reviewer, or sections not fully reviewed).");
 
         $this->assertSame('approved', $a->fresh()->status);
         $this->assertSame('approved', $b->fresh()->status);
@@ -104,6 +104,6 @@ class BulkDecisionTest extends TestCase
                 'decision' => 'approve',
                 'ids' => [$inProgress->id],
             ])
-            ->assertSessionHas('error', '0 application(s) approved. 1 skipped (not awaiting review).');
+            ->assertSessionHas('error', "0 application(s) approved. 1 skipped (couldn't be approved — already decided, awaiting a second reviewer, or sections not fully reviewed).");
     }
 }

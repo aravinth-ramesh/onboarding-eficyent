@@ -772,11 +772,48 @@
         'resubmit_requested' => ['Resubmission requested', 'bg-warning-subtle text-warning-emphasis border'],
     ];
     $verifiedCount = $allFiles->where('review_decision', 'verified')->count();
+
+    // Files uploaded outside a standalone file question — inside a table cell
+    // or in reply to an admin follow-up question. They aren't AnswerFile rows,
+    // so they're listed read-only (no per-file verdict), but nothing a client
+    // uploaded stays hidden from the reviewer.
+    $otherUploads = collect();
+    foreach ($userOnboarding->answers as $a) {
+        if (($a->question->type ?? null) !== 'table') {
+            continue;
+        }
+        $rows = is_string($a->value) ? json_decode($a->value, true) : ($a->value ?? []);
+        $cols = $a->question->options['columns'] ?? [];
+        foreach ((array) $rows as $ri => $row) {
+            foreach ($cols as $col) {
+                if (($col['type'] ?? null) !== 'file') {
+                    continue;
+                }
+                $cell = $row[$col['key']] ?? null;
+                if (is_array($cell) && (! empty($cell['filename']) || ! empty($cell['path']))) {
+                    $otherUploads->push((object) [
+                        'label' => ($a->question->label ?? 'Table') . ' — ' . ($col['label'] ?? 'File') . ' (row ' . ($ri + 1) . ')',
+                        'name' => $cell['filename'] ?? 'Uploaded file',
+                        'url' => $cell['url'] ?? null,
+                    ]);
+                }
+            }
+        }
+    }
+    foreach ($adminQuestions as $aq) {
+        foreach (optional($aq->answer)->files ?? [] as $f) {
+            $otherUploads->push((object) [
+                'label' => 'Follow-up question: ' . ($aq->label ?? 'Admin question'),
+                'name' => $f->original_filename,
+                'url' => $f->url,
+            ]);
+        }
+    }
 @endphp
 <div class="card mb-4" id="documents">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Documents</span>
-        <span class="badge bg-secondary">{{ $verifiedCount }}/{{ $allFiles->count() }} verified</span>
+        <span class="badge bg-secondary">{{ $verifiedCount }}/{{ $allFiles->count() }} verified{{ $otherUploads->isNotEmpty() ? ' · ' . $otherUploads->count() . ' other' : '' }}</span>
     </div>
     <div class="card-body">
         @forelse($docAnswers->groupBy(fn($a) => $a->question->group->id) as $groupId => $groupAnswers)
@@ -836,11 +873,33 @@
                 @endforeach
             </div>
         @empty
-            <div class="text-center text-muted py-4">
-                <i class="bi bi-folder2-open" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
-                No documents uploaded.
-            </div>
+            @if($otherUploads->isEmpty())
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-folder2-open" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                    No documents uploaded.
+                </div>
+            @endif
         @endforelse
+
+        {{-- Uploads that live in a table cell or a follow-up answer — listed so
+             nothing a client sent is hidden, though they carry no verdict. --}}
+        @if($otherUploads->isNotEmpty())
+            <div class="{{ $docAnswers->isNotEmpty() ? 'mt-4' : '' }}">
+                <div class="submitted-answers-section-label">Other uploads <span class="text-muted fw-normal">(read-only)</span></div>
+                @foreach($otherUploads as $u)
+                    <div class="document-row border rounded p-2 mb-2">
+                        <div class="text-muted small">{{ $u->label }}</div>
+                        @if($u->url)
+                            <a href="{{ $u->url }}" target="_blank" class="submitted-answers-file-link">
+                                <i class="bi bi-paperclip"></i> {{ $u->name }}
+                            </a>
+                        @else
+                            <span><i class="bi bi-paperclip"></i> {{ $u->name }}</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 </div>
 

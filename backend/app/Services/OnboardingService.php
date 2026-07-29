@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\AdminRole;
 use App\Mail\OnboardingAssignedMail;
 use App\Mail\OnboardingDecisionMail;
+use App\Mail\OnboardingEscalatedMail;
 use App\Mail\OnboardingSubmittedAdminMail;
 use App\Mail\OnboardingSubmittedClientMail;
 use App\Models\Admin;
@@ -178,6 +180,23 @@ class OnboardingService
             'admin_id' => $admin->id,
             'comment' => $comment ?: null,
         ]);
+
+        // Ping the compliance team — an escalation that reaches nobody is no
+        // escalation. The one who escalated doesn't need their own email.
+        try {
+            $onboarding->loadMissing(['user', 'userType']);
+            $recipients = Admin::where('is_active', true)
+                ->where('role', AdminRole::Compliance->value)
+                ->where('id', '!=', $admin->id)
+                ->pluck('email')
+                ->filter();
+
+            foreach ($recipients as $email) {
+                Mail::to($email)->queue(new OnboardingEscalatedMail($onboarding, $admin, $comment ?: null));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return $onboarding->fresh();
     }

@@ -120,15 +120,21 @@ class UserOnboardingController extends Controller
             $out = fopen('php://output', 'w');
             fputcsv($out, [
                 'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
-                'Status', 'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
+                'Status', 'Approval Stage', 'Submitted For Approval By',
+                'Sections Reviewed', 'Days Waiting', 'SLA',
+                'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
                 'Decided', 'Decided By', 'Decision Comment',
             ]);
 
+            $approvalLabels = ['pending_approval' => 'Awaiting approval', 'escalated' => 'Escalated'];
+
             $this->filteredQuery($request)
-                ->with(['decidedBy', 'assignee'])
+                ->with(['decidedBy', 'assignee', 'submittedForApprovalBy'])
+                ->withCount(['sectionReviews as sections_reviewed_count' => fn ($q) => $q->where('status', 'completed')])
                 ->latest()
                 ->lazy()
-                ->each(function (UserOnboarding $o) use ($out) {
+                ->each(function (UserOnboarding $o) use ($out, $approvalLabels) {
+                    $aging = $o->reviewAging();
                     fputcsv($out, [
                         $o->reference,
                         $o->user->name ?? '',
@@ -136,6 +142,11 @@ class UserOnboardingController extends Controller
                         $o->userType->name ?? '',
                         $o->subcategory->name ?? '',
                         $o->status,
+                        $o->approval_state ? ($approvalLabels[$o->approval_state] ?? $o->approval_state) : '',
+                        $o->submittedForApprovalBy->name ?? '',
+                        $o->sections_reviewed_count,
+                        $aging['days'] ?? '',
+                        $aging ? ($aging['overdue'] ? 'overdue' : 'on track') : '',
                         $o->reopened_at ? 'yes' : 'no',
                         $o->country_code ?? '',
                         $o->assignee->name ?? '',
@@ -213,22 +224,28 @@ class UserOnboardingController extends Controller
         $decided = 0;
         $skipped = 0;
 
-        foreach (UserOnboarding::whereIn('id', $validated['ids'])->get() as $onboarding) {
+        // Scope to the caller's visible rows — mirrors bulkAssign so the guard
+        // doesn't rely on the route's role gating alone.
+        $onboardings = UserOnboarding::visibleTo($admin)->whereIn('id', $validated['ids'])->get();
+
+        foreach ($onboardings as $onboarding) {
             try {
                 $validated['decision'] === 'approve'
                     ? $this->onboardingService->approve($onboarding, $admin, $validated['comment'] ?? null)
                     : $this->onboardingService->reject($onboarding, $admin, $validated['comment']);
                 $decided++;
             } catch (\DomainException) {
+                // Not awaiting review, the caller submitted it themselves
+                // (four-eyes), or its sections aren't fully reviewed.
                 $skipped++;
             }
         }
 
         $verb = $validated['decision'] === 'approve' ? 'approved' : 'rejected';
         $message = "{$decided} application(s) {$verb}."
-            . ($skipped > 0 ? " {$skipped} skipped (not awaiting review)." : '');
+            . ($skipped > 0 ? " {$skipped} skipped (couldn't be {$verb} — already decided, awaiting a second reviewer, or sections not fully reviewed)." : '');
 
-        return redirect()->route('admin.user-onboardings.index', $request->query())
+        return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'decision', 'comment', '_token']))
             ->with($decided > 0 ? 'success' : 'error', $message);
     }
 
@@ -340,7 +357,7 @@ class UserOnboardingController extends Controller
 
         // Load admin questions assigned to this user
         $adminQuestions = AdminQuestion::where('user_id', $userOnboarding->user_id)
-            ->with(['admin', 'answer', 'notification'])
+            ->with(['admin', 'answer.files', 'notification'])
             ->orderByDesc('created_at')
             ->get();
 

@@ -52,9 +52,9 @@ enum AdminRole: string
     }
 
     /**
-     * The abilities this role grants. Consumed by AuthServiceProvider to define
-     * a Gate per ability, and by the UserOnboarding policy. Keep ability names
-     * in sync with the Ability constants below.
+     * The abilities this role grants. Consumed by Admin::hasAbility(), the
+     * RequireAbility middleware, and blade guards. Keep ability names in sync
+     * with the Ability constants.
      */
     public function abilities(): array
     {

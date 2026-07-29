@@ -66,8 +66,8 @@ class AdminRoleAccessTest extends TestCase
         $this->assertTrue($compliance->hasAbility(Ability::VIEW_ACTIVITY_LOG));
         $this->assertFalse($compliance->hasAbility(Ability::ASSIGN_ONBOARDING));
 
-        // Super admin: everything, including role management.
-        $this->assertTrue($super->hasAbility(Ability::MANAGE_ROLES));
+        // Super admin: the full set.
+        $this->assertSame(Ability::all(), $super->role->abilities());
         $this->assertTrue($super->hasAbility(Ability::MANAGE_USERS));
     }
 

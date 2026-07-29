@@ -150,6 +150,30 @@ class ReviewOperationsPolishTest extends TestCase
         $this->assertStringContainsString($second->name, $log->comment);
     }
 
+    // --- CSV completeness ----------------------------------------------------
+
+    public function test_csv_export_includes_the_review_ops_columns(): void
+    {
+        $manager = $this->admin(AdminRole::Manager, 'm@t.com');
+        $maker = $this->admin(AdminRole::Analyst, 'maker@t.com');
+        $this->company('c@t.com', [
+            'approval_state' => 'pending_approval',
+            'submitted_for_approval_by' => $maker->id,
+            'submitted_for_approval_at' => now()->subDays(3),
+            'completed_at' => now()->subDays(5),
+        ]);
+
+        $csv = $this->actingAs($manager, 'admin')
+            ->get(route('admin.user-onboardings.export-csv'))
+            ->streamedContent();
+
+        $this->assertStringContainsString('Approval Stage', $csv);
+        $this->assertStringContainsString('Submitted For Approval By', $csv);
+        $this->assertStringContainsString('Days Waiting', $csv);
+        $this->assertStringContainsString('Awaiting approval', $csv);
+        $this->assertStringContainsString($maker->name, $csv);
+    }
+
     public function test_bulk_assign_logs_each_moved_application(): void
     {
         $manager = $this->admin(AdminRole::Manager, 'm@t.com');

@@ -96,7 +96,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('user-onboardings/{userOnboarding}/archive', [UserOnboardingController::class, 'archive'])->name('user-onboardings.archive');
     Route::post('user-onboardings/{userOnboarding}/unarchive', [UserOnboardingController::class, 'unarchive'])->name('user-onboardings.unarchive');
     Route::post('user-onboardings/{userOnboarding}/assign', [UserOnboardingController::class, 'assign'])->name('user-onboardings.assign')->middleware('ability:' . Ability::ASSIGN_ONBOARDING);
-    Route::post('user-onboardings/{userOnboarding}/messages', [UserOnboardingController::class, 'replyMessage'])->name('user-onboardings.messages.reply');
+    Route::post('user-onboardings/{userOnboarding}/messages', [UserOnboardingController::class, 'replyMessage'])->name('user-onboardings.messages.reply')->middleware('ability:' . Ability::MESSAGE_CLIENT);
     Route::post('user-onboardings/{userOnboarding}/notes', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'store'])->name('user-onboardings.notes.store');
     Route::delete('user-onboardings/{userOnboarding}/notes/{note}', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'destroy'])->name('user-onboardings.notes.destroy');
     Route::post('user-onboardings/{userOnboarding}/approve', [UserOnboardingController::class, 'approve'])->name('user-onboardings.approve')->middleware('ability:' . Ability::APPROVE_ONBOARDING);
@@ -105,13 +105,13 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('user-onboardings/{userOnboarding}/submit-for-approval', [UserOnboardingController::class, 'submitForApproval'])->name('user-onboardings.submit-for-approval')->middleware('ability:' . Ability::SUBMIT_FOR_APPROVAL);
     Route::post('user-onboardings/{userOnboarding}/escalate', [UserOnboardingController::class, 'escalate'])->name('user-onboardings.escalate')->middleware('ability:' . Ability::ESCALATE_ONBOARDING);
     Route::get('user-onboardings/{userOnboarding}/answers/{answer}/history', [UserOnboardingController::class, 'answerHistory'])->name('user-onboardings.answers.history');
-    Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change');
+    Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change')->middleware('ability:' . Ability::MESSAGE_CLIENT);
     // Sectioned review — per-section progress and per-document verdicts.
     Route::post('user-onboardings/{userOnboarding}/sections/{group}/review', [UserOnboardingController::class, 'reviewSection'])->name('user-onboardings.sections.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
     Route::post('user-onboardings/{userOnboarding}/documents/{file}/review', [UserOnboardingController::class, 'reviewDocument'])->name('user-onboardings.documents.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
-    Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question');
-    Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question');
-    Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email');
+    Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question')->middleware('ability:' . Ability::MESSAGE_CLIENT);
+    Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question')->middleware('ability:' . Ability::MESSAGE_CLIENT);
+    Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email')->middleware('ability:' . Ability::MESSAGE_CLIENT);
 
     // Staff / user management (Admin / Super Admin)
     Route::middleware('ability:' . Ability::MANAGE_USERS)->group(function () {

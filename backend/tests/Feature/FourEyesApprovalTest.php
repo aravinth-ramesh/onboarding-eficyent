@@ -185,6 +185,21 @@ class FourEyesApprovalTest extends TestCase
         ]);
     }
 
+    public function test_escalation_emails_the_compliance_team_but_not_the_escalator(): void
+    {
+        $manager = $this->admin(AdminRole::Manager, 'm@t.com');
+        $compliance = $this->admin(AdminRole::Compliance, 'compliance@t.com');
+        // A compliance officer who also happens to be the escalator gets no mail.
+        $complianceActor = $this->admin(AdminRole::Compliance, 'self@t.com');
+
+        $this->actingAs($complianceActor, 'admin')
+            ->post(route('admin.user-onboardings.escalate', $this->onboarding), ['comment' => 'Sanctions hit.'])
+            ->assertRedirect();
+
+        Mail::assertQueued(\App\Mail\OnboardingEscalatedMail::class, fn ($m) => $m->hasTo('compliance@t.com'));
+        Mail::assertNotQueued(\App\Mail\OnboardingEscalatedMail::class, fn ($m) => $m->hasTo('self@t.com'));
+    }
+
     public function test_reopening_clears_the_approval_hand_off(): void
     {
         $maker = $this->admin(AdminRole::Manager, 'm@t.com');

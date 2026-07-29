@@ -190,6 +190,30 @@ class SectionReviewTest extends TestCase
             ->assertSee('0/1 verified');
     }
 
+    public function test_documents_card_surfaces_files_from_admin_follow_up_questions(): void
+    {
+        $manager = $this->admin(AdminRole::Manager);
+        $user = $this->onboarding->user;
+
+        // An admin asks a follow-up file question; the client answers with an upload.
+        $aq = \App\Models\AdminQuestion::create([
+            'user_id' => $user->id, 'admin_id' => $manager->id,
+            'label' => 'Latest bank statement', 'type' => 'file', 'is_required' => true,
+        ]);
+        $ans = \App\Models\AdminQuestionAnswer::create(['admin_question_id' => $aq->id, 'user_id' => $user->id, 'value' => 'statement.pdf']);
+        \App\Models\AdminQuestionAnswerFile::create([
+            'admin_question_answer_id' => $ans->id, 'original_filename' => 'bank-statement-june.pdf',
+            's3_path' => 'u/bank.pdf', 'mime_type' => 'application/pdf', 'file_size' => 4096, 'disk' => 'local',
+        ]);
+
+        $this->actingAs($manager, 'admin')
+            ->get(route('admin.user-onboardings.show', $this->onboarding))
+            ->assertOk()
+            ->assertSee('Other uploads')
+            ->assertSee('bank-statement-june.pdf')
+            ->assertSee('Latest bank statement');
+    }
+
     // --- global document queue "all" toggle ----------------------------------
 
     public function test_document_queue_all_toggle_includes_passed_documents(): void
