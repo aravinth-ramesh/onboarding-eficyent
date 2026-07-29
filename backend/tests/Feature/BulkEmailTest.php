@@ -25,7 +25,7 @@ class BulkEmailTest extends TestCase
 
         Mail::fake();
 
-        $this->admin = Admin::create(['name' => 'Sender', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Sender', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $type = UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
 
         $alice = User::create(['email' => 'alice@test.com', 'name' => 'Alice', 'position' => 'CFO']);

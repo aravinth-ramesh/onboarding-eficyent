@@ -24,6 +24,8 @@ class AnswerFile extends Model
         'justification',
         'reviewed_at',
         'reviewed_by',
+        'review_decision',
+        'review_note',
     ];
 
     protected function casts(): array

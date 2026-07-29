@@ -197,6 +197,7 @@
                                 Archived
                             </span>
                         @endif
+                        @include('admin.user-onboardings._aging-badge', ['aging' => $userOnboarding->reviewAging()])
                     </dd>
 
                     <dt class="text-muted" style="font-size: 0.8rem;">Assigned To</dt>
@@ -226,21 +227,79 @@
                 </dl>
 
                 @if($userOnboarding->status === 'completed')
-                    {{-- Awaiting decision --}}
+                    @php
+                        $meDecide = auth('admin')->user();
+                        $canSubmit = $meDecide?->hasAbility(\App\Enums\Ability::SUBMIT_FOR_APPROVAL);
+                        $canApprove = $meDecide?->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING);
+                        $canReject = $meDecide?->hasAbility(\App\Enums\Ability::REJECT_ONBOARDING);
+                        $canEscalate = $meDecide?->hasAbility(\App\Enums\Ability::ESCALATE_ONBOARDING);
+                        $isMaker = $userOnboarding->submitted_for_approval_by
+                            && (int) $userOnboarding->submitted_for_approval_by === (int) $meDecide?->id;
+                        $decideProgress = $userOnboarding->sectionReviewProgress();
+                        $sectionsDone = $decideProgress['total'] === 0 || $decideProgress['complete'];
+                    @endphp
                     <hr>
-                    <div class="d-flex gap-2">
-                        <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
-                              onsubmit="return confirm('Approve this application? The client will be notified by email.')">
-                            @csrf
-                            <button class="btn btn-success btn-sm">
-                                <i class="bi bi-check-circle"></i> Approve
+
+                    {{-- Where the application sits in the four-eyes hand-off. --}}
+                    @if($userOnboarding->isEscalated())
+                        <div class="p-2 rounded bg-warning-subtle border mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-flag-fill text-warning"></i> <strong>Escalated to compliance</strong>
+                            @if($userOnboarding->submittedForApprovalBy)
+                                <div class="text-muted">Submitted by {{ $userOnboarding->submittedForApprovalBy->name }}</div>
+                            @endif
+                        </div>
+                    @elseif($userOnboarding->approval_state === 'pending_approval')
+                        <div class="p-2 rounded bg-info-subtle border mb-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-hourglass-split text-info"></i> <strong>Awaiting a second reviewer</strong>
+                            <div class="text-muted">
+                                Submitted for approval by {{ $userOnboarding->submittedForApprovalBy->name ?? 'a reviewer' }}
+                                {{ $userOnboarding->submitted_for_approval_at?->diffForHumans() }}
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="d-flex flex-wrap gap-2">
+                        {{-- Maker step: hand off for approval once every section is reviewed. --}}
+                        @if($canSubmit && $userOnboarding->approval_state !== 'pending_approval')
+                            <form method="POST" action="{{ route('admin.user-onboardings.submit-for-approval', $userOnboarding) }}">
+                                @csrf
+                                <button class="btn btn-primary btn-sm" @disabled(!$sectionsDone)
+                                        title="{{ $sectionsDone ? 'Hand off for a second reviewer to approve' : 'Review every section first' }}">
+                                    <i class="bi bi-send-check"></i> Submit for approval
+                                </button>
+                            </form>
+                        @endif
+
+                        {{-- Checker step: a second reviewer approves or rejects. --}}
+                        @if($canApprove)
+                            <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
+                                  onsubmit="return confirm('Approve this application? The client will be notified by email.')">
+                                @csrf
+                                <button class="btn btn-success btn-sm" @disabled($isMaker || !$sectionsDone)
+                                        title="{{ $isMaker ? 'You submitted this — a different reviewer must approve (four-eyes)' : (!$sectionsDone ? 'Every section must be reviewed first' : 'Approve') }}">
+                                    <i class="bi bi-check-circle"></i> Approve
+                                </button>
+                            </form>
+                        @endif
+                        @if($canReject)
+                            <button type="button" class="btn btn-outline-danger btn-sm" @disabled($isMaker)
+                                    title="{{ $isMaker ? 'You submitted this — a different reviewer must decide (four-eyes)' : 'Reject' }}"
+                                    data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="bi bi-x-circle"></i> Reject
                             </button>
-                        </form>
-                        <button type="button" class="btn btn-outline-danger btn-sm"
-                                data-bs-toggle="modal" data-bs-target="#rejectModal">
-                            <i class="bi bi-x-circle"></i> Reject
-                        </button>
+                        @endif
+
+                        {{-- Refer to compliance. --}}
+                        @if($canEscalate && !$userOnboarding->isEscalated())
+                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#escalateModal">
+                                <i class="bi bi-flag"></i> Escalate
+                            </button>
+                        @endif
                     </div>
+                    @if($isMaker)
+                        <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> You submitted this for approval, so a second reviewer must make the decision.</div>
+                    @endif
                 @elseif(in_array($userOnboarding->status, ['approved', 'rejected']))
                     <hr>
                     <div class="p-2 rounded {{ $userOnboarding->status === 'approved' ? 'bg-success-subtle' : 'bg-danger-subtle' }}" style="font-size: 0.85rem;">
@@ -311,7 +370,11 @@
                                 'approved' => ['icon' => 'bi-check-circle-fill', 'class' => 'text-success', 'label' => 'Approved'],
                                 'rejected' => ['icon' => 'bi-x-circle-fill', 'class' => 'text-danger', 'label' => 'Rejected'],
                                 'reopened' => ['icon' => 'bi-unlock', 'class' => 'text-secondary', 'label' => 'Reopened by client'],
-                            ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst($log->event)];
+                                'submitted_for_approval' => ['icon' => 'bi-send-check', 'class' => 'text-primary', 'label' => 'Submitted for approval'],
+                                'escalated' => ['icon' => 'bi-flag-fill', 'class' => 'text-warning', 'label' => 'Escalated to compliance'],
+                                'assigned' => ['icon' => 'bi-person-check', 'class' => 'text-secondary', 'label' => 'Assigned'],
+                                'unassigned' => ['icon' => 'bi-person-dash', 'class' => 'text-secondary', 'label' => 'Unassigned'],
+                            ][$log->event] ?? ['icon' => 'bi-dot', 'class' => 'text-muted', 'label' => ucfirst(str_replace('_', ' ', $log->event))];
                         @endphp
                         <div class="d-flex gap-2 py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.85rem;">
                             <i class="bi {{ $meta['icon'] }} {{ $meta['class'] }}"></i>
@@ -447,12 +510,66 @@
                     fn($a) => $a->question->order ?? 0,
                 ])
                 ->groupBy(fn($a) => $a->question->group->id);
+
+            $me = auth('admin')->user();
+            $canReview = $me?->hasAbility(\App\Enums\Ability::REVIEW_ONBOARDING);
+            $reviewByGroup = $userOnboarding->sectionReviews->keyBy('question_group_id');
+            $sectionProgress = $userOnboarding->sectionReviewProgress();
+            $sectionBadges = [
+                'pending' => ['Not started', 'bg-light text-muted border'],
+                'in_progress' => ['In review', 'bg-info-subtle text-info-emphasis border'],
+                'completed' => ['Reviewed', 'bg-success-subtle text-success border'],
+            ];
         @endphp
 
+        {{-- Reviewer progress across the application's sections. Persists so a
+             long review can be picked up again on another day. --}}
+        @if($sectionProgress['total'] > 0)
+            <div class="section-review-progress mb-4" id="section-review-progress">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold">Review progress</span>
+                    <span class="text-muted small">{{ $sectionProgress['done'] }} of {{ $sectionProgress['total'] }} sections reviewed</span>
+                </div>
+                <div class="progress" style="height: 8px;" role="progressbar" aria-valuenow="{{ $sectionProgress['done'] }}" aria-valuemin="0" aria-valuemax="{{ $sectionProgress['total'] }}">
+                    <div class="progress-bar {{ $sectionProgress['complete'] ? 'bg-success' : '' }}" style="width: {{ $sectionProgress['total'] ? round($sectionProgress['done'] / $sectionProgress['total'] * 100) : 0 }}%;"></div>
+                </div>
+                @if($sectionProgress['complete'])
+                    <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> All sections reviewed — ready for a decision.</div>
+                @endif
+            </div>
+        @endif
+
         @forelse($grouped as $groupId => $groupAnswers)
-            @php $groupName = $groupAnswers->first()->question->group->name; @endphp
-            <div class="{{ !$loop->first ? 'mt-4' : '' }}">
-                <div class="submitted-answers-section-label">{{ $groupName }}</div>
+            @php
+                $groupName = $groupAnswers->first()->question->group->name;
+                $review = $reviewByGroup->get($groupId);
+                $reviewStatus = $review->status ?? 'pending';
+                [$badgeLabel, $badgeClass] = $sectionBadges[$reviewStatus];
+            @endphp
+            <div class="{{ !$loop->first ? 'mt-4' : '' }}" id="section-{{ $groupId }}">
+                <div class="submitted-answers-section-label d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <span>
+                        {{ $groupName }}
+                        <span class="badge {{ $badgeClass }} ms-1 align-middle">{{ $badgeLabel }}</span>
+                    </span>
+                    @if($canReview)
+                        <form method="POST" action="{{ route('admin.user-onboardings.sections.review', [$userOnboarding, $groupId]) }}" class="section-review-form d-flex align-items-center gap-1">
+                            @csrf
+                            <input type="text" name="note" class="form-control form-control-sm section-review-note" placeholder="Note (optional)" value="{{ $review->note ?? '' }}" style="max-width: 200px;">
+                            <select name="status" class="form-select form-select-sm" style="width: auto;">
+                                <option value="pending" @selected($reviewStatus === 'pending')>Not started</option>
+                                <option value="in_progress" @selected($reviewStatus === 'in_progress')>In review</option>
+                                <option value="completed" @selected($reviewStatus === 'completed')>Reviewed</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                        </form>
+                    @endif
+                </div>
+                @if($review && $review->reviewed_at)
+                    <div class="small text-muted mb-1">
+                        <i class="bi bi-check2"></i> Reviewed {{ $review->reviewed_at->diffForHumans() }}{{ $review->reviewer ? ' by ' . $review->reviewer->name : '' }}
+                    </div>
+                @endif
                 <table class="submitted-answers-table">
                     <tbody>
                         @foreach($groupAnswers as $answer)
@@ -639,6 +756,153 @@
     </div>
 </div>
 
+{{-- Documents — every file the client uploaded, in one place, with a reviewer
+     verdict per file. Grouped by the section the file belongs to. --}}
+@php
+    $docAnswers = $userOnboarding->answers
+        ->filter(fn($a) => $a->question && $a->question->type === 'file' && $a->files->count())
+        ->sortBy([
+            fn($a) => $a->question->group->order ?? 0,
+            fn($a) => $a->question->order ?? 0,
+        ]);
+    $allFiles = $docAnswers->flatMap(fn($a) => $a->files);
+    $docDecisionBadges = [
+        'verified' => ['Verified', 'bg-success-subtle text-success border'],
+        'rejected' => ['Rejected', 'bg-danger-subtle text-danger border'],
+        'resubmit_requested' => ['Resubmission requested', 'bg-warning-subtle text-warning-emphasis border'],
+    ];
+    $verifiedCount = $allFiles->where('review_decision', 'verified')->count();
+
+    // Files uploaded outside a standalone file question — inside a table cell
+    // or in reply to an admin follow-up question. They aren't AnswerFile rows,
+    // so they're listed read-only (no per-file verdict), but nothing a client
+    // uploaded stays hidden from the reviewer.
+    $otherUploads = collect();
+    foreach ($userOnboarding->answers as $a) {
+        if (($a->question->type ?? null) !== 'table') {
+            continue;
+        }
+        $rows = is_string($a->value) ? json_decode($a->value, true) : ($a->value ?? []);
+        $cols = $a->question->options['columns'] ?? [];
+        foreach ((array) $rows as $ri => $row) {
+            foreach ($cols as $col) {
+                if (($col['type'] ?? null) !== 'file') {
+                    continue;
+                }
+                $cell = $row[$col['key']] ?? null;
+                if (is_array($cell) && (! empty($cell['filename']) || ! empty($cell['path']))) {
+                    $otherUploads->push((object) [
+                        'label' => ($a->question->label ?? 'Table') . ' — ' . ($col['label'] ?? 'File') . ' (row ' . ($ri + 1) . ')',
+                        'name' => $cell['filename'] ?? 'Uploaded file',
+                        'url' => $cell['url'] ?? null,
+                    ]);
+                }
+            }
+        }
+    }
+    foreach ($adminQuestions as $aq) {
+        foreach (optional($aq->answer)->files ?? [] as $f) {
+            $otherUploads->push((object) [
+                'label' => 'Follow-up question: ' . ($aq->label ?? 'Admin question'),
+                'name' => $f->original_filename,
+                'url' => $f->url,
+            ]);
+        }
+    }
+@endphp
+<div class="card mb-4" id="documents">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Documents</span>
+        <span class="badge bg-secondary">{{ $verifiedCount }}/{{ $allFiles->count() }} verified{{ $otherUploads->isNotEmpty() ? ' · ' . $otherUploads->count() . ' other' : '' }}</span>
+    </div>
+    <div class="card-body">
+        @forelse($docAnswers->groupBy(fn($a) => $a->question->group->id) as $groupId => $groupAnswers)
+            @php $docGroupName = $groupAnswers->first()->question->group->name; @endphp
+            <div class="{{ !$loop->first ? 'mt-4' : '' }}">
+                <div class="submitted-answers-section-label">{{ $docGroupName }}</div>
+                @foreach($groupAnswers as $answer)
+                    @foreach($answer->files as $file)
+                        @php
+                            $decision = $file->review_decision;
+                            $decisionMeta = $decision ? ($docDecisionBadges[$decision] ?? null) : null;
+                        @endphp
+                        <div class="document-row border rounded p-2 mb-2">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <div class="text-muted small">{{ $answer->question->label }}</div>
+                                    <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                        <i class="bi bi-paperclip"></i>
+                                        {{ $file->original_filename }}
+                                        <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                    </a>
+                                    @switch($file->validation_status)
+                                        @case('passed')
+                                            <span class="badge bg-success-subtle text-success border ms-1" title="{{ $file->validation_summary }}">AI verified</span>
+                                            @break
+                                        @case('needs_review')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">Needs review</span>
+                                            @break
+                                        @case('type_mismatch')
+                                        @case('expired')
+                                        @case('stale')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="{{ $file->validation_summary }}">{{ ['type_mismatch' => 'Wrong document type', 'expired' => 'Expired', 'stale' => 'Outdated'][$file->validation_status] }} — justified</span>
+                                            @break
+                                    @endswitch
+                                    @if($decisionMeta)
+                                        <span class="badge {{ $decisionMeta[1] }} ms-1">{{ $decisionMeta[0] }}</span>
+                                    @endif
+                                </div>
+                                @if($canReview)
+                                    <form method="POST" action="{{ route('admin.user-onboardings.documents.review', [$userOnboarding, $file]) }}" class="document-review-form d-flex align-items-center gap-1">
+                                        @csrf
+                                        <input type="text" name="review_note" class="form-control form-control-sm" placeholder="Note (optional)" value="{{ $file->review_note }}" style="max-width: 180px;">
+                                        <button type="submit" name="review_decision" value="verified" class="btn btn-sm btn-outline-success" title="Verify"><i class="bi bi-check-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="rejected" class="btn btn-sm btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="resubmit_requested" class="btn btn-sm btn-outline-warning" title="Request new"><i class="bi bi-arrow-repeat"></i></button>
+                                    </form>
+                                @endif
+                            </div>
+                            @if($file->review_note)
+                                <div class="small text-muted fst-italic mt-1"><i class="bi bi-chat-left-text"></i> {{ $file->review_note }}</div>
+                            @endif
+                            @if($file->reviewed_at && $decision)
+                                <div class="small text-muted mt-1">{{ $file->reviewer?->name ? $file->reviewer->name . ' · ' : '' }}{{ $file->reviewed_at->diffForHumans() }}</div>
+                            @endif
+                        </div>
+                    @endforeach
+                @endforeach
+            </div>
+        @empty
+            @if($otherUploads->isEmpty())
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-folder2-open" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                    No documents uploaded.
+                </div>
+            @endif
+        @endforelse
+
+        {{-- Uploads that live in a table cell or a follow-up answer — listed so
+             nothing a client sent is hidden, though they carry no verdict. --}}
+        @if($otherUploads->isNotEmpty())
+            <div class="{{ $docAnswers->isNotEmpty() ? 'mt-4' : '' }}">
+                <div class="submitted-answers-section-label">Other uploads <span class="text-muted fw-normal">(read-only)</span></div>
+                @foreach($otherUploads as $u)
+                    <div class="document-row border rounded p-2 mb-2">
+                        <div class="text-muted small">{{ $u->label }}</div>
+                        @if($u->url)
+                            <a href="{{ $u->url }}" target="_blank" class="submitted-answers-file-link">
+                                <i class="bi bi-paperclip"></i> {{ $u->name }}
+                            </a>
+                        @else
+                            <span><i class="bi bi-paperclip"></i> {{ $u->name }}</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+</div>
+
 {{-- Admin Notifications & Questions Section --}}
 @if($notifications->count() > 0 || $adminQuestions->count() > 0)
 <div class="card mb-4">
@@ -774,6 +1038,38 @@
         </form>
     </div>
 </div>
+
+{{-- Escalate to Compliance Modal --}}
+@if($userOnboarding->status === 'completed' && auth('admin')->user()?->hasAbility(\App\Enums\Ability::ESCALATE_ONBOARDING))
+<div class="modal fade" id="escalateModal" tabindex="-1" aria-labelledby="escalateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('admin.user-onboardings.escalate', $userOnboarding) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="escalateModalLabel">Escalate to Compliance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Refer <strong>{{ $userOnboarding->reference }}</strong> to compliance for the decision.
+                        It stays in the review queue, flagged for the compliance team.
+                    </p>
+                    <div class="mb-0">
+                        <label for="escalateComment" class="form-label">Note <span class="text-muted">(optional)</span></label>
+                        <textarea class="form-control" id="escalateComment" name="comment" rows="3"
+                            placeholder="Why does this need compliance review?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Escalate</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 
 {{-- Request Change Modal --}}
 <div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">

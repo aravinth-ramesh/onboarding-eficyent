@@ -27,8 +27,8 @@ class MessagingTest extends TestCase
         Mail::fake();
 
         $this->user = User::create(['email' => 'client@test.com', 'name' => 'Test Client', 'position' => 'CFO']);
-        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
-        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false]);
+        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
+        Admin::create(['name' => 'Inactive', 'email' => 'gone@test.com', 'password' => 'x', 'is_active' => false, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         OnboardingStep::query()->delete();
         OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'component_key' => 'review', 'order' => 1, 'is_active' => true]);

@@ -10,12 +10,22 @@ use App\Models\QuestionGroup;
 use App\Models\User;
 use App\Models\UserOnboarding;
 use App\Models\UserType;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(): View|RedirectResponse
     {
+        $admin = Auth::guard('admin')->user();
+
+        // Analysts don't get the global platform dashboard — their home is the
+        // queue of companies assigned to them.
+        if ($admin->seesOnlyAssignedOnboardings()) {
+            return redirect()->route('admin.user-onboardings.index');
+        }
+
         $stats = [
             'users' => User::count(),
             'user_types' => UserType::count(),
@@ -44,8 +54,22 @@ class DashboardController extends Controller
                 ->latest('created_at')->latest('id')
                 ->limit(8)
                 ->get(),
-            'workload' => $this->teamWorkload(),
+            'workload' => $admin->hasAbility(\App\Enums\Ability::VIEW_WORKLOAD)
+                ? $this->teamWorkload()
+                : collect(),
             'unassignedOpen' => UserOnboarding::where('status', 'completed')->whereNull('assigned_to')->count(),
+            // Four-eyes checker queue: applications handed off for a decision,
+            // excluding any this admin submitted themselves.
+            'approvalQueue' => $admin->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING)
+                ? UserOnboarding::awaitingApprovalBy($admin)
+                    ->with(['user', 'submittedForApprovalBy'])
+                    ->orderByRaw("approval_state = 'escalated' desc")
+                    ->orderBy('submitted_for_approval_at')
+                    ->limit(10)->get()
+                : collect(),
+            'approvalQueueTotal' => $admin->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING)
+                ? UserOnboarding::awaitingApprovalBy($admin)->count()
+                : 0,
             // Client responses no admin has acknowledged yet — a real work
             // queue: entries leave once someone marks them checked.
             'clientResponses' => \App\Models\AdminNotification::with(['user.onboarding', 'userAnswer.question', 'adminQuestion'])

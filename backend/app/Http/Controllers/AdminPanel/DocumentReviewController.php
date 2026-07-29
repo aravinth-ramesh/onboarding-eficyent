@@ -23,9 +23,18 @@ class DocumentReviewController extends Controller
     {
         $status = $request->input('status');
         $showReviewed = $request->boolean('show_reviewed');
+        // "All" widens the queue to every uploaded document, not just the ones
+        // automation flagged — so a reviewer can eyeball files that passed too.
+        $showAll = $request->boolean('all');
 
         $files = AnswerFile::with(['answer.question', 'answer.user', 'answer.onboarding', 'reviewer'])
-            ->whereIn('validation_status', $status ? [$status] : self::ATTENTION_STATUSES)
+            ->when(
+                $status,
+                fn ($q) => $q->where('validation_status', $status),
+                fn ($q) => $showAll
+                    ? $q->where('validation_status', '!=', 'skipped')
+                    : $q->whereIn('validation_status', self::ATTENTION_STATUSES),
+            )
             ->when(! $showReviewed, fn ($q) => $q->whereNull('reviewed_at'))
             ->latest('id')
             ->paginate(20)
@@ -35,6 +44,7 @@ class DocumentReviewController extends Controller
             'files' => $files,
             'status' => $status,
             'showReviewed' => $showReviewed,
+            'showAll' => $showAll,
             'stats' => $this->stats(),
         ]);
     }
@@ -44,6 +54,7 @@ class DocumentReviewController extends Controller
         $file->update([
             'reviewed_at' => now(),
             'reviewed_by' => Auth::guard('admin')->id(),
+            'review_decision' => 'verified',
         ]);
 
         return redirect()

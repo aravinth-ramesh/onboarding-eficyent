@@ -30,4 +30,20 @@ return [
         'min_samples' => 3,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Review SLA (aging) thresholds
+    |--------------------------------------------------------------------------
+    |
+    | How many days an application may sit at each stage before it is flagged
+    | as overdue in the admin queues. `review_days` covers the wait from
+    | submission to a reviewer taking a decision; `approval_days` covers the
+    | wait once it has been handed off for a second reviewer's sign-off.
+    |
+    */
+    'sla' => [
+        'review_days' => (int) env('REVIEW_SLA_DAYS', 3),
+        'approval_days' => (int) env('APPROVAL_SLA_DAYS', 2),
+    ],
+
 ];

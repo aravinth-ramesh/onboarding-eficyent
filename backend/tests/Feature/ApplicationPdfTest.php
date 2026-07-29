@@ -107,7 +107,7 @@ class ApplicationPdfTest extends TestCase
         foreach ($onboarding->steps as $step) {
             $this->service->completeStep($onboarding->fresh(), $step);
         }
-        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true]);
+        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $response = $this->actingAs($admin, 'admin')
             ->get(route('admin.user-onboardings.export-pdf', $onboarding))
@@ -121,7 +121,7 @@ class ApplicationPdfTest extends TestCase
     public function test_admin_export_requires_a_submitted_application(): void
     {
         $onboarding = $this->service->initializeForUser($this->user); // pending
-        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true]);
+        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'r@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $this->actingAs($admin, 'admin')
             ->get(route('admin.user-onboardings.export-pdf', $onboarding))
@@ -135,7 +135,7 @@ class ApplicationPdfTest extends TestCase
         foreach ($onboarding->steps as $step) {
             $this->service->completeStep($onboarding->fresh(), $step);
         }
-        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'a@test.com', 'password' => 'x', 'is_active' => true]);
+        $admin = \App\Models\Admin::create(['name' => 'Reviewer', 'email' => 'a@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $this->service->approve($onboarding->fresh(), $admin, 'All checks passed.');
 
         Sanctum::actingAs($this->user);

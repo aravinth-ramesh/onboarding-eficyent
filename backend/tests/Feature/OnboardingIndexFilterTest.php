@@ -20,7 +20,7 @@ class OnboardingIndexFilterTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $corporate = UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
         $fi = UserType::create(['name' => 'Financial Institution', 'slug' => 'fi', 'order' => 2, 'is_active' => true]);
@@ -286,7 +286,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_presets_are_private_to_the_admin_who_saved_them(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $theirs = FilterPreset::create([
             'admin_id' => $other->id, 'context' => 'user-onboardings',
@@ -424,7 +424,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_cannot_rename_another_admins_preset(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other3@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other3@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create([
             'admin_id' => $other->id, 'context' => 'user-onboardings',
             'name' => 'Theirs', 'filters' => ['status' => 'approved'],
@@ -462,7 +462,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_cannot_duplicate_another_admins_preset(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other2@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other2@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create([
             'admin_id' => $other->id, 'context' => 'user-onboardings',
             'name' => 'Theirs', 'filters' => ['status' => 'approved'],
@@ -480,7 +480,7 @@ class OnboardingIndexFilterTest extends TestCase
     {
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-01 12:00:00'));
 
-        $other = Admin::create(['name' => 'Other', 'email' => 'other4@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other4@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         FilterPreset::create([
             'admin_id' => $this->admin->id, 'context' => 'user-onboardings',
@@ -699,7 +699,7 @@ class OnboardingIndexFilterTest extends TestCase
             ->json();
 
         // ...and import the exact payload as a different admin.
-        $other = Admin::create(['name' => 'Other', 'email' => 'other5@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other5@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('presets.json', json_encode($exported));
 
         $this->actingAs($other, 'admin')
@@ -789,7 +789,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_reorder_ignores_ids_that_are_not_the_callers_own(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other7@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other7@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $mineA = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);
         $mineB = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'B', 'filters' => ['status' => 'rejected']]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
@@ -1081,7 +1081,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_unpin_all_history_is_per_admin(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other19@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other19@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirLog = \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
         \App\Models\HistoryPin::create(['admin_id' => $other->id, 'admin_activity_log_id' => $theirLog->id]);
 
@@ -1124,7 +1124,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_bulk_pin_history_ignores_foreign_and_non_customization_ids(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other18@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other18@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $mine = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
         $theirs = \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
         $visit = \App\Models\AdminActivityLog::create(['admin_id' => $this->admin->id, 'action' => 'admin.user-onboardings.index', 'method' => 'GET', 'path' => 'admin/user-onboardings', 'status' => 200, 'created_at' => now()]);
@@ -1160,7 +1160,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_cannot_pin_another_admins_history_entry(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other17@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other17@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.pin', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'status' => 302, 'created_at' => now()]);
 
         $this->actingAs($this->admin, 'admin')
@@ -1228,7 +1228,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_clearing_history_is_per_admin(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other16@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other16@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Their view'], 'status' => 302, 'created_at' => '2026-09-01 09:00:00']);
 
         // This admin clears their (empty) history.
@@ -1251,7 +1251,7 @@ class OnboardingIndexFilterTest extends TestCase
         $log('admin.filter-presets.store', ['name' => 'Alpha view'], 'admin/filter-presets/user-onboardings');
         $log('admin.settings.pin-shortcut', ['pin_shortcut' => 'alt+k'], 'admin/settings/pin-shortcut');
         // Another admin's action must not leak into my export.
-        $other = Admin::create(['name' => 'Other', 'email' => 'other15@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other15@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         \App\Models\AdminActivityLog::create(['admin_id' => $other->id, 'action' => 'admin.filter-presets.store', 'method' => 'POST', 'path' => 'admin/filter-presets/user-onboardings', 'payload' => ['name' => 'Their view'], 'status' => 302, 'created_at' => now()]);
 
         $response = $this->actingAs($this->admin, 'admin')
@@ -1303,7 +1303,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_preset_history_shows_only_the_current_admins_and_only_preset_actions(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other14@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other14@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
 
         // Another admin pins their own preset.
@@ -1358,7 +1358,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_reset_all_customizations_leaves_other_admins_alone(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other13@test.com', 'password' => 'x', 'is_active' => true, 'pin_shortcut' => 'alt+j']);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other13@test.com', 'password' => 'x', 'is_active' => true, 'pin_shortcut' => 'alt+j', 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true, 'position' => 3]);
 
         $this->actingAs($this->admin, 'admin')
@@ -1486,7 +1486,7 @@ class OnboardingIndexFilterTest extends TestCase
         $a->update(['pinned' => true]);
         $b->update(['pinned' => true]);
         // A pin belonging to someone else, and to another page, must not inflate it.
-        $other = Admin::create(['name' => 'Other', 'email' => 'other12@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other12@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true]);
         FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Email', 'filters' => ['status' => 'pending'], 'pinned' => true]);
 
@@ -1514,7 +1514,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_unpin_all_leaves_other_admins_and_pages_alone(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other11@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other11@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved'], 'pinned' => true]);
         $myEmail = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'scheduled-emails', 'name' => 'Email', 'filters' => ['status' => 'pending'], 'pinned' => true]);
         $mine = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Mine', 'filters' => ['status' => 'approved'], 'pinned' => true]);
@@ -1589,7 +1589,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_bulk_pin_never_touches_another_admins_presets(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other10@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other10@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $mine = FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'Mine', 'filters' => ['status' => 'approved']]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
 
@@ -1704,7 +1704,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_cannot_pin_another_admins_preset(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other9@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other9@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $theirs = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Theirs', 'filters' => ['status' => 'approved']]);
 
         $this->actingAs($this->admin, 'admin')
@@ -1737,7 +1737,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_reset_order_only_touches_the_callers_own_presets(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other8@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other8@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         // Their list is out of order and must stay that way.
         $theirZ = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Zulu', 'filters' => ['status' => 'approved']]);
         $theirA = FilterPreset::create(['admin_id' => $other->id, 'context' => 'user-onboardings', 'name' => 'Able', 'filters' => ['status' => 'rejected']]);
@@ -1768,7 +1768,7 @@ class OnboardingIndexFilterTest extends TestCase
 
     public function test_delete_all_clears_only_this_admins_presets_for_this_page(): void
     {
-        $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true]);
+        $other = Admin::create(['name' => 'Other', 'email' => 'other6@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         // Two on this page for me, one on another page for me, one for someone else.
         FilterPreset::create(['admin_id' => $this->admin->id, 'context' => 'user-onboardings', 'name' => 'A', 'filters' => ['status' => 'approved']]);

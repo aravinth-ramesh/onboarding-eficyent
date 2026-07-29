@@ -204,7 +204,43 @@
 </div>
 @endif
 
-{{-- Team workload --}}
+{{-- Awaiting your approval — four-eyes checker queue (managers/compliance). --}}
+@if(auth('admin')->user()->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING) && $approvalQueue->isNotEmpty())
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hourglass-split text-info"></i> Awaiting your approval</span>
+        <span class="badge bg-info-subtle text-info-emphasis border">{{ $approvalQueueTotal }} to decide</span>
+    </div>
+    <div class="card-body py-2">
+        @foreach($approvalQueue as $item)
+            <div class="d-flex align-items-center justify-content-between py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.88rem;">
+                <div>
+                    <a href="{{ route('admin.user-onboardings.show', $item) }}" class="fw-semibold text-decoration-none">{{ $item->reference }}</a>
+                    <span class="text-muted">· {{ $item->user->name ?? $item->user->email ?? 'Client' }}</span>
+                    @if($item->isEscalated())
+                        <span class="badge bg-warning-subtle text-warning-emphasis border ms-1"><i class="bi bi-flag-fill"></i> Escalated</span>
+                    @endif
+                    <div class="text-muted">
+                        Submitted for approval by {{ $item->submittedForApprovalBy->name ?? 'a reviewer' }}
+                        {{ $item->submitted_for_approval_at?->diffForHumans() }}
+                    </div>
+                </div>
+                @include('admin.user-onboardings._aging-badge', ['aging' => $item->reviewAging()])
+            </div>
+        @endforeach
+        @if($approvalQueueTotal > $approvalQueue->count())
+            <div class="text-center py-2">
+                <a href="{{ route('admin.user-onboardings.index', ['approval' => 'pending_approval', 'status' => 'completed']) }}" class="small">
+                    + {{ $approvalQueueTotal - $approvalQueue->count() }} more awaiting approval
+                </a>
+            </div>
+        @endif
+    </div>
+</div>
+@endif
+
+{{-- Team workload — managers/admins only --}}
+@if(auth('admin')->user()->hasAbility(\App\Enums\Ability::VIEW_WORKLOAD))
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Team Workload</span>
@@ -255,6 +291,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="row g-3 mb-4">
     <div class="col-lg-5">

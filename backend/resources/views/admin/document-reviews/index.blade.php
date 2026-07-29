@@ -60,6 +60,11 @@
                 @endforeach
             </select>
             <div class="form-check form-check-sm text-nowrap">
+                <input class="form-check-input" type="checkbox" name="all" value="1"
+                       id="showAll" @checked($showAll) onchange="this.form.submit()">
+                <label class="form-check-label small" for="showAll">All documents</label>
+            </div>
+            <div class="form-check form-check-sm text-nowrap">
                 <input class="form-check-input" type="checkbox" name="show_reviewed" value="1"
                        id="showReviewed" @checked($showReviewed) onchange="this.form.submit()">
                 <label class="form-check-label small" for="showReviewed">Include reviewed</label>

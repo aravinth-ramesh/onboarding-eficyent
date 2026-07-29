@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\AdminPanel;
 
+use App\Enums\Ability;
 use App\Http\Controllers\Concerns\ParsesDateRange;
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AnswerAuditLog;
+use App\Models\AnswerFile;
 use App\Models\FilterPreset;
+use App\Models\OnboardingSectionReview;
+use App\Models\QuestionGroup;
 use App\Models\UserAnswer;
 use App\Models\UserOnboarding;
 use App\Models\UserOnboardingStep;
@@ -50,7 +55,7 @@ class UserOnboardingController extends Controller
     {
         $onboardings = $this->filteredQuery($request)->with('assignee')->latest()->paginate(20)->withQueryString();
         $userTypes = UserType::orderBy('order')->get();
-        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
+        $admins = Admin::reviewers()->get();
 
         // Saved views for whoever is looking, and which one (if any) the
         // current filters match, so it can be shown as selected.
@@ -115,15 +120,21 @@ class UserOnboardingController extends Controller
             $out = fopen('php://output', 'w');
             fputcsv($out, [
                 'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
-                'Status', 'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
+                'Status', 'Approval Stage', 'Submitted For Approval By',
+                'Sections Reviewed', 'Days Waiting', 'SLA',
+                'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
                 'Decided', 'Decided By', 'Decision Comment',
             ]);
 
+            $approvalLabels = ['pending_approval' => 'Awaiting approval', 'escalated' => 'Escalated'];
+
             $this->filteredQuery($request)
-                ->with(['decidedBy', 'assignee'])
+                ->with(['decidedBy', 'assignee', 'submittedForApprovalBy'])
+                ->withCount(['sectionReviews as sections_reviewed_count' => fn ($q) => $q->where('status', 'completed')])
                 ->latest()
                 ->lazy()
-                ->each(function (UserOnboarding $o) use ($out) {
+                ->each(function (UserOnboarding $o) use ($out, $approvalLabels) {
+                    $aging = $o->reviewAging();
                     fputcsv($out, [
                         $o->reference,
                         $o->user->name ?? '',
@@ -131,6 +142,11 @@ class UserOnboardingController extends Controller
                         $o->userType->name ?? '',
                         $o->subcategory->name ?? '',
                         $o->status,
+                        $o->approval_state ? ($approvalLabels[$o->approval_state] ?? $o->approval_state) : '',
+                        $o->submittedForApprovalBy->name ?? '',
+                        $o->sections_reviewed_count,
+                        $aging['days'] ?? '',
+                        $aging ? ($aging['overdue'] ? 'overdue' : 'on track') : '',
                         $o->reopened_at ? 'yes' : 'no',
                         $o->country_code ?? '',
                         $o->assignee->name ?? '',
@@ -208,28 +224,36 @@ class UserOnboardingController extends Controller
         $decided = 0;
         $skipped = 0;
 
-        foreach (UserOnboarding::whereIn('id', $validated['ids'])->get() as $onboarding) {
+        // Scope to the caller's visible rows — mirrors bulkAssign so the guard
+        // doesn't rely on the route's role gating alone.
+        $onboardings = UserOnboarding::visibleTo($admin)->whereIn('id', $validated['ids'])->get();
+
+        foreach ($onboardings as $onboarding) {
             try {
                 $validated['decision'] === 'approve'
                     ? $this->onboardingService->approve($onboarding, $admin, $validated['comment'] ?? null)
                     : $this->onboardingService->reject($onboarding, $admin, $validated['comment']);
                 $decided++;
             } catch (\DomainException) {
+                // Not awaiting review, the caller submitted it themselves
+                // (four-eyes), or its sections aren't fully reviewed.
                 $skipped++;
             }
         }
 
         $verb = $validated['decision'] === 'approve' ? 'approved' : 'rejected';
         $message = "{$decided} application(s) {$verb}."
-            . ($skipped > 0 ? " {$skipped} skipped (not awaiting review)." : '');
+            . ($skipped > 0 ? " {$skipped} skipped (couldn't be {$verb} — already decided, awaiting a second reviewer, or sections not fully reviewed)." : '');
 
-        return redirect()->route('admin.user-onboardings.index', $request->query())
+        return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'decision', 'comment', '_token']))
             ->with($decided > 0 ? 'success' : 'error', $message);
     }
 
     private function filteredQuery(Request $request)
     {
-        $query = UserOnboarding::with(['user', 'userType', 'subcategory']);
+        // Analysts only ever see their own assignments; other roles see all.
+        $query = UserOnboarding::with(['user', 'userType', 'subcategory'])
+            ->visibleTo(Auth::guard('admin')->user());
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -289,11 +313,19 @@ class UserOnboardingController extends Controller
             });
         }
 
+        // Four-eyes checker/compliance queues: applications handed off for a
+        // decision, or escalated to compliance.
+        if (in_array($request->input('approval'), ['pending_approval', 'escalated'], true)) {
+            $query->where('approval_state', $request->input('approval'));
+        }
+
         return $query;
     }
 
     public function show(UserOnboarding $userOnboarding): View
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $userOnboarding->load([
             'user',
             'userType',
@@ -305,6 +337,8 @@ class UserOnboardingController extends Controller
             'notes.admin',
             'messages.admin',
             'assignee',
+            'answers.files.reviewer',
+            'sectionReviews',
         ]);
 
         // Viewing the thread counts as reading the client's messages.
@@ -323,7 +357,7 @@ class UserOnboardingController extends Controller
 
         // Load admin questions assigned to this user
         $adminQuestions = AdminQuestion::where('user_id', $userOnboarding->user_id)
-            ->with(['admin', 'answer', 'notification'])
+            ->with(['admin', 'answer.files', 'notification'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -335,7 +369,7 @@ class UserOnboardingController extends Controller
             ->filter()
             ->toArray();
 
-        $admins = \App\Models\Admin::where('is_active', true)->orderBy('name')->get();
+        $admins = Admin::reviewers()->get();
 
         return view('admin.user-onboardings.show', compact(
             'userOnboarding',
@@ -360,6 +394,73 @@ class UserOnboardingController extends Controller
             ->paginate(20);
 
         return view('admin.user-onboardings.answer-history', compact('userOnboarding', 'answer', 'logs'));
+    }
+
+    /**
+     * Record where a reviewer has reached on a section (QuestionGroup) of this
+     * application, so a long review can be paused and resumed. Only marks
+     * belonging to sections the application actually contains are accepted.
+     */
+    public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,in_progress,completed'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        // The section must be one the client actually answered — no marking
+        // progress on groups that aren't part of this application.
+        $belongs = $userOnboarding->answers()
+            ->whereHas('question', fn ($q) => $q->where('question_group_id', $group->id))
+            ->exists();
+        abort_unless($belongs, 404);
+
+        $completed = $validated['status'] === 'completed';
+
+        OnboardingSectionReview::updateOrCreate(
+            ['user_onboarding_id' => $userOnboarding->id, 'question_group_id' => $group->id],
+            [
+                'status' => $validated['status'],
+                'note' => $validated['note'] ?? null,
+                'reviewed_by' => Auth::guard('admin')->id(),
+                'reviewed_at' => $completed ? now() : null,
+            ],
+        );
+
+        return redirect()
+            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+            ->with('success', $completed ? 'Section marked as reviewed.' : 'Section progress saved.');
+    }
+
+    /**
+     * A reviewer's verdict on a single uploaded document — verified, rejected,
+     * or a resubmission requested — distinct from the automated validation.
+     */
+    public function reviewDocument(Request $request, UserOnboarding $userOnboarding, AnswerFile $file): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        // The file must hang off an answer belonging to this application.
+        $file->loadMissing('answer');
+        abort_unless($file->answer && (int) $file->answer->user_onboarding_id === (int) $userOnboarding->id, 404);
+
+        $validated = $request->validate([
+            'review_decision' => ['required', 'in:verified,rejected,resubmit_requested'],
+            'review_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $file->update([
+            'review_decision' => $validated['review_decision'],
+            'review_note' => $validated['review_note'] ?? null,
+            'reviewed_at' => now(),
+            'reviewed_by' => Auth::guard('admin')->id(),
+        ]);
+
+        return redirect()
+            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#documents')
+            ->with('success', 'Document review saved.');
     }
 
     public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse
@@ -428,15 +529,32 @@ class UserOnboardingController extends Controller
     public function assign(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
         $validated = $request->validate([
-            'assigned_to' => 'nullable|exists:admins,id',
+            // Only an active reviewer (analyst or manager) may hold a company.
+            'assigned_to' => ['nullable', \Illuminate\Validation\Rule::exists('admins', 'id')->where(
+                fn ($q) => $q->where('is_active', true)->whereIn('role', [
+                    \App\Enums\AdminRole::Analyst->value, \App\Enums\AdminRole::Manager->value,
+                ]),
+            )],
+        ], [
+            'assigned_to.exists' => 'You can only assign a company to an active analyst or manager.',
         ]);
 
         $newAssignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
-        $changed = $newAssignee !== $userOnboarding->assigned_to;
+        $previousAssignee = $userOnboarding->assigned_to;
+        $changed = $newAssignee !== $previousAssignee;
 
         $userOnboarding->update(['assigned_to' => $newAssignee]);
 
         $actingAdmin = Auth::guard('admin')->user();
+
+        // Record the reassignment on the review timeline (who → whom).
+        if ($changed) {
+            $userOnboarding->reviewLogs()->create([
+                'event' => $newAssignee ? 'assigned' : 'unassigned',
+                'admin_id' => $actingAdmin->id,
+                'comment' => $this->assignmentComment($previousAssignee, $newAssignee),
+            ]);
+        }
 
         // Notify the new assignee — unless they assigned it to themselves.
         if ($changed && $newAssignee !== null && $newAssignee !== $actingAdmin->id) {
@@ -453,6 +571,79 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', $newAssignee ? 'Application assigned.' : 'Assignment cleared.');
+    }
+
+    /**
+     * Assign (or clear the assignment of) several companies at once — a
+     * manager distributing a batch of work. Only the caller's visible rows and
+     * an active-reviewer target are honoured. No per-company email is sent for
+     * a batch; the assignee sees the new work in their queue.
+     */
+    public function bulkAssign(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:user_onboardings,id',
+            'assigned_to' => ['nullable', \Illuminate\Validation\Rule::exists('admins', 'id')->where(
+                fn ($q) => $q->where('is_active', true)->whereIn('role', [
+                    \App\Enums\AdminRole::Analyst->value, \App\Enums\AdminRole::Manager->value,
+                ]),
+            )],
+        ], [
+            'assigned_to.exists' => 'You can only assign companies to an active analyst or manager.',
+        ]);
+
+        $assignee = $validated['assigned_to'] ? (int) $validated['assigned_to'] : null;
+        $actor = Auth::guard('admin')->user();
+
+        // Fetch first so we can record a per-application reassignment trail.
+        $targets = UserOnboarding::visibleTo($actor)
+            ->whereIn('id', $validated['ids'])
+            ->get(['id', 'assigned_to']);
+
+        UserOnboarding::whereIn('id', $targets->pluck('id'))->update(['assigned_to' => $assignee]);
+
+        $now = now();
+        $logs = $targets
+            ->filter(fn ($o) => $o->assigned_to !== $assignee)
+            ->map(fn ($o) => [
+                'user_onboarding_id' => $o->id,
+                'event' => $assignee ? 'assigned' : 'unassigned',
+                'admin_id' => $actor->id,
+                'comment' => $this->assignmentComment($o->assigned_to, $assignee),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->values()->all();
+        if ($logs) {
+            \App\Models\OnboardingReviewLog::insert($logs);
+        }
+
+        $count = $targets->count();
+
+        return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'assigned_to', '_token']))
+            ->with(
+                $count > 0 ? 'success' : 'error',
+                $count > 0
+                    ? "{$count} " . str('company')->plural($count) . ' ' . ($assignee ? 'assigned.' : 'unassigned.')
+                    : 'No companies were updated.',
+            );
+    }
+
+    /** Human-readable description of an assignment change for the timeline. */
+    private function assignmentComment(?int $from, ?int $to): string
+    {
+        $name = fn (?int $id) => $id ? (Admin::find($id)?->name ?? 'a reviewer') : null;
+        $fromName = $name($from);
+        $toName = $name($to);
+
+        if ($to === null) {
+            return $fromName ? "Unassigned from {$fromName}" : 'Unassigned';
+        }
+        if ($from === null) {
+            return "Assigned to {$toName}";
+        }
+
+        return "Reassigned from {$fromName} to {$toName}";
     }
 
     public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse
@@ -525,6 +716,36 @@ class UserOnboardingController extends Controller
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
             ->with('success', 'Application rejected — the client has been notified by email.');
+    }
+
+    public function submitForApproval(UserOnboarding $userOnboarding): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        try {
+            $this->onboardingService->submitForApproval($userOnboarding, Auth::guard('admin')->user());
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Submitted for approval — a second reviewer can now make the decision.');
+    }
+
+    public function escalate(Request $request, UserOnboarding $userOnboarding): RedirectResponse
+    {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $validated = $request->validate(['comment' => 'nullable|string|max:2000']);
+
+        try {
+            $this->onboardingService->escalate($userOnboarding, Auth::guard('admin')->user(), $validated['comment'] ?? null);
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+            ->with('success', 'Escalated to compliance for review.');
     }
 
     public function auditLogs(Request $request): View

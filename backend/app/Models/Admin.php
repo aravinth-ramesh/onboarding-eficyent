@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AdminRole;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,9 +19,69 @@ class Admin extends Authenticatable
         'email',
         'password',
         'is_active',
+        'role',
         'pin_shortcut',
         'preset_history_cleared_at',
     ];
+
+    /** Whether this admin's role grants the given ability (see App\Enums\Ability). */
+    public function hasAbility(string $ability): bool
+    {
+        return $this->role instanceof AdminRole && $this->role->hasAbility($ability);
+    }
+
+    public function isRole(AdminRole $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    /** Whether an onboarding may be assigned to this admin for review. */
+    public function canReceiveAssignments(): bool
+    {
+        return $this->is_active
+            && $this->role instanceof AdminRole
+            && $this->role->canReceiveAssignments();
+    }
+
+    /** Active staff who can be assigned companies to review (analysts + managers). */
+    public function scopeReviewers($query)
+    {
+        return $query->where('is_active', true)
+            ->whereIn('role', [AdminRole::Analyst->value, AdminRole::Manager->value])
+            ->orderBy('name');
+    }
+
+    /**
+     * Roles this admin is allowed to grant others: a super admin can grant any
+     * role; everyone else only roles strictly below their own level. Prevents
+     * privilege escalation via user management.
+     *
+     * @return array<int, AdminRole>
+     */
+    public function assignableRoles(): array
+    {
+        return collect(AdminRole::cases())
+            ->filter(fn (AdminRole $r) => $this->isRole(AdminRole::SuperAdmin) || $r->level() < $this->role->level())
+            ->values()
+            ->all();
+    }
+
+    /** Whether this admin may edit/deactivate the given target (never themselves). */
+    public function canManage(self $target): bool
+    {
+        if ($this->id === $target->id) {
+            return false;
+        }
+
+        return $this->isRole(AdminRole::SuperAdmin) || $target->role->level() < $this->role->level();
+    }
+
+    /** Analysts are scoped to their own assignments; everyone else sees more. */
+    public function seesOnlyAssignedOnboardings(): bool
+    {
+        return $this->hasAbility(\App\Enums\Ability::VIEW_ASSIGNED_ONBOARDINGS)
+            && ! $this->hasAbility(\App\Enums\Ability::VIEW_ALL_ONBOARDINGS);
+    }
 
     /** The admin's pin shortcut (normalised, e.g. "shift+p"), or the default. */
     public function pinShortcut(): string
@@ -48,6 +109,7 @@ class Admin extends Authenticatable
         return [
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'role' => AdminRole::class,
             'preset_history_cleared_at' => 'datetime',
         ];
     }

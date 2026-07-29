@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\AdminRole;
 use App\Mail\OnboardingAssignedMail;
 use App\Mail\OnboardingDecisionMail;
+use App\Mail\OnboardingEscalatedMail;
 use App\Mail\OnboardingSubmittedAdminMail;
 use App\Mail\OnboardingSubmittedClientMail;
 use App\Models\Admin;
@@ -128,6 +130,78 @@ class OnboardingService
     }
 
     /**
+     * Maker step of four-eyes: the reviewer who worked the application hands it
+     * off for a second person to approve. Every section must be reviewed first
+     * — the maker is attesting the review is complete.
+     */
+    public function submitForApproval(UserOnboarding $onboarding, Admin $admin): UserOnboarding
+    {
+        if ($onboarding->status !== 'completed') {
+            throw new \DomainException('Only a submitted application awaiting review can be sent for approval.');
+        }
+
+        if ($onboarding->approval_state === 'pending_approval') {
+            throw new \DomainException('This application has already been submitted for approval.');
+        }
+
+        $progress = $onboarding->sectionReviewProgress();
+        if ($progress['total'] > 0 && ! $progress['complete']) {
+            throw new \DomainException('Review every section before submitting for approval.');
+        }
+
+        $onboarding->update([
+            'approval_state' => 'pending_approval',
+            'submitted_for_approval_by' => $admin->id,
+            'submitted_for_approval_at' => now(),
+        ]);
+
+        $onboarding->reviewLogs()->create([
+            'event' => 'submitted_for_approval',
+            'admin_id' => $admin->id,
+        ]);
+
+        return $onboarding->fresh();
+    }
+
+    /**
+     * Refer an application to compliance for the decision. Keeps it in the
+     * review queue but flags it so the compliance team can pick it up.
+     */
+    public function escalate(UserOnboarding $onboarding, Admin $admin, ?string $comment = null): UserOnboarding
+    {
+        if ($onboarding->status !== 'completed') {
+            throw new \DomainException('Only a submitted application awaiting review can be escalated.');
+        }
+
+        $onboarding->update(['approval_state' => 'escalated']);
+
+        $onboarding->reviewLogs()->create([
+            'event' => 'escalated',
+            'admin_id' => $admin->id,
+            'comment' => $comment ?: null,
+        ]);
+
+        // Ping the compliance team — an escalation that reaches nobody is no
+        // escalation. The one who escalated doesn't need their own email.
+        try {
+            $onboarding->loadMissing(['user', 'userType']);
+            $recipients = Admin::where('is_active', true)
+                ->where('role', AdminRole::Compliance->value)
+                ->where('id', '!=', $admin->id)
+                ->pluck('email')
+                ->filter();
+
+            foreach ($recipients as $email) {
+                Mail::to($email)->queue(new OnboardingEscalatedMail($onboarding, $admin, $comment ?: null));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $onboarding->fresh();
+    }
+
+    /**
      * Discard a draft application so the owner can start over. Only drafts
      * (pending / in_progress) can be discarded — a submitted application is
      * a compliance record and stays. Deleting cascades to answers, steps,
@@ -181,6 +255,9 @@ class OnboardingService
             'decided_at' => null,
             'decided_by' => null,
             'decision_comment' => null,
+            'approval_state' => null,
+            'submitted_for_approval_by' => null,
+            'submitted_for_approval_at' => null,
             'reopened_at' => now(),
             'current_step_id' => $reviewStep?->id,
         ]);
@@ -196,11 +273,28 @@ class OnboardingService
             throw new \DomainException('Only submitted applications awaiting review can be approved or rejected.');
         }
 
+        // Four-eyes: the reviewer who submitted an application for approval
+        // cannot also sign it off — a second person must decide.
+        if ($onboarding->submitted_for_approval_by
+            && (int) $onboarding->submitted_for_approval_by === (int) $admin->id) {
+            throw new \DomainException('A different reviewer must decide this — you submitted it for approval (four-eyes).');
+        }
+
+        // An approval means the whole application checks out, so every section
+        // must have been reviewed first. Rejections can happen at any point.
+        if ($status === 'approved') {
+            $progress = $onboarding->sectionReviewProgress();
+            if ($progress['total'] > 0 && ! $progress['complete']) {
+                throw new \DomainException('Every section must be reviewed before the application can be approved.');
+            }
+        }
+
         $onboarding->update([
             'status' => $status,
             'decided_at' => now(),
             'decided_by' => $admin->id,
             'decision_comment' => $comment ?: null,
+            'approval_state' => null,
         ]);
 
         $onboarding->reviewLogs()->create([
@@ -236,7 +330,10 @@ class OnboardingService
         }
 
         try {
+            // Route new work to the least-loaded active analyst (the front-line
+            // review pool). If there are none, leave it for a manager to assign.
             $assignee = Admin::where('is_active', true)
+                ->where('role', \App\Enums\AdminRole::Analyst->value)
                 ->withCount(['assignedOnboardings as open_count' => fn ($q) => $q->where('status', 'completed')])
                 ->orderBy('open_count')
                 ->orderBy('id')

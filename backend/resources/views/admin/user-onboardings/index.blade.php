@@ -3,6 +3,13 @@
 @section('title', 'User Onboardings')
 
 @section('content')
+@php
+    $me = auth('admin')->user();
+    $canApprove = $me->hasAbility(\App\Enums\Ability::APPROVE_ONBOARDING);
+    $canAssign = $me->hasAbility(\App\Enums\Ability::ASSIGN_ONBOARDING);
+    $canEmail = $me->hasAbility(\App\Enums\Ability::MANAGE_EMAILS);
+    $canBulk = $canApprove || $canAssign || $canEmail;
+@endphp
 {{-- Search & filters --}}
 <div class="card mb-3">
     <div class="card-body py-2">
@@ -42,6 +49,13 @@
                             {{ $adminOption->name }}
                         </option>
                     @endforeach
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <select name="approval" class="form-select form-select-sm" onchange="this.form.submit()" title="Four-eyes approval stage">
+                    <option value="">Any approval stage</option>
+                    <option value="pending_approval" @selected(request('approval') === 'pending_approval')>Awaiting approval</option>
+                    <option value="escalated" @selected(request('approval') === 'escalated')>Escalated to compliance</option>
                 </select>
             </div>
             <div class="col-auto d-flex align-items-center gap-1">
@@ -103,23 +117,50 @@
     <input type="hidden" name="send_at" id="bulkEmailSendAtInput">
     <div id="bulkEmailIds"></div>
 </form>
+@if($canAssign)
+    <form method="POST" action="{{ route('admin.user-onboardings.bulk-assign', request()->query()) }}" id="bulkAssignForm" class="d-none">
+        @csrf
+        <input type="hidden" name="assigned_to" id="bulkAssignAssignee">
+        <div id="bulkAssignIds"></div>
+    </form>
+@endif
 
 {{-- Bulk action bar — appears when any row is ticked --}}
+@if($canBulk)
 <div class="card mb-3" id="bulkBar" style="display: none;">
     <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
         <span class="fw-semibold" style="font-size: 0.9rem;"><span id="bulkCount">0</span> selected</span>
-        <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">
-            <i class="bi bi-check-circle"></i> Approve
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
-            <i class="bi bi-x-circle"></i> Reject
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkEmailModal">
-            <i class="bi bi-envelope"></i> Send Email
-        </button>
-        <span class="text-muted" style="font-size: 0.8rem;">Approve/Reject apply only to awaiting-review rows; email goes to every selected client.</span>
+        @if($canApprove)
+            <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">
+                <i class="bi bi-check-circle"></i> Approve
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
+                <i class="bi bi-x-circle"></i> Reject
+            </button>
+        @endif
+        @if($canAssign)
+            <div class="d-flex align-items-center gap-1">
+                <select id="bulkAssignSelect" class="form-select form-select-sm" style="width: 190px;">
+                    <option value="">Assign to…</option>
+                    <option value="__clear__">— Unassign —</option>
+                    @foreach($admins as $adminOption)
+                        <option value="{{ $adminOption->id }}">{{ $adminOption->name }} ({{ $adminOption->role->label() }})</option>
+                    @endforeach
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkAssignBtn">
+                    <i class="bi bi-person-check"></i> Assign
+                </button>
+            </div>
+        @endif
+        @if($canEmail)
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkEmailModal">
+                <i class="bi bi-envelope"></i> Send Email
+            </button>
+        @endif
+        <span class="text-muted" style="font-size: 0.8rem;">Approve/Reject apply only to awaiting-review rows.</span>
     </div>
 </div>
+@endif
 
 <div class="card">
     <div class="card-body p-0">
@@ -127,9 +168,11 @@
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 32px;">
-                            <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all">
-                        </th>
+                        @if($canBulk)
+                            <th style="width: 32px;">
+                                <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all">
+                            </th>
+                        @endif
                         <th>ID</th>
                         <th>User</th>
                         <th>User Type</th>
@@ -144,12 +187,14 @@
                 <tbody>
                     @forelse($onboardings as $onboarding)
                         <tr>
-                            <td>
-                                <input type="checkbox" class="form-check-input bulk-check"
-                                       value="{{ $onboarding->id }}"
-                                       data-status="{{ $onboarding->status }}"
-                                       @unless($onboarding->user?->email) data-no-email="1" @endunless>
-                            </td>
+                            @if($canBulk)
+                                <td>
+                                    <input type="checkbox" class="form-check-input bulk-check"
+                                           value="{{ $onboarding->id }}"
+                                           data-status="{{ $onboarding->status }}"
+                                           @unless($onboarding->user?->email) data-no-email="1" @endunless>
+                                </td>
+                            @endif
                             <td>{{ $onboarding->id }}</td>
                             <td>
                                 <div class="fw-semibold">{{ $onboarding->user->name ?? 'N/A' }}</div>
@@ -161,6 +206,12 @@
                                 <span class="badge badge-{{ $onboarding->status }}">
                                     {{ ucfirst(str_replace('_', ' ', $onboarding->status)) }}
                                 </span>
+                                @if($onboarding->approval_state === 'escalated')
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border" title="Escalated to compliance"><i class="bi bi-flag-fill"></i></span>
+                                @elseif($onboarding->approval_state === 'pending_approval')
+                                    <span class="badge bg-info-subtle text-info-emphasis border" title="Awaiting a second reviewer"><i class="bi bi-hourglass-split"></i></span>
+                                @endif
+                                @include('admin.user-onboardings._aging-badge', ['aging' => $onboarding->reviewAging()])
                             </td>
                             <td>
                                 @if($onboarding->assignee)
@@ -179,7 +230,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-4">No onboardings found.</td>
+                            <td colspan="{{ $canBulk ? 10 : 9 }}" class="text-center text-muted py-4">No onboardings found.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -194,6 +245,7 @@
 </div>
 
 {{-- Bulk Email Modal --}}
+@if($canEmail)
 <div class="modal fade" id="bulkEmailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -238,8 +290,10 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Bulk Reject Modal --}}
+@if($canApprove)
 <div class="modal fade" id="bulkRejectModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -262,6 +316,7 @@
         </div>
     </div>
 </div>
+@endif
 
 @push('scripts')
 <script>
@@ -270,6 +325,9 @@
         var bar = document.getElementById('bulkBar');
         var count = document.getElementById('bulkCount');
         var selectAll = document.getElementById('bulkSelectAll');
+
+        // Roles without any bulk ability render no bar/checkboxes — nothing to do.
+        if (!bar) return;
 
         function selectedChecks() {
             return Array.prototype.filter.call(checks, function (c) { return c.checked; });
@@ -306,30 +364,49 @@
             return n;
         }
 
-        // ── Decisions (awaiting-review rows only) ──
+        // ── Decisions (awaiting-review rows only) — approvers only ──
         var decisionForm = document.getElementById('bulkDecisionForm');
+        var approveBtn = document.getElementById('bulkApproveBtn');
+        if (approveBtn) {
+            approveBtn.addEventListener('click', function () {
+                var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
+                if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
+                if (!confirm('Approve ' + n + ' application(s) awaiting review? Each client is notified by email.')) return;
+                document.getElementById('bulkDecision').value = 'approve';
+                document.getElementById('bulkComment').value = '';
+                decisionForm.submit();
+            });
 
-        document.getElementById('bulkApproveBtn').addEventListener('click', function () {
-            var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
-            if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
-            if (!confirm('Approve ' + n + ' application(s) awaiting review? Each client is notified by email.')) return;
-            document.getElementById('bulkDecision').value = 'approve';
-            document.getElementById('bulkComment').value = '';
-            decisionForm.submit();
-        });
+            document.getElementById('bulkRejectConfirm').addEventListener('click', function () {
+                var reason = document.getElementById('bulkRejectComment').value.trim();
+                if (!reason) { document.getElementById('bulkRejectComment').focus(); return; }
+                var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
+                if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
+                document.getElementById('bulkDecision').value = 'reject';
+                document.getElementById('bulkComment').value = reason;
+                decisionForm.submit();
+            });
+        }
 
-        document.getElementById('bulkRejectConfirm').addEventListener('click', function () {
-            var reason = document.getElementById('bulkRejectComment').value.trim();
-            if (!reason) { document.getElementById('bulkRejectComment').focus(); return; }
-            var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
-            if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
-            document.getElementById('bulkDecision').value = 'reject';
-            document.getElementById('bulkComment').value = reason;
-            decisionForm.submit();
-        });
+        // ── Bulk assign (managers/admins) ──
+        var assignBtn = document.getElementById('bulkAssignBtn');
+        if (assignBtn) {
+            assignBtn.addEventListener('click', function () {
+                var select = document.getElementById('bulkAssignSelect');
+                var value = select.value;
+                if (value === '') { select.focus(); return; }
+                var n = fillIds(document.getElementById('bulkAssignIds'), null);
+                if (n === 0) return;
+                var who = value === '__clear__' ? 'unassign' : 'assign to ' + select.options[select.selectedIndex].text;
+                if (!confirm('Bulk ' + who + ' — ' + n + ' company(ies)?')) return;
+                document.getElementById('bulkAssignAssignee').value = value === '__clear__' ? '' : value;
+                document.getElementById('bulkAssignForm').submit();
+            });
+        }
 
-        // ── Bulk email (all selected rows) ──
+        // ── Bulk email (all selected rows) — emailers only ──
         var emailModal = document.getElementById('bulkEmailModal');
+        if (!emailModal) return;
         emailModal.addEventListener('show.bs.modal', function () {
             var withEmail = selectedChecks().filter(function (c) { return !c.dataset.noEmail; }).length;
             document.getElementById('bulkEmailCount').textContent = withEmail;

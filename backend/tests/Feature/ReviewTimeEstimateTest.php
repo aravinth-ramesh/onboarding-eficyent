@@ -85,7 +85,7 @@ class ReviewTimeEstimateTest extends TestCase
         $user = User::create(['email' => 'client@test.com', 'name' => 'Test Client', 'position' => 'CFO']);
         OnboardingStep::query()->delete();
         OnboardingStep::create(['name' => 'Review', 'slug' => 'review', 'component_key' => 'review', 'order' => 1, 'is_active' => true]);
-        Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
 
         $service = app(OnboardingService::class);
         $onboarding = $service->initializeForUser($user);

@@ -21,7 +21,7 @@ class ArchiveOnboardingTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true]);
+        $this->admin = Admin::create(['name' => 'Reviewer', 'email' => 'admin@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         $type = UserType::create(['name' => 'Corporate', 'slug' => 'corporate', 'order' => 1, 'is_active' => true]);
 
         $a = User::create(['email' => 'a@test.com', 'name' => 'Alice Done', 'position' => 'CFO']);

@@ -61,7 +61,7 @@ class DiscardDraftTest extends TestCase
     public function test_submitted_applications_cannot_be_discarded(): void
     {
         $service = app(OnboardingService::class);
-        Admin::create(['name' => 'A', 'email' => 'a@test.com', 'password' => 'x', 'is_active' => true]);
+        Admin::create(['name' => 'A', 'email' => 'a@test.com', 'password' => 'x', 'is_active' => true, 'role' => \App\Enums\AdminRole::SuperAdmin]);
         foreach ($this->onboarding->steps as $step) {
             $service->completeStep($this->onboarding->fresh(), $step);
         }
