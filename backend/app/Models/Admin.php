@@ -11,17 +11,12 @@ class Admin extends Authenticatable
 {
     use Notifiable;
 
-    /** Default pin shortcut when the admin has not chosen one. */
-    public const DEFAULT_PIN_SHORTCUT = 'shift+p';
-
     protected $fillable = [
         'name',
         'email',
         'password',
         'is_active',
         'role',
-        'pin_shortcut',
-        'preset_history_cleared_at',
     ];
 
     /** Whether this admin's role grants the given ability (see App\Enums\Ability). */
@@ -83,22 +78,6 @@ class Admin extends Authenticatable
             && ! $this->hasAbility(\App\Enums\Ability::VIEW_ALL_ONBOARDINGS);
     }
 
-    /** The admin's pin shortcut (normalised, e.g. "shift+p"), or the default. */
-    public function pinShortcut(): string
-    {
-        return $this->pin_shortcut ?: self::DEFAULT_PIN_SHORTCUT;
-    }
-
-    /** Human-readable form of a normalised combo, e.g. "shift+p" → "Shift+P". */
-    public static function displayShortcut(string $combo): string
-    {
-        $labels = ['ctrl' => 'Ctrl', 'alt' => 'Alt', 'shift' => 'Shift', 'meta' => 'Cmd'];
-
-        return collect(explode('+', $combo))
-            ->map(fn ($part) => $labels[$part] ?? strtoupper($part))
-            ->implode('+');
-    }
-
     protected $hidden = [
         'password',
         'remember_token',
@@ -110,7 +89,6 @@ class Admin extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'role' => AdminRole::class,
-            'preset_history_cleared_at' => 'datetime',
         ];
     }
 
