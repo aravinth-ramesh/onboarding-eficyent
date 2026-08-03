@@ -119,7 +119,7 @@ class UserOnboardingController extends Controller
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
             fputcsv($out, [
-                'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
+                'Reference', 'Company', 'Contact Name', 'Email', 'Organization Type', 'Subcategory',
                 'Status', 'Approval Stage', 'Submitted For Approval By',
                 'Sections Reviewed', 'Days Waiting', 'SLA',
                 'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
@@ -137,6 +137,7 @@ class UserOnboardingController extends Controller
                     $aging = $o->reviewAging();
                     fputcsv($out, [
                         $o->reference,
+                        $o->company_name ?? '',
                         $o->user->name ?? '',
                         $o->user->email ?? '',
                         $o->userType->name ?? '',
@@ -303,10 +304,11 @@ class UserOnboardingController extends Controller
                 : (ctype_digit($term) ? (int) ltrim($term, '0') : null);
 
             $query->where(function ($q) use ($term, $referenceId) {
-                $q->whereHas('user', function ($u) use ($term) {
-                    $u->where('name', 'like', "%{$term}%")
-                        ->orWhere('email', 'like', "%{$term}%");
-                });
+                $q->where('company_name', 'like', "%{$term}%")
+                    ->orWhereHas('user', function ($u) use ($term) {
+                        $u->where('name', 'like', "%{$term}%")
+                            ->orWhere('email', 'like', "%{$term}%");
+                    });
                 if ($referenceId !== null) {
                     $q->orWhere('id', $referenceId);
                 }

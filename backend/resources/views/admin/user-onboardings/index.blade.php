@@ -174,7 +174,7 @@
                             </th>
                         @endif
                         <th>ID</th>
-                        <th>User</th>
+                        <th>Company</th>
                         <th>User Type</th>
                         <th>Subcategory</th>
                         <th>Status</th>
@@ -197,8 +197,10 @@
                             @endif
                             <td>{{ $onboarding->id }}</td>
                             <td>
-                                <div class="fw-semibold">{{ $onboarding->user->name ?? 'N/A' }}</div>
-                                <small class="text-muted">{{ $onboarding->user->email ?? '' }}</small>
+                                <div class="fw-semibold">{{ $onboarding->displayName }}</div>
+                                <small class="text-muted">
+                                    @if($onboarding->company_name && $onboarding->user?->name){{ $onboarding->user->name }} · @endif{{ $onboarding->user->email ?? '' }}
+                                </small>
                             </td>
                             <td>{{ $onboarding->userType->name ?? 'N/A' }}</td>
                             <td>{{ $onboarding->subcategory->name ?? '-' }}</td>

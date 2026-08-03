@@ -257,6 +257,9 @@ class AnswerService
             );
         }
 
+        // Keep the denormalised company name current as the form is filled.
+        \App\Support\CompanyName::sync($onboarding);
+
         return $saved;
     }
 }

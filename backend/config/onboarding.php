@@ -46,4 +46,28 @@ return [
         'approval_days' => (int) env('APPROVAL_SLA_DAYS', 2),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Company-name questions
+    |--------------------------------------------------------------------------
+    |
+    | The admin lists identify an application by the company/entity name, not
+    | the person who registered. That name is an answer to one of the questions
+    | below (matched case-insensitively by label, first match wins in this
+    | priority order), denormalised onto user_onboardings.company_name.
+    |
+    */
+    'company_name_labels' => [
+        'Full Legal Entity Name',
+        'Legal Entity Name',
+        'Registered Company Name',
+        'Company Name',
+        'Registered Name',
+        'Entity Name',
+        'Legal Name',
+        'Organisation Name',
+        'Organization Name',
+        'Trading Name',
+    ],
+
 ];

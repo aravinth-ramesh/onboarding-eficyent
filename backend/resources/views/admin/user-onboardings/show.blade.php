@@ -167,10 +167,15 @@
     {{-- User Info --}}
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header">User Information</div>
+            <div class="card-header">Application Details</div>
             <div class="card-body">
                 <dl class="mb-0">
-                    <dt class="text-muted" style="font-size: 0.8rem;">Name</dt>
+                    @if($userOnboarding->company_name)
+                        <dt class="text-muted" style="font-size: 0.8rem;">Company</dt>
+                        <dd class="fw-semibold">{{ $userOnboarding->company_name }}</dd>
+                    @endif
+
+                    <dt class="text-muted" style="font-size: 0.8rem;">Contact</dt>
                     <dd>{{ $userOnboarding->user->name ?? 'N/A' }}</dd>
 
                     <dt class="text-muted" style="font-size: 0.8rem;">Email</dt>

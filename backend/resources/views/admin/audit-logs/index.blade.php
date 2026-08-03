@@ -34,7 +34,7 @@
                                 @if($onb)
                                     <a href="{{ route('admin.user-onboardings.show', $onb) }}" class="fw-semibold text-decoration-none">{{ $onb->reference }}</a>
                                     <span class="badge badge-{{ $onb->status }} ms-1">{{ ucfirst(str_replace('_', ' ', $onb->status)) }}</span>
-                                    <div><small class="text-muted">{{ $onb->user->name ?? $onb->user->email ?? '' }}</small></div>
+                                    <div><small class="text-muted">{{ $onb->displayName }}</small></div>
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif

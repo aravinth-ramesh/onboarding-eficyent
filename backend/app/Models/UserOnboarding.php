@@ -12,6 +12,7 @@ class UserOnboarding extends Model
         'user_id',
         'user_type_id',
         'user_type_subcategory_id',
+        'company_name',
         'country_code',
         'registration_details',
         'status',
@@ -184,6 +185,16 @@ class UserOnboarding extends Model
         $year = $this->started_at?->format('Y');
 
         return $year ? "ONB-{$year}-{$padded}" : "ONB-{$padded}";
+    }
+
+    /**
+     * The name to show for this application in admin lists — the company /
+     * entity name, falling back to the registrant's name or email.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->company_name
+            ?: ($this->user?->name ?: ($this->user?->email ?? 'Unknown'));
     }
 
     public function user(): BelongsTo
