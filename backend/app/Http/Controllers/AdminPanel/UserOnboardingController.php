@@ -389,7 +389,7 @@ class UserOnboardingController extends Controller
         $answer->load(['question.group', 'files']);
 
         $logs = AnswerAuditLog::where('user_answer_id', $answer->id)
-            ->with(['editor'])
+            ->with(['editor', 'question'])
             ->latest('edited_at')
             ->paginate(20);
 

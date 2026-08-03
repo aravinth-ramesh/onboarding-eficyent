@@ -40,8 +40,12 @@
                                 @endif
                             </td>
                             <td>{{ Str::limit($log->question->label ?? 'N/A', 40) }}</td>
-                            <td><span class="text-danger">{{ Str::limit($log->old_value ?: '—', 40) }}</span></td>
-                            <td><span class="text-success">{{ Str::limit($log->new_value ?: '—', 40) }}</span></td>
+                            @php
+                                $oldText = \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question);
+                                $newText = \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question);
+                            @endphp
+                            <td><span class="text-danger" title="{{ $oldText }}">{{ Str::limit($oldText, 48) }}</span></td>
+                            <td><span class="text-success" title="{{ $newText }}">{{ Str::limit($newText, 48) }}</span></td>
                             <td>
                                 {{ $log->editor->name ?? $log->editor->email ?? 'System' }}
                                 @if($log->editor && $log->user && $log->editor->id !== $log->user->id)
