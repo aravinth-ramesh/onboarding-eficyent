@@ -99,6 +99,9 @@ class OnboardingService
                 'current_step_id' => null,
             ]);
 
+            // Lock in the company name at submission for the review queues.
+            \App\Support\CompanyName::sync($onboarding->fresh());
+
             $onboarding->reviewLogs()->create([
                 'event' => $onboarding->reopened_at ? 'resubmitted' : 'submitted',
             ]);

@@ -119,7 +119,7 @@ class UserOnboardingController extends Controller
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
             fputcsv($out, [
-                'Reference', 'Name', 'Email', 'Organization Type', 'Subcategory',
+                'Reference', 'Company', 'Contact Name', 'Email', 'Organization Type', 'Subcategory',
                 'Status', 'Approval Stage', 'Submitted For Approval By',
                 'Sections Reviewed', 'Days Waiting', 'SLA',
                 'Resubmission', 'Country', 'Assigned To', 'Started', 'Submitted',
@@ -137,6 +137,7 @@ class UserOnboardingController extends Controller
                     $aging = $o->reviewAging();
                     fputcsv($out, [
                         $o->reference,
+                        $o->company_name ?? '',
                         $o->user->name ?? '',
                         $o->user->email ?? '',
                         $o->userType->name ?? '',
@@ -303,10 +304,11 @@ class UserOnboardingController extends Controller
                 : (ctype_digit($term) ? (int) ltrim($term, '0') : null);
 
             $query->where(function ($q) use ($term, $referenceId) {
-                $q->whereHas('user', function ($u) use ($term) {
-                    $u->where('name', 'like', "%{$term}%")
-                        ->orWhere('email', 'like', "%{$term}%");
-                });
+                $q->where('company_name', 'like', "%{$term}%")
+                    ->orWhereHas('user', function ($u) use ($term) {
+                        $u->where('name', 'like', "%{$term}%")
+                            ->orWhere('email', 'like', "%{$term}%");
+                    });
                 if ($referenceId !== null) {
                     $q->orWhere('id', $referenceId);
                 }
@@ -389,7 +391,7 @@ class UserOnboardingController extends Controller
         $answer->load(['question.group', 'files']);
 
         $logs = AnswerAuditLog::where('user_answer_id', $answer->id)
-            ->with(['editor'])
+            ->with(['editor', 'question'])
             ->latest('edited_at')
             ->paginate(20);
 
@@ -750,10 +752,18 @@ class UserOnboardingController extends Controller
 
     public function auditLogs(Request $request): View
     {
-        $query = AnswerAuditLog::with(['question', 'user', 'editor']);
+        // These are post-submission client changes only (AnswerService stops
+        // logging draft edits) — the record of what moved after the team
+        // started reviewing.
+        $query = AnswerAuditLog::with(['question', 'user', 'editor', 'answer.onboarding.user']);
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
+        }
+
+        if ($request->filled('onboarding')) {
+            $onboardingId = (int) $request->input('onboarding');
+            $query->whereHas('answer', fn ($q) => $q->where('user_onboarding_id', $onboardingId));
         }
 
         $logs = $query->latest('edited_at')->paginate(20)->withQueryString();

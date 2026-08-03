@@ -216,7 +216,7 @@
             <div class="d-flex align-items-center justify-content-between py-2 {{ $loop->last ? '' : 'border-bottom' }}" style="font-size: 0.88rem;">
                 <div>
                     <a href="{{ route('admin.user-onboardings.show', $item) }}" class="fw-semibold text-decoration-none">{{ $item->reference }}</a>
-                    <span class="text-muted">· {{ $item->user->name ?? $item->user->email ?? 'Client' }}</span>
+                    <span class="text-muted">· {{ $item->displayName }}</span>
                     @if($item->isEscalated())
                         <span class="badge bg-warning-subtle text-warning-emphasis border ms-1"><i class="bi bi-flag-fill"></i> Escalated</span>
                     @endif
@@ -253,7 +253,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Admin</th>
@@ -326,7 +326,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
                         <th>User</th>

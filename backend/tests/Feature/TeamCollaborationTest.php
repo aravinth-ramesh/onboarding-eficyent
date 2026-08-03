@@ -73,6 +73,10 @@ class TeamCollaborationTest extends TestCase
         $colleague = $this->inviteColleague();
         $colleague->update(['name' => 'Colleague', 'position' => 'COO']);
 
+        // The application has already been through review (reopened for a
+        // resubmission), so the colleague's edit is audit-logged.
+        $this->onboarding->update(['reopened_at' => now()]);
+
         Sanctum::actingAs($colleague);
         $this->postJson('/api/onboarding/answers', [
             'answers' => [['question_id' => $question->id, 'value' => 'Acme Holdings Ltd']],

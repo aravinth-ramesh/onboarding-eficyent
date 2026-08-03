@@ -16,7 +16,7 @@
         <form method="GET" action="{{ route('admin.user-onboardings.index') }}" class="row g-2 align-items-center" id="filterForm">
             <div class="col-md-4 col-lg-3">
                 <input type="search" name="search" class="form-control form-control-sm"
-                       placeholder="Search name, email or reference (ONB-...)"
+                       placeholder="Search company, contact, email or reference (ONB-...)"
                        value="{{ request('search') }}">
             </div>
             <div class="col-md-3 col-lg-2">
@@ -165,7 +165,7 @@
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
                         @if($canBulk)
@@ -174,7 +174,7 @@
                             </th>
                         @endif
                         <th>ID</th>
-                        <th>User</th>
+                        <th>Company</th>
                         <th>User Type</th>
                         <th>Subcategory</th>
                         <th>Status</th>
@@ -197,8 +197,10 @@
                             @endif
                             <td>{{ $onboarding->id }}</td>
                             <td>
-                                <div class="fw-semibold">{{ $onboarding->user->name ?? 'N/A' }}</div>
-                                <small class="text-muted">{{ $onboarding->user->email ?? '' }}</small>
+                                <div class="fw-semibold">{{ $onboarding->displayName }}</div>
+                                <small class="text-muted">
+                                    @if($onboarding->company_name && $onboarding->user?->name){{ $onboarding->user->name }} · @endif{{ $onboarding->user->email ?? '' }}
+                                </small>
                             </td>
                             <td>{{ $onboarding->userType->name ?? 'N/A' }}</td>
                             <td>{{ $onboarding->subcategory->name ?? '-' }}</td>

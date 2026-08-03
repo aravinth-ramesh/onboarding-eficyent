@@ -79,7 +79,7 @@ class OnboardingIndexFilterTest extends TestCase
         $this->assertStringContainsString('onboardings-', $response->headers->get('content-disposition'));
 
         $csv = $response->streamedContent();
-        $this->assertStringContainsString('Reference,Name,Email', $csv);
+        $this->assertStringContainsString('Reference,Company,"Contact Name",Email', $csv);
         $this->assertStringContainsString('alice@acme.com', $csv);
         $this->assertStringContainsString('approved', $csv);
         $this->assertStringNotContainsString('bob@bank.com', $csv);

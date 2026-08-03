@@ -12,6 +12,7 @@ class UserOnboarding extends Model
         'user_id',
         'user_type_id',
         'user_type_subcategory_id',
+        'company_name',
         'country_code',
         'registration_details',
         'status',
@@ -48,6 +49,19 @@ class UserOnboarding extends Model
     public function submittedForApprovalBy(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'submitted_for_approval_by');
+    }
+
+    /**
+     * Whether the application has ever been submitted for review. Draft edits
+     * made before the first submission are not audit-logged — the client is
+     * still filling the form. Once it has entered review (submitted, decided,
+     * or reopened for resubmission), every client change is recorded so the
+     * onboarding team sees exactly what moved.
+     */
+    public function hasEnteredReview(): bool
+    {
+        return in_array($this->status, ['completed', 'approved', 'rejected'], true)
+            || $this->reopened_at !== null;
     }
 
     /** Handed off by a reviewer and awaiting a second person's decision. */
@@ -171,6 +185,16 @@ class UserOnboarding extends Model
         $year = $this->started_at?->format('Y');
 
         return $year ? "ONB-{$year}-{$padded}" : "ONB-{$padded}";
+    }
+
+    /**
+     * The name to show for this application in admin lists — the company /
+     * entity name, falling back to the registrant's name or email.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->company_name
+            ?: ($this->user?->name ?: ($this->user?->email ?? 'Unknown'));
     }
 
     public function user(): BelongsTo

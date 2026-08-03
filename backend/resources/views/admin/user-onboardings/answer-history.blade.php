@@ -164,7 +164,7 @@
                 </a>{{ !$loop->last ? ', ' : '' }}
             @endforeach
         @else
-            {{ $answer->value ?: '—' }}
+            {{ \App\Support\AnswerValueFormatter::readable($answer->value, $answer->question) }}
         @endif
     </div>
 </div>
@@ -193,11 +193,11 @@
                         <div class="timeline-diff">
                             <div class="timeline-diff-row diff-old">
                                 <span class="diff-label">&minus;</span>
-                                <span class="diff-text">{{ $log->old_value ?: '(empty)' }}</span>
+                                <span class="diff-text">{{ \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question) }}</span>
                             </div>
                             <div class="timeline-diff-row diff-new">
                                 <span class="diff-label">+</span>
-                                <span class="diff-text">{{ $log->new_value ?: '(empty)' }}</span>
+                                <span class="diff-text">{{ \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question) }}</span>
                             </div>
                         </div>
                         @if($log->edit_reason)

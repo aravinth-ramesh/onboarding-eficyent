@@ -1,44 +1,63 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Audit Logs')
+@section('title', 'Post-Submission Changes')
 
 @section('content')
+<div class="mb-3">
+    <h4 class="mb-1">Post-Submission Changes</h4>
+    <p class="text-muted mb-0" style="font-size: 0.9rem;">
+        Answer changes clients made <strong>after</strong> submitting for review — including edits during a
+        resubmission. Draft edits before the first submission aren't recorded.
+    </p>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>User</th>
+                        <th>Application</th>
                         <th>Question</th>
                         <th>Old Value</th>
                         <th>New Value</th>
-                        <th>Edited By</th>
-                        <th>Reason</th>
+                        <th>Changed By</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($logs as $log)
+                        @php $onb = $log->answer?->onboarding; @endphp
                         <tr>
                             <td style="white-space: nowrap;">{{ $log->edited_at?->format('M d, Y H:i') ?? '-' }}</td>
                             <td>
-                                <div class="fw-semibold">{{ $log->user->name ?? 'N/A' }}</div>
-                                <small class="text-muted">{{ $log->user->email ?? '' }}</small>
+                                @if($onb)
+                                    <a href="{{ route('admin.user-onboardings.show', $onb) }}" class="fw-semibold text-decoration-none">{{ $onb->reference }}</a>
+                                    <span class="badge badge-{{ $onb->status }} ms-1">{{ ucfirst(str_replace('_', ' ', $onb->status)) }}</span>
+                                    <div><small class="text-muted">{{ $onb->displayName }}</small></div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
                             </td>
                             <td>{{ Str::limit($log->question->label ?? 'N/A', 40) }}</td>
+                            @php
+                                $oldText = \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question);
+                                $newText = \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question);
+                            @endphp
+                            <td><span class="text-danger" title="{{ $oldText }}">{{ Str::limit($oldText, 48) }}</span></td>
+                            <td><span class="text-success" title="{{ $newText }}">{{ Str::limit($newText, 48) }}</span></td>
                             <td>
-                                <span class="text-danger">{{ Str::limit($log->old_value ?? '-', 40) }}</span>
+                                {{ $log->editor->name ?? $log->editor->email ?? 'System' }}
+                                @if($log->editor && $log->user && $log->editor->id !== $log->user->id)
+                                    <span class="badge bg-secondary-subtle text-secondary border ms-1" title="Edited by a collaborator, not the account owner">collaborator</span>
+                                @endif
                             </td>
-                            <td>
-                                <span class="text-success">{{ Str::limit($log->new_value ?? '-', 40) }}</span>
-                            </td>
-                            <td>{{ $log->editor->name ?? $log->editor->email ?? 'System' }}</td>
-                            <td>{{ Str::limit($log->edit_reason ?? '-', 30) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No audit logs found.</td>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                No post-submission changes yet — clients haven't edited anything after submitting.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
