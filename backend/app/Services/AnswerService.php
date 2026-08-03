@@ -41,17 +41,20 @@ class AnswerService
         if ($existing) {
             $oldValue = $existing->value;
 
-            // Only log if value actually changed
             if ($oldValue !== $normalizedValue) {
-                AnswerAuditLog::create([
-                    'user_answer_id' => $existing->id,
-                    'question_id' => $questionId,
-                    'user_id' => $existing->user_id,
-                    'edited_by' => $editedBy->id,
-                    'old_value' => $oldValue,
-                    'new_value' => $normalizedValue,
-                    'edited_at' => now(),
-                ]);
+                // Only changes made after the application entered review are
+                // audit-logged — draft edits aren't the team's concern.
+                if ($onboarding->hasEnteredReview()) {
+                    AnswerAuditLog::create([
+                        'user_answer_id' => $existing->id,
+                        'question_id' => $questionId,
+                        'user_id' => $existing->user_id,
+                        'edited_by' => $editedBy->id,
+                        'old_value' => $oldValue,
+                        'new_value' => $normalizedValue,
+                        'edited_at' => now(),
+                    ]);
+                }
 
                 $existing->update(['value' => $normalizedValue]);
             }
@@ -105,15 +108,17 @@ class AnswerService
                     'file_size' => $f->file_size,
                 ])->toArray();
 
-                AnswerAuditLog::create([
-                    'user_answer_id' => $existing->id,
-                    'question_id' => $questionId,
-                    'user_id' => $existing->user_id,
-                    'edited_by' => $editedBy->id,
-                    'old_value' => json_encode($oldFileData),
-                    'new_value' => $newValue,
-                    'edited_at' => now(),
-                ]);
+                if ($onboarding->hasEnteredReview()) {
+                    AnswerAuditLog::create([
+                        'user_answer_id' => $existing->id,
+                        'question_id' => $questionId,
+                        'user_id' => $existing->user_id,
+                        'edited_by' => $editedBy->id,
+                        'old_value' => json_encode($oldFileData),
+                        'new_value' => $newValue,
+                        'edited_at' => now(),
+                    ]);
+                }
 
                 // Remove old file records (NOT deleting from S3)
                 $existing->files()->delete();
@@ -206,15 +211,17 @@ class AnswerService
 
             if ($existing) {
                 if ($oldValue !== $newValue) {
-                    AnswerAuditLog::create([
-                        'user_answer_id' => $existing->id,
-                        'question_id' => $questionId,
-                        'user_id' => $existing->user_id,
-                        'edited_by' => $editedBy->id,
-                        'old_value' => $oldValue,
-                        'new_value' => $newValue,
-                        'edited_at' => now(),
-                    ]);
+                    if ($onboarding->hasEnteredReview()) {
+                        AnswerAuditLog::create([
+                            'user_answer_id' => $existing->id,
+                            'question_id' => $questionId,
+                            'user_id' => $existing->user_id,
+                            'edited_by' => $editedBy->id,
+                            'old_value' => $oldValue,
+                            'new_value' => $newValue,
+                            'edited_at' => now(),
+                        ]);
+                    }
                     $existing->update(['value' => $newValue]);
                 }
                 return $existing;

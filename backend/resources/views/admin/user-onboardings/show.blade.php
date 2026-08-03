@@ -515,12 +515,28 @@
             $canReview = $me?->hasAbility(\App\Enums\Ability::REVIEW_ONBOARDING);
             $reviewByGroup = $userOnboarding->sectionReviews->keyBy('question_group_id');
             $sectionProgress = $userOnboarding->sectionReviewProgress();
+            // Answers the client edited after submitting (audit logs only exist
+            // for post-submission changes now).
+            $changedAfterSubmission = $userOnboarding->answers->filter(fn($a) => ($a->audit_logs_count ?? 0) > 0)->count();
             $sectionBadges = [
                 'pending' => ['Not started', 'bg-light text-muted border'],
                 'in_progress' => ['In review', 'bg-info-subtle text-info-emphasis border'],
                 'completed' => ['Reviewed', 'bg-success-subtle text-success border'],
             ];
         @endphp
+
+        {{-- Flag when the client changed answers after submitting — the team
+             needs to re-check those. Each changed answer keeps its history link. --}}
+        @if($changedAfterSubmission > 0)
+            <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-4" style="font-size: 0.9rem;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span>
+                    <strong>{{ $changedAfterSubmission }}</strong>
+                    {{ \Illuminate\Support\Str::plural('answer', $changedAfterSubmission) }} changed by the client after submission —
+                    look for the <i class="bi bi-clock-history"></i> history icon on the changed {{ \Illuminate\Support\Str::plural('answer', $changedAfterSubmission) }} below.
+                </span>
+            </div>
+        @endif
 
         {{-- Reviewer progress across the application's sections. Persists so a
              long review can be picked up again on another day. --}}

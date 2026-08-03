@@ -750,10 +750,18 @@ class UserOnboardingController extends Controller
 
     public function auditLogs(Request $request): View
     {
-        $query = AnswerAuditLog::with(['question', 'user', 'editor']);
+        // These are post-submission client changes only (AnswerService stops
+        // logging draft edits) — the record of what moved after the team
+        // started reviewing.
+        $query = AnswerAuditLog::with(['question', 'user', 'editor', 'answer.onboarding.user']);
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
+        }
+
+        if ($request->filled('onboarding')) {
+            $onboardingId = (int) $request->input('onboarding');
+            $query->whereHas('answer', fn ($q) => $q->where('user_onboarding_id', $onboardingId));
         }
 
         $logs = $query->latest('edited_at')->paginate(20)->withQueryString();

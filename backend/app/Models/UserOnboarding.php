@@ -50,6 +50,19 @@ class UserOnboarding extends Model
         return $this->belongsTo(Admin::class, 'submitted_for_approval_by');
     }
 
+    /**
+     * Whether the application has ever been submitted for review. Draft edits
+     * made before the first submission are not audit-logged — the client is
+     * still filling the form. Once it has entered review (submitted, decided,
+     * or reopened for resubmission), every client change is recorded so the
+     * onboarding team sees exactly what moved.
+     */
+    public function hasEnteredReview(): bool
+    {
+        return in_array($this->status, ['completed', 'approved', 'rejected'], true)
+            || $this->reopened_at !== null;
+    }
+
     /** Handed off by a reviewer and awaiting a second person's decision. */
     public function isAwaitingApproval(): bool
     {
