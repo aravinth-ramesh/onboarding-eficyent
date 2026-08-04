@@ -115,6 +115,14 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   const isLastGroup = activeGroupIndex === visibleGroups.length - 1;
   const isFirstGroup = activeGroupIndex === 0;
 
+  // Defence in depth: if conditional visibility shrinks the group list below
+  // the current index, clamp it so the page never renders blank.
+  useEffect(() => {
+    if (visibleGroups.length > 0 && activeGroupIndex > visibleGroups.length - 1) {
+      setActiveGroupIndex(visibleGroups.length - 1);
+    }
+  }, [visibleGroups.length, activeGroupIndex]);
+
   // Build a set of file-type question IDs for quick lookup
   const fileQuestionIds = useMemo(() => {
     const ids = new Set();
