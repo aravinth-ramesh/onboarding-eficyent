@@ -76,8 +76,6 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Client</th>
                         <th>Question</th>
                         <th>Document</th>
                         <th>Analysis</th>
@@ -85,16 +83,23 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($files as $file)
-                        <tr>
-                            <td style="white-space: nowrap;">{{ $file->created_at->format('M d, H:i') }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $file->answer->user->name ?? 'N/A' }}</div>
-                                @if($file->answer?->onboarding)
-                                    <a class="small" href="{{ route('admin.user-onboardings.show', $file->answer->onboarding) }}">View onboarding</a>
-                                @endif
+                    @forelse($applications as $application)
+                        @php $appFiles = $filesByOnboarding[$application->id] ?? collect(); @endphp
+                        {{-- One grouped entry per application, its documents underneath (EOP-93). --}}
+                        <tr class="table-light">
+                            <td colspan="4">
+                                <span class="fw-semibold">{{ $application->displayName }}</span>
+                                <span class="text-muted">· {{ $application->reference }}</span>
+                                <span class="badge bg-secondary-subtle text-secondary border ms-1">{{ $appFiles->count() }} {{ Str::plural('document', $appFiles->count()) }}</span>
+                                <a class="small ms-2" href="{{ route('admin.user-onboardings.show', $application) }}">View onboarding →</a>
                             </td>
-                            <td>{{ Str::limit($file->answer->question->label ?? 'N/A', 36) }}</td>
+                        </tr>
+                        @foreach($appFiles as $file)
+                        <tr>
+                            <td>
+                                {{ Str::limit($file->answer->question->label ?? 'N/A', 36) }}
+                                <div class="small text-muted">{{ $file->created_at->format('M d, H:i') }}</div>
+                            </td>
                             <td>
                                 <a href="{{ $file->url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ Str::limit($file->original_filename, 28) }}</a>
                                 <div>
@@ -140,18 +145,19 @@
                                 @endunless
                             </td>
                         </tr>
+                        @endforeach
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Nothing awaiting review.</td>
+                            <td colspan="4" class="text-center text-muted py-4">Nothing awaiting review.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
-    @if($files->hasPages())
+    @if($applications->hasPages())
         <div class="card-footer">
-            {{ $files->links() }}
+            {{ $applications->links() }}
         </div>
     @endif
 </div>

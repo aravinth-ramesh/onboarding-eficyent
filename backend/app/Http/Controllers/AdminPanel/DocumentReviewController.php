@@ -27,7 +27,9 @@ class DocumentReviewController extends Controller
         // automation flagged — so a reviewer can eyeball files that passed too.
         $showAll = $request->boolean('all');
 
-        $files = AnswerFile::with(['answer.question', 'answer.user', 'answer.onboarding', 'reviewer'])
+        // Fetch the matching documents, then group them by application so each
+        // application appears once with its documents underneath (EOP-93).
+        $files = AnswerFile::with(['answer.question', 'answer.onboarding.user', 'reviewer'])
             ->when(
                 $status,
                 fn ($q) => $q->where('validation_status', $status),
@@ -37,11 +39,30 @@ class DocumentReviewController extends Controller
             )
             ->when(! $showReviewed, fn ($q) => $q->whereNull('reviewed_at'))
             ->latest('id')
-            ->paginate(20)
-            ->withQueryString();
+            ->get()
+            ->filter(fn ($f) => $f->answer && $f->answer->onboarding);
+
+        $filesByOnboarding = $files->groupBy(fn ($f) => $f->answer->user_onboarding_id);
+
+        // The applications, most-recent document first, paginated in memory
+        // (the review queue is small — grouping needs the full set anyway).
+        $orderedApplications = $filesByOnboarding
+            ->map(fn ($group) => $group->first()->answer->onboarding)
+            ->values();
+
+        $perPage = 15;
+        $page = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $applications = new \Illuminate\Pagination\LengthAwarePaginator(
+            $orderedApplications->forPage($page, $perPage)->values(),
+            $orderedApplications->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
 
         return view('admin.document-reviews.index', [
-            'files' => $files,
+            'applications' => $applications,
+            'filesByOnboarding' => $filesByOnboarding,
             'status' => $status,
             'showReviewed' => $showReviewed,
             'showAll' => $showAll,
