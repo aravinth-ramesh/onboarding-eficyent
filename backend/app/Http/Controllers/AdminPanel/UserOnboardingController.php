@@ -390,6 +390,15 @@ class UserOnboardingController extends Controller
 
         $answer->load(['question.group', 'files']);
 
+        // Opening the edit history IS the admin reviewing the client's update,
+        // so any resolved change request for this answer is auto-marked checked
+        // — no separate "Checked" click needed (EOP-76).
+        AdminNotification::where('user_answer_id', $answer->id)
+            ->where('type', 'change_request')
+            ->where('status', 'resolved')
+            ->whereNull('checked_at')
+            ->update(['checked_at' => now(), 'checked_by' => Auth::guard('admin')->id()]);
+
         $logs = AnswerAuditLog::where('user_answer_id', $answer->id)
             ->with(['editor', 'question'])
             ->latest('edited_at')
@@ -447,6 +456,18 @@ class UserOnboardingController extends Controller
                 'reviewed_at' => $completed ? now() : null,
             ],
         );
+
+        // Marking the section reviewed also acknowledges any resolved change
+        // requests within it — no separate "Checked" click required (EOP-76).
+        if ($completed) {
+            AdminNotification::where('type', 'change_request')
+                ->where('status', 'resolved')
+                ->whereNull('checked_at')
+                ->whereHas('userAnswer', fn ($q) => $q
+                    ->where('user_onboarding_id', $userOnboarding->id)
+                    ->whereHas('question', fn ($qq) => $qq->where('question_group_id', $group->id)))
+                ->update(['checked_at' => now(), 'checked_by' => Auth::guard('admin')->id()]);
+        }
 
         return redirect()
             ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
