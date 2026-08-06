@@ -382,9 +382,12 @@ class OnboardingController extends Controller
         $mappings = $mappings->unique(fn ($m) => $m->question_id)->values();
 
         // Drop any mapping whose question or its group is missing (e.g. a group
-        // was deleted out from under an active mapping). Grouping by a null
-        // group->id would 500 the whole endpoint and blank the client's form.
-        $mappings = $mappings->filter(fn ($m) => $m->question && $m->question->group)->values();
+        // was deleted out from under an active mapping) or whose group is
+        // inactive — an inactive group must not appear in the client form.
+        // Grouping by a null group->id would also 500 the whole endpoint.
+        $mappings = $mappings
+            ->filter(fn ($m) => $m->question && $m->question->group && $m->question->group->is_active)
+            ->values();
 
         // Get existing answers (with files for file-type questions). Keyed by
         // the onboarding, not the user — collaborators must see the shared

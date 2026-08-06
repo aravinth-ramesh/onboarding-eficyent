@@ -303,7 +303,7 @@
                         <i class="bi {{ $decision->event === 'approved' ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' }}"></i>
                         <div class="flex-grow-1">
                             <a href="{{ route('admin.user-onboardings.show', $decision->onboarding) }}" class="fw-semibold">
-                                {{ $decision->onboarding->user->name ?? $decision->onboarding->user->email ?? 'Client' }}
+                                {{ $decision->onboarding->displayName }}
                             </a>
                             {{ $decision->event }} by {{ $decision->admin->name ?? 'admin' }}
                             <span class="text-muted">· {{ $decision->created_at->format('M d, H:i') }}</span>

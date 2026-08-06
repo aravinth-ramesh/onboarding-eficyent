@@ -877,9 +877,11 @@
                                     <form method="POST" action="{{ route('admin.user-onboardings.documents.review', [$userOnboarding, $file]) }}" class="document-review-form d-flex align-items-center gap-1">
                                         @csrf
                                         <input type="text" name="review_note" class="form-control form-control-sm" placeholder="Note (optional)" value="{{ $file->review_note }}" style="max-width: 180px;">
-                                        <button type="submit" name="review_decision" value="verified" class="btn btn-sm btn-outline-success" title="Verify"><i class="bi bi-check-lg"></i></button>
-                                        <button type="submit" name="review_decision" value="rejected" class="btn btn-sm btn-outline-danger" title="Reject"><i class="bi bi-x-lg"></i></button>
-                                        <button type="submit" name="review_decision" value="resubmit_requested" class="btn btn-sm btn-outline-warning" title="Request new"><i class="bi bi-arrow-repeat"></i></button>
+                                        {{-- Once verified, the Verify action is disabled — its state is
+                                             already final; Reject / Request-new remain to change the verdict. --}}
+                                        <button type="submit" name="review_decision" value="verified" class="btn btn-sm {{ $decision === 'verified' ? 'btn-success' : 'btn-outline-success' }}" title="{{ $decision === 'verified' ? 'Already verified' : 'Verify' }}" @disabled($decision === 'verified')><i class="bi bi-check-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="rejected" class="btn btn-sm {{ $decision === 'rejected' ? 'btn-danger' : 'btn-outline-danger' }}" title="Reject" @disabled($decision === 'rejected')><i class="bi bi-x-lg"></i></button>
+                                        <button type="submit" name="review_decision" value="resubmit_requested" class="btn btn-sm {{ $decision === 'resubmit_requested' ? 'btn-warning' : 'btn-outline-warning' }}" title="Request new" @disabled($decision === 'resubmit_requested')><i class="bi bi-arrow-repeat"></i></button>
                                     </form>
                                 @endif
                             </div>
