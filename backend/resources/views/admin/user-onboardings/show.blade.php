@@ -15,6 +15,24 @@
         border-bottom: 2px solid var(--color-accent, #2e86de);
         display: inline-block;
     }
+    /* Clear per-section review state: a tinted card with a coloured left bar
+       so reviewed / in-review / pending sections are distinguishable at a
+       glance, not just by a small badge (EOP-70). */
+    .review-section {
+        border: 1px solid #e9edf2;
+        border-left: 4px solid #cbd3dc;
+        border-radius: 8px;
+        padding: 14px 16px;
+        transition: background-color .15s ease, border-color .15s ease;
+    }
+    .review-section.status-in_progress {
+        border-left-color: #3b82f6;
+        background: rgba(59, 130, 246, 0.04);
+    }
+    .review-section.status-completed {
+        border-left-color: #10b981;
+        background: rgba(16, 185, 129, 0.055);
+    }
     .submitted-answers-table {
         width: 100%;
         border-collapse: collapse;
@@ -567,9 +585,10 @@
                 $reviewStatus = $review->status ?? 'pending';
                 [$badgeLabel, $badgeClass] = $sectionBadges[$reviewStatus];
             @endphp
-            <div class="{{ !$loop->first ? 'mt-4' : '' }}" id="section-{{ $groupId }}">
+            <div class="review-section status-{{ $reviewStatus }} {{ !$loop->first ? 'mt-4' : '' }}" id="section-{{ $groupId }}">
                 <div class="submitted-answers-section-label d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <span>
+                        @if($reviewStatus === 'completed')<i class="bi bi-check-circle-fill text-success me-1"></i>@endif
                         {{ $groupName }}
                         <span class="badge {{ $badgeClass }} ms-1 align-middle">{{ $badgeLabel }}</span>
                     </span>
