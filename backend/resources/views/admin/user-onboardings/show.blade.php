@@ -564,17 +564,17 @@
         {{-- Reviewer progress across the application's sections. Persists so a
              long review can be picked up again on another day. --}}
         @if($sectionProgress['total'] > 0)
-            <div class="section-review-progress mb-4" id="section-review-progress">
+            <div class="section-review-progress mb-4" id="section-review-progress"
+                 data-total="{{ $sectionProgress['total'] }}"
+                 data-complete="{{ $sectionProgress['complete'] ? '1' : '0' }}">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="fw-semibold">Review progress</span>
-                    <span class="text-muted small">{{ $sectionProgress['done'] }} of {{ $sectionProgress['total'] }} sections reviewed</span>
+                    <span class="text-muted small js-progress-text">{{ $sectionProgress['done'] }} of {{ $sectionProgress['total'] }} sections reviewed</span>
                 </div>
                 <div class="progress" style="height: 8px;" role="progressbar" aria-valuenow="{{ $sectionProgress['done'] }}" aria-valuemin="0" aria-valuemax="{{ $sectionProgress['total'] }}">
-                    <div class="progress-bar {{ $sectionProgress['complete'] ? 'bg-success' : '' }}" style="width: {{ $sectionProgress['total'] ? round($sectionProgress['done'] / $sectionProgress['total'] * 100) : 0 }}%;"></div>
+                    <div class="progress-bar js-progress-bar {{ $sectionProgress['complete'] ? 'bg-success' : '' }}" style="width: {{ $sectionProgress['total'] ? round($sectionProgress['done'] / $sectionProgress['total'] * 100) : 0 }}%;"></div>
                 </div>
-                @if($sectionProgress['complete'])
-                    <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> All sections reviewed — ready for a decision.</div>
-                @endif
+                <div class="small text-success mt-1 js-progress-complete" @style(['display:none' => !$sectionProgress['complete']])><i class="bi bi-check2-circle"></i> All sections reviewed — ready for a decision.</div>
             </div>
         @endif
 
@@ -588,9 +588,9 @@
             <div class="review-section status-{{ $reviewStatus }} {{ !$loop->first ? 'mt-4' : '' }}" id="section-{{ $groupId }}">
                 <div class="submitted-answers-section-label d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <span>
-                        @if($reviewStatus === 'completed')<i class="bi bi-check-circle-fill text-success me-1"></i>@endif
+                        <i class="bi bi-check-circle-fill text-success me-1 js-section-check" @style(['display:none' => $reviewStatus !== 'completed'])></i>
                         {{ $groupName }}
-                        <span class="badge {{ $badgeClass }} ms-1 align-middle">{{ $badgeLabel }}</span>
+                        <span class="badge {{ $badgeClass }} ms-1 align-middle js-section-badge">{{ $badgeLabel }}</span>
                     </span>
                     @if($canReview)
                         <form method="POST" action="{{ route('admin.user-onboardings.sections.review', [$userOnboarding, $groupId]) }}" class="section-review-form d-flex align-items-center gap-1">
@@ -605,11 +605,9 @@
                         </form>
                     @endif
                 </div>
-                @if($review && $review->reviewed_at)
-                    <div class="small text-muted mb-1">
-                        <i class="bi bi-check2"></i> Reviewed {{ $review->reviewed_at->diffForHumans() }}{{ $review->reviewer ? ' by ' . $review->reviewer->name : '' }}
-                    </div>
-                @endif
+                <div class="small text-muted mb-1 js-section-reviewed-meta" @style(['display:none' => !($review && $review->reviewed_at)])>
+                    <i class="bi bi-check2"></i> <span class="js-section-reviewed-text">@if($review && $review->reviewed_at)Reviewed {{ $review->reviewed_at->diffForHumans() }}{{ $review->reviewer ? ' by ' . $review->reviewer->name : '' }}@endif</span>
+                </div>
                 <table class="submitted-answers-table">
                     <tbody>
                         @foreach($groupAnswers as $answer)
@@ -1259,5 +1257,102 @@
             document.getElementById('seBody').value = 'Hello,\n\nA new question has been assigned to you that requires your response.\n\nQuestion: ' + questionLabel + '\n\nPlease log in to your account to provide your answer.\n\nThank you,\nEficyent Team';
         }
     });
+
+    // Save a section review in place (AJAX) so the page doesn't reload and
+    // flash to the top before scrolling back down to the section (EOP-68).
+    (function () {
+        var SECTION_BADGE = {
+            pending: ['Not started', 'bg-light text-muted border'],
+            in_progress: ['In review', 'bg-info-subtle text-info-emphasis border'],
+            completed: ['Reviewed', 'bg-success-subtle text-success border'],
+        };
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        var csrf = meta ? meta.getAttribute('content') : '';
+
+        function toast(message, ok) {
+            var t = document.createElement('div');
+            t.className = 'position-fixed top-0 start-50 translate-middle-x mt-3 px-3 py-2 rounded shadow-sm ' +
+                (ok ? 'bg-success text-white' : 'bg-danger text-white');
+            t.style.zIndex = '1080';
+            t.style.fontSize = '0.9rem';
+            t.textContent = message;
+            document.body.appendChild(t);
+            setTimeout(function () { t.remove(); }, 3000);
+        }
+
+        function updateProgress(progress) {
+            var box = document.getElementById('section-review-progress');
+            if (!box || !progress) return;
+            var total = progress.total || 0, done = progress.done || 0;
+            var pct = total ? Math.round(done / total * 100) : 0;
+            var text = box.querySelector('.js-progress-text');
+            if (text) text.textContent = done + ' of ' + total + ' sections reviewed';
+            var bar = box.querySelector('.js-progress-bar');
+            if (bar) { bar.style.width = pct + '%'; bar.classList.toggle('bg-success', !!progress.complete); }
+            var done_note = box.querySelector('.js-progress-complete');
+            if (done_note) done_note.style.display = progress.complete ? '' : 'none';
+            box.setAttribute('data-complete', progress.complete ? '1' : '0');
+        }
+
+        document.querySelectorAll('.section-review-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var btn = form.querySelector('button[type="submit"]');
+                var section = form.closest('.review-section');
+                var box = document.getElementById('section-review-progress');
+                var wasComplete = box ? box.getAttribute('data-complete') === '1' : false;
+                if (btn) btn.disabled = true;
+
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                }).then(function (res) {
+                    return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+                }).then(function (r) {
+                    if (btn) btn.disabled = false;
+                    if (!r.ok) { toast(r.data.message || 'Could not save the section.', false); return; }
+                    var data = r.data;
+
+                    if (section) {
+                        section.classList.remove('status-pending', 'status-in_progress', 'status-completed');
+                        section.classList.add('status-' + data.status);
+                        var badge = section.querySelector('.js-section-badge');
+                        if (badge && SECTION_BADGE[data.status]) {
+                            badge.className = 'badge ms-1 align-middle js-section-badge ' + SECTION_BADGE[data.status][1];
+                            badge.textContent = SECTION_BADGE[data.status][0];
+                        }
+                        var check = section.querySelector('.js-section-check');
+                        if (check) check.style.display = data.status === 'completed' ? '' : 'none';
+                        var metaBox = section.querySelector('.js-section-reviewed-meta');
+                        var metaText = section.querySelector('.js-section-reviewed-text');
+                        if (metaBox && metaText) {
+                            if (data.status === 'completed' && data.reviewed_at) {
+                                metaText.textContent = 'Reviewed ' + data.reviewed_at + (data.reviewer ? ' by ' + data.reviewer : '');
+                                metaBox.style.display = '';
+                            } else {
+                                metaBox.style.display = 'none';
+                            }
+                        }
+                    }
+
+                    updateProgress(data.progress);
+                    toast(data.message || 'Saved.', true);
+
+                    // The Submit/Approve buttons only unlock once every section is
+                    // reviewed. When that overall state flips, sync them with one
+                    // navigation back to this section anchor (rare — last section).
+                    if (data.progress && !!data.progress.complete !== wasComplete && section) {
+                        window.location.hash = section.id;
+                        window.location.reload();
+                    }
+                }).catch(function () {
+                    if (btn) btn.disabled = false;
+                    toast('Could not save the section.', false);
+                });
+            });
+        });
+    })();
 </script>
 @endpush

@@ -81,6 +81,27 @@ class SectionReviewTest extends TestCase
         $this->assertSame('Names match the register.', $review->note);
     }
 
+    public function test_ajax_save_returns_json_for_in_place_update(): void
+    {
+        // An AJAX save returns JSON (status, message, progress) instead of a
+        // redirect, so the page updates in place without flashing to the top
+        // and scrolling back (EOP-68).
+        $manager = $this->admin(AdminRole::Manager);
+
+        $this->actingAs($manager, 'admin')
+            ->postJson(route('admin.user-onboardings.sections.review', [$this->onboarding, $this->companyGroup]), [
+                'status' => 'completed', 'note' => 'Looks good.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('reviewer', $manager->name)
+            ->assertJsonPath('progress.done', 1)
+            ->assertJsonPath('progress.total', 2)
+            ->assertJsonPath('progress.complete', false);
+
+        $this->assertSame('completed', OnboardingSectionReview::firstOrFail()->status);
+    }
+
     public function test_in_progress_marker_leaves_reviewed_at_null_and_updates_in_place(): void
     {
         $manager = $this->admin(AdminRole::Manager);

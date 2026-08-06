@@ -19,6 +19,7 @@ use App\Models\UserOnboardingStep;
 use App\Models\UserType;
 use App\Services\AdminEmailService;
 use App\Services\NotificationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -412,7 +413,7 @@ class UserOnboardingController extends Controller
      * application, so a long review can be paused and resumed. Only marks
      * belonging to sections the application actually contains are accepted.
      */
-    public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse
+    public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse|JsonResponse
     {
         abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
 
@@ -441,9 +442,15 @@ class UserOnboardingController extends Controller
                 ->exists();
 
             if ($hasPendingChange) {
+                $error = 'This section has a pending change request — it can be marked reviewed once the client resubmits.';
+
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => $error], 422);
+                }
+
                 return redirect()
                     ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
-                    ->with('error', 'This section has a pending change request — it can be marked reviewed once the client resubmits.');
+                    ->with('error', $error);
             }
         }
 
@@ -469,9 +476,25 @@ class UserOnboardingController extends Controller
                 ->update(['checked_at' => now(), 'checked_by' => Auth::guard('admin')->id()]);
         }
 
+        $message = $completed ? 'Section marked as reviewed.' : 'Section progress saved.';
+
+        // AJAX save updates the section in place — no full reload that would
+        // flash to the top of the page and scroll back down (EOP-68).
+        if ($request->expectsJson()) {
+            $userOnboarding->load('sectionReviews');
+
+            return response()->json([
+                'status' => $validated['status'],
+                'message' => $message,
+                'reviewed_at' => $completed ? now()->diffForHumans() : null,
+                'reviewer' => Auth::guard('admin')->user()->name,
+                'progress' => $userOnboarding->sectionReviewProgress(),
+            ]);
+        }
+
         return redirect()
             ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
-            ->with('success', $completed ? 'Section marked as reviewed.' : 'Section progress saved.');
+            ->with('success', $message);
     }
 
     /**
