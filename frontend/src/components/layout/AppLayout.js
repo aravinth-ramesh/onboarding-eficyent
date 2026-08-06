@@ -64,9 +64,16 @@ function formatReference(id, startedAt) {
   return year ? `ONB-${year}-${padded}` : `ONB-${padded}`;
 }
 
+// Client-facing status labels. A submitted application is `completed`
+// internally, but to the client it is under review — showing "Completed"
+// misleads them into thinking the process is finished (EOP-67).
+const STATUS_LABELS = {
+  completed: 'Under Review',
+};
+
 function humanizeStatus(status) {
   if (!status) return null;
-  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return STATUS_LABELS[status] || status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function AppLayout({ children, pageTitle }) {
@@ -159,11 +166,13 @@ function AppLayout({ children, pageTitle }) {
   const startedLabel = formatDate(startedAt);
   const statusLabel = humanizeStatus(status);
   const statusClass =
-    status === 'completed' || status === 'approved'
+    status === 'approved'
       ? 'success'
-      : status === 'rejected'
-        ? 'danger'
-        : 'progress';
+      : status === 'completed'
+        ? 'review'
+        : status === 'rejected'
+          ? 'danger'
+          : 'progress';
 
   // Estimated time remaining from steps not yet completed.
   const minutesLeft = steps

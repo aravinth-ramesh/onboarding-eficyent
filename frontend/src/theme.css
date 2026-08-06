@@ -2956,6 +2956,11 @@ button.sb-messages {
   color: #047857;
 }
 
+.sb-pill.review {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1D4ED8;
+}
+
 .sb-pill.danger {
   background: rgba(239, 68, 68, 0.14);
   color: #B91C1C;
