@@ -965,8 +965,18 @@
                             </td>
                             <td style="max-width: 200px;">
                                 @if($notif->type === 'change_request' && $notif->userAnswer && $notif->userAnswer->question)
+                                    {{-- Show the parent section so the reviewer knows which part of
+                                         the application needs updating, not just the question (EOP-75). --}}
+                                    @if($notif->userAnswer->question->group)
+                                        <div class="text-muted small text-uppercase" style="letter-spacing: .03em;">
+                                            <i class="bi bi-folder2"></i> {{ $notif->userAnswer->question->group->name }}
+                                        </div>
+                                    @endif
                                     <strong>{{ $notif->userAnswer->question->label }}</strong>
                                 @elseif($notif->type === 'new_question' && $notif->adminQuestion)
+                                    <div class="text-muted small text-uppercase" style="letter-spacing: .03em;">
+                                        <i class="bi bi-patch-question"></i> Follow-up question
+                                    </div>
                                     <strong>{{ $notif->adminQuestion->label }}</strong>
                                 @else
                                     <span class="text-muted">N/A</span>

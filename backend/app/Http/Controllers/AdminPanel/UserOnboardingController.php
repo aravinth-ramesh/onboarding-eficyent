@@ -353,7 +353,7 @@ class UserOnboardingController extends Controller
 
         // Load admin notifications for this user
         $notifications = AdminNotification::where('user_id', $userOnboarding->user_id)
-            ->with(['admin', 'userAnswer.question', 'adminQuestion.answer'])
+            ->with(['admin', 'userAnswer.question.group', 'adminQuestion.answer'])
             ->orderByDesc('created_at')
             ->get();
 
