@@ -20,6 +20,10 @@ export const looksLikeImage = (mime) => Boolean(mime) && mime.startsWith('image/
 const VALIDATION_LABELS = {
   passed: { label: 'Verified', tone: 'ok' },
   reviewed: { label: 'Approved by reviewer', tone: 'ok' },
+  // Reviewer verdicts (EOP-98): a requested resubmission must not read as
+  // "approved".
+  rejected: { label: 'Rejected by reviewer', tone: 'warn' },
+  resubmit_requested: { label: 'Resubmission required', tone: 'warn' },
   needs_review: { label: 'Pending review', tone: 'warn' },
   type_mismatch: { label: 'Accepted with justification', tone: 'warn' },
   expired: { label: 'Expired — justified', tone: 'warn' },

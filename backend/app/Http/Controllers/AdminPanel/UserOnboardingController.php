@@ -477,9 +477,47 @@ class UserOnboardingController extends Controller
             'reviewed_by' => Auth::guard('admin')->id(),
         ]);
 
+        // Requesting a new upload tells the client to act — raise it as a
+        // change request on that document's answer (in-app + email) so they
+        // know a resubmission is required (EOP-99).
+        if ($validated['review_decision'] === 'resubmit_requested') {
+            $this->notifyDocumentResubmission($userOnboarding, $file, $validated['review_note'] ?? null);
+        }
+
         return redirect()
             ->to(route('admin.user-onboardings.show', $userOnboarding) . '#documents')
-            ->with('success', 'Document review saved.');
+            ->with('success', $validated['review_decision'] === 'resubmit_requested'
+                ? 'Resubmission requested — the client has been notified.'
+                : 'Document review saved.');
+    }
+
+    /** Raise a change request + email so the client knows to re-upload a document. */
+    private function notifyDocumentResubmission(UserOnboarding $userOnboarding, AnswerFile $file, ?string $note): void
+    {
+        $admin = Auth::guard('admin')->user();
+        $file->loadMissing('answer.question');
+        $answer = $file->answer;
+        if (! $answer) {
+            return;
+        }
+
+        $label = $answer->question->label ?? 'a document';
+        $message = trim('Please re-upload the document for "' . $label . '".' . ($note ? ' ' . $note : ''));
+        $notification = $this->notificationService->createChangeRequest($admin, $answer, $message);
+
+        $user = $userOnboarding->user;
+        try {
+            if ($user?->email && $user->wantsEmail('change_requests')) {
+                $subject = $this->emailService->getDefaultSubject('change_request', $label);
+                $body = $this->emailService->getDefaultBody('change_request', [
+                    'user_name' => $user->name ?? 'there',
+                    'question_label' => $label,
+                ]);
+                $this->emailService->sendEmail($admin, $user, $subject, $body, $notification);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse

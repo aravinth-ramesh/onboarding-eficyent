@@ -104,7 +104,14 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
               mime={file.mime_type}
               previewUrl={looksLikeImage(file.mime_type) ? file.url : null}
               downloadUrl={file.url}
-              validationStatus={file.reviewed ? 'reviewed' : file.validation_status}
+              validationStatus={
+                // Prefer the reviewer's explicit verdict so a requested
+                // resubmission or rejection isn't shown as approved (EOP-98).
+                file.review_decision === 'verified' ? 'reviewed'
+                  : file.review_decision === 'rejected' ? 'rejected'
+                  : file.review_decision === 'resubmit_requested' ? 'resubmit_requested'
+                  : (file.reviewed ? 'reviewed' : file.validation_status)
+              }
             />
           ))}
         </div>

@@ -445,6 +445,10 @@ class OnboardingController extends Controller
                         'expiry_date' => $f->expiry_date,
                         'justification' => $f->justification,
                         'reviewed' => $f->reviewed_at !== null,
+                        // The reviewer's actual verdict so the client can show
+                        // "approved" vs "resubmission required" rather than
+                        // treating any review as approval (EOP-98).
+                        'review_decision' => $f->review_decision,
                     ])->values()->toArray();
                 } elseif ($question->type === 'file') {
                     $questionData['files'] = [];
