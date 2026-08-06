@@ -196,9 +196,9 @@
                                 </td>
                             @endif
                             <td>{{ $onboarding->id }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $onboarding->displayName }}</div>
-                                <small class="text-muted">
+                            <td style="max-width: 240px;">
+                                <div class="fw-semibold text-truncate" title="{{ $onboarding->displayName }}">{{ $onboarding->displayName }}</div>
+                                <small class="text-muted d-block text-truncate" title="{{ trim(($onboarding->company_name && $onboarding->user?->name ? $onboarding->user->name.' · ' : '').($onboarding->user->email ?? '')) }}">
                                     @if($onboarding->company_name && $onboarding->user?->name){{ $onboarding->user->name }} · @endif{{ $onboarding->user->email ?? '' }}
                                 </small>
                             </td>
@@ -206,7 +206,7 @@
                             <td>{{ $onboarding->subcategory->name ?? '-' }}</td>
                             <td>
                                 <span class="badge badge-{{ $onboarding->status }}">
-                                    {{ ucfirst(str_replace('_', ' ', $onboarding->status)) }}
+                                    {{ $onboarding->statusLabel }}
                                 </span>
                                 @if($onboarding->approval_state === 'escalated')
                                     <span class="badge bg-warning-subtle text-warning-emphasis border" title="Escalated to compliance"><i class="bi bi-flag-fill"></i></span>

@@ -188,6 +188,22 @@ class UserOnboarding extends Model
     }
 
     /**
+     * Human label for the workflow status. 'completed' reads as "Awaiting
+     * Review" everywhere so the list, filters and the "awaiting-review rows"
+     * action hint agree (EOP-78).
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return [
+            'pending' => 'Pending',
+            'in_progress' => 'In Progress',
+            'completed' => 'Awaiting Review',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+        ][$this->status] ?? ucfirst(str_replace('_', ' ', (string) $this->status));
+    }
+
+    /**
      * The name to show for this application in admin lists — the company /
      * entity name, falling back to the registrant's name or email.
      */

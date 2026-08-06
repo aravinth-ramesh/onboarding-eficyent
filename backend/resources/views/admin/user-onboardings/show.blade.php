@@ -190,7 +190,7 @@
                     <dt class="text-muted" style="font-size: 0.8rem;">Status</dt>
                     <dd>
                         <span class="badge badge-{{ $userOnboarding->status }}">
-                            {{ ucfirst(str_replace('_', ' ', $userOnboarding->status)) }}
+                            {{ $userOnboarding->statusLabel }}
                         </span>
                         @if($userOnboarding->reopened_at)
                             <span class="badge bg-info-subtle text-info-emphasis border" title="Reopened after rejection on {{ $userOnboarding->reopened_at->format('M d, Y H:i') }}">
@@ -503,7 +503,7 @@
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Submitted Answers</span>
         <span class="badge badge-{{ $userOnboarding->status }}">
-            {{ ucfirst(str_replace('_', ' ', $userOnboarding->status)) }}
+            {{ $userOnboarding->statusLabel }}
         </span>
     </div>
     <div class="card-body">
