@@ -270,6 +270,17 @@ class OnboardingService
         return $onboarding->fresh('steps');
     }
 
+    /**
+     * Whether the client may no longer freely edit the application — it has
+     * been submitted (completed / awaiting review) or decided (approved /
+     * rejected). Editing resumes only through reopen/resubmission, which sets
+     * the status back to in_progress.
+     */
+    private function isLockedForEditing(UserOnboarding $onboarding): bool
+    {
+        return in_array($onboarding->status, ['completed', 'approved', 'rejected'], true);
+    }
+
     private function decide(UserOnboarding $onboarding, Admin $admin, string $status, ?string $comment): UserOnboarding
     {
         if ($onboarding->status !== 'completed') {
@@ -396,6 +407,11 @@ class OnboardingService
      */
     public function goToPreviousStep(UserOnboarding $onboarding, UserOnboardingStep $currentStep): UserOnboarding
     {
+        // Locked once submitted/decided — no re-opening steps for editing.
+        if ($this->isLockedForEditing($onboarding)) {
+            return $onboarding->fresh('steps');
+        }
+
         $previousStep = $onboarding->steps()
             ->where('order', '<', $currentStep->order)
             ->where('status', '!=', 'skipped')
@@ -434,6 +450,13 @@ class OnboardingService
      */
     public function goToStep(UserOnboarding $onboarding, UserOnboardingStep $targetStep): UserOnboarding
     {
+        // A submitted or decided application is locked: navigating steps must
+        // not re-open it for editing or revert its status to in_progress
+        // (EOP-44, EOP-77). Editing resumes only via reopen/resubmission.
+        if ($this->isLockedForEditing($onboarding)) {
+            return $onboarding->fresh('steps');
+        }
+
         $current = $onboarding->steps()
             ->where('id', $onboarding->current_step_id)
             ->first();

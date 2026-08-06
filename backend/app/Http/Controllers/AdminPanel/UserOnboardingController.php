@@ -777,6 +777,11 @@ class UserOnboardingController extends Controller
 
     public function requestChange(Request $request, UserOnboarding $userOnboarding, UserAnswer $answer): RedirectResponse
     {
+        if ($userOnboarding->status === 'approved') {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'This application is already approved — changes cannot be requested on a decided application.');
+        }
+
         $request->validate([
             'message' => 'required|string|max:2000',
         ]);
@@ -814,8 +819,13 @@ class UserOnboardingController extends Controller
             ->with('success', 'Change request sent to user.');
     }
 
-    public function createQuestion(UserOnboarding $userOnboarding): View
+    public function createQuestion(UserOnboarding $userOnboarding): View|RedirectResponse
     {
+        if ($userOnboarding->status === 'approved') {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'This application is already approved — new questions cannot be added to a decided application.');
+        }
+
         $userOnboarding->load(['user']);
 
         return view('admin.user-onboardings.new-question', compact('userOnboarding'));
@@ -823,6 +833,11 @@ class UserOnboardingController extends Controller
 
     public function storeQuestion(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        if ($userOnboarding->status === 'approved') {
+            return redirect()->route('admin.user-onboardings.show', $userOnboarding)
+                ->with('error', 'This application is already approved — new questions cannot be added to a decided application.');
+        }
+
         $validated = $request->validate([
             'label' => 'required|string|max:500',
             'description' => 'nullable|string|max:2000',
