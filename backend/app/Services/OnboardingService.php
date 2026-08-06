@@ -265,6 +265,13 @@ class OnboardingService
             'current_step_id' => $reviewStep?->id,
         ]);
 
+        // Reset reviewer state so the resubmitted application is reviewed
+        // fresh: prior section-review progress and per-document verdicts no
+        // longer reflect the (now-being-edited) version (EOP-79, EOP-74).
+        $onboarding->sectionReviews()->delete();
+        \App\Models\AnswerFile::whereHas('answer', fn ($q) => $q->where('user_onboarding_id', $onboarding->id))
+            ->update(['review_decision' => null, 'review_note' => null, 'reviewed_at' => null, 'reviewed_by' => null]);
+
         $onboarding->reviewLogs()->create(['event' => 'reopened']);
 
         return $onboarding->fresh('steps');

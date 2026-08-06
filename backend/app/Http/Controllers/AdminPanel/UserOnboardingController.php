@@ -421,6 +421,23 @@ class UserOnboardingController extends Controller
 
         $completed = $validated['status'] === 'completed';
 
+        // A section with an outstanding change request isn't done — the client
+        // still has to resubmit it. Don't let it be marked reviewed (EOP-71).
+        if ($completed) {
+            $hasPendingChange = AdminNotification::where('type', 'change_request')
+                ->where('status', 'pending')
+                ->whereHas('userAnswer', fn ($q) => $q
+                    ->where('user_onboarding_id', $userOnboarding->id)
+                    ->whereHas('question', fn ($qq) => $qq->where('question_group_id', $group->id)))
+                ->exists();
+
+            if ($hasPendingChange) {
+                return redirect()
+                    ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+                    ->with('error', 'This section has a pending change request — it can be marked reviewed once the client resubmits.');
+            }
+        }
+
         OnboardingSectionReview::updateOrCreate(
             ['user_onboarding_id' => $userOnboarding->id, 'question_group_id' => $group->id],
             [
