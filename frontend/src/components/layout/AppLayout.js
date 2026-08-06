@@ -122,6 +122,9 @@ function AppLayout({ children, pageTitle }) {
   };
 
   const handleLogout = () => {
+    // Confirm before signing out so an accidental click doesn't drop the
+    // user out of an in-progress application (EOP-55).
+    if (!window.confirm('Are you sure you want to sign out?')) return;
     dispatch(clearAuth());
     dispatch(logoutUser());
     navigate('/login');

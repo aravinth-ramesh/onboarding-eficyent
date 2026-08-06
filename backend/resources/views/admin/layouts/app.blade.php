@@ -502,7 +502,8 @@
                     <div class="sidebar-user-name">{{ auth('admin')->user()->name ?? 'Admin' }}</div>
                     <div class="sidebar-user-email">{{ $me?->role?->label() ?? auth('admin')->user()->email }}</div>
                 </div>
-                <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
+                <form action="{{ route('admin.logout') }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Are you sure you want to log out?');">
                     @csrf
                     <button type="submit" class="btn btn-sm btn-link text-white-50 p-0" title="Sign out">
                         <i class="bi bi-box-arrow-right"></i>
