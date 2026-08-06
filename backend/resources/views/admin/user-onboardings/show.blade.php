@@ -613,10 +613,13 @@
                                         <div class="d-flex flex-column gap-1">
                                             @foreach($answer->files as $file)
                                                 <div>
-                                                    <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                                    <a href="{{ route('admin.documents.show', $file) }}" target="_blank" class="submitted-answers-file-link" title="Preview in a new tab">
                                                         <i class="bi bi-paperclip"></i>
                                                         {{ $file->original_filename }}
                                                         <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                                    </a>
+                                                    <a href="{{ route('admin.documents.show', [$file, 'download' => 1]) }}" class="text-muted ms-1 small text-decoration-none" title="Download">
+                                                        <i class="bi bi-download"></i>
                                                     </a>
                                                     @switch($file->validation_status)
                                                         @case('passed')
@@ -851,10 +854,13 @@
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                 <div>
                                     <div class="text-muted small">{{ $answer->question->label }}</div>
-                                    <a href="{{ $file->url }}" target="_blank" class="submitted-answers-file-link">
+                                    <a href="{{ route('admin.documents.show', $file) }}" target="_blank" class="submitted-answers-file-link" title="Preview in a new tab">
                                         <i class="bi bi-paperclip"></i>
                                         {{ $file->original_filename }}
                                         <small class="text-muted ms-1">({{ $file->file_size < 1048576 ? number_format($file->file_size / 1024, 1) . ' KB' : number_format($file->file_size / 1048576, 1) . ' MB' }})</small>
+                                    </a>
+                                    <a href="{{ route('admin.documents.show', [$file, 'download' => 1]) }}" class="text-muted ms-1 small text-decoration-none" title="Download">
+                                        <i class="bi bi-download"></i>
                                     </a>
                                     @switch($file->validation_status)
                                         @case('passed')

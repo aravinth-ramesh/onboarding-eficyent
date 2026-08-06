@@ -102,6 +102,10 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question')->middleware('ability:' . Ability::MESSAGE_CLIENT);
     Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email')->middleware('ability:' . Ability::MESSAGE_CLIENT);
 
+    // Serve an uploaded document inline (preview) with a separate ?download=1
+    // option — any admin who can see the onboarding may view its files (EOP-81).
+    Route::get('documents/{file}', [DocumentReviewController::class, 'serve'])->name('documents.show');
+
     // Staff / user management (Admin / Super Admin)
     Route::middleware('ability:' . Ability::MANAGE_USERS)->group(function () {
         Route::get('users', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'index'])->name('users.index');

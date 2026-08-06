@@ -7,7 +7,9 @@ use App\Models\AnswerFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Review queue for documents the automatic validation could not fully clear:
@@ -68,6 +70,29 @@ class DocumentReviewController extends Controller
             'showAll' => $showAll,
             'stats' => $this->stats(),
         ]);
+    }
+
+    /**
+     * Stream an uploaded document to the admin. Serves inline by default so it
+     * previews in a new tab rather than force-downloading; `?download=1` forces
+     * the attachment (Download option). Uniform across local/public/s3 disks so
+     * the disposition is ours to set, not the storage backend's (EOP-81).
+     */
+    public function serve(Request $request, AnswerFile $file): StreamedResponse
+    {
+        $onboarding = $file->answer?->onboarding;
+        abort_unless($onboarding !== null, 404);
+        abort_unless($onboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $disk = Storage::disk($file->disk);
+        abort_unless($disk->exists($file->s3_path), 404);
+
+        return $disk->response(
+            $file->s3_path,
+            $file->original_filename,
+            ['Content-Type' => $file->mime_type ?: 'application/octet-stream'],
+            $request->boolean('download') ? 'attachment' : 'inline',
+        );
     }
 
     public function approve(Request $request, AnswerFile $file): RedirectResponse

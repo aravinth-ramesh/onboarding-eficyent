@@ -101,7 +101,8 @@
                                 <div class="small text-muted">{{ $file->created_at->format('M d, H:i') }}</div>
                             </td>
                             <td>
-                                <a href="{{ $file->url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ Str::limit($file->original_filename, 28) }}</a>
+                                <a href="{{ route('admin.documents.show', $file) }}" target="_blank" title="Preview in a new tab"><i class="bi bi-paperclip"></i> {{ Str::limit($file->original_filename, 28) }}</a>
+                                <a href="{{ route('admin.documents.show', [$file, 'download' => 1]) }}" class="text-muted ms-1 text-decoration-none" title="Download"><i class="bi bi-download"></i></a>
                                 <div>
                                     <span class="badge {{ $file->validation_status === 'needs_review' ? 'bg-warning-subtle text-warning-emphasis' : 'bg-danger-subtle text-danger' }} border">
                                         {{ str_replace('_', ' ', $file->validation_status) }}

@@ -159,9 +159,10 @@
         <strong>Current answer:</strong>
         @if(($answer->question->type ?? '') === 'file' && $answer->files->count())
             @foreach($answer->files as $file)
-                <a href="{{ $file->url }}" target="_blank" class="text-decoration-none">
+                <a href="{{ route('admin.documents.show', $file) }}" target="_blank" class="text-decoration-none" title="Preview in a new tab">
                     <i class="bi bi-paperclip"></i> {{ $file->original_filename }}
-                </a>{{ !$loop->last ? ', ' : '' }}
+                </a>
+                <a href="{{ route('admin.documents.show', [$file, 'download' => 1]) }}" class="text-muted small text-decoration-none" title="Download"><i class="bi bi-download"></i></a>{{ !$loop->last ? ', ' : '' }}
             @endforeach
         @else
             {{ \App\Support\AnswerValueFormatter::readable($answer->value, $answer->question) }}
