@@ -684,6 +684,8 @@ class UserOnboardingController extends Controller
 
     public function approve(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $validated = $request->validate(['comment' => 'nullable|string|max:2000']);
 
         try {
@@ -703,6 +705,8 @@ class UserOnboardingController extends Controller
 
     public function reject(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $validated = $request->validate(['comment' => 'required|string|max:2000']);
 
         try {

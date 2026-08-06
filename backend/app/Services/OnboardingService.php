@@ -365,15 +365,25 @@ class OnboardingService
      */
     private function notifySubmission(UserOnboarding $onboarding): void
     {
-        $onboarding->load(['user', 'userType', 'subcategory']);
+        $onboarding->load(['user', 'userType', 'subcategory', 'assignee']);
 
         try {
             if ($onboarding->user?->email && $onboarding->user->wantsEmail('submission')) {
                 Mail::to($onboarding->user->email)->queue(new OnboardingSubmittedClientMail($onboarding));
             }
 
-            $adminEmails = Admin::where('is_active', true)->pluck('email');
-            foreach ($adminEmails as $email) {
+            // Notify the assigned reviewer if there is one; otherwise the
+            // managers who distribute work — not every admin (EOP-87).
+            $adminEmails = $onboarding->assignee && $onboarding->assignee->is_active
+                ? collect([$onboarding->assignee->email])
+                : Admin::where('is_active', true)
+                    ->whereIn('role', [
+                        AdminRole::Manager->value,
+                        AdminRole::Admin->value,
+                        AdminRole::SuperAdmin->value,
+                    ])->pluck('email');
+
+            foreach ($adminEmails->filter() as $email) {
                 Mail::to($email)->queue(new OnboardingSubmittedAdminMail($onboarding));
             }
         } catch (\Throwable $e) {
