@@ -225,6 +225,34 @@
             padding: 1.5rem;
         }
 
+        /* Breadcrumb navigation — orientation + back path on every module
+           page (EOP-63). */
+        .admin-breadcrumb {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-bottom: 1rem;
+            font-size: 0.82rem;
+            color: var(--color-text-muted);
+        }
+        .admin-breadcrumb a {
+            color: var(--color-text-secondary);
+            text-decoration: none;
+        }
+        .admin-breadcrumb a:hover {
+            color: var(--color-accent);
+            text-decoration: underline;
+        }
+        .admin-breadcrumb .sep {
+            color: var(--color-text-muted);
+            opacity: 0.7;
+        }
+        .admin-breadcrumb .current {
+            color: var(--color-text-primary);
+            font-weight: 600;
+        }
+
         .admin-footer {
             padding: 1rem 1.5rem;
             text-align: center;
@@ -523,6 +551,58 @@
         </div>
 
         <div class="admin-content">
+            {{-- Breadcrumb derived from the current route name so every module
+                 page has a back path without editing each view (EOP-63). --}}
+            @php
+                $routeName = optional(request()->route())->getName();
+                $labelOverrides = [
+                    'user-onboardings' => 'Onboardings',
+                    'audit-logs' => 'Client Changes',
+                    'admin-activity' => 'Admin Activity',
+                    'document-reviews' => 'Document Reviews',
+                    'users' => 'Staff',
+                    'scheduled-emails' => 'Scheduled Emails',
+                    'email-templates' => 'Email Templates',
+                ];
+                $actionLabels = ['create' => 'New', 'edit' => 'Edit', 'show' => 'Details'];
+                $crumbs = [];
+                if ($routeName && $routeName !== 'admin.dashboard' && \Illuminate\Support\Str::startsWith($routeName, 'admin.')) {
+                    $crumbs[] = ['label' => 'Dashboard', 'url' => route('admin.dashboard')];
+                    $parts = explode('.', \Illuminate\Support\Str::after($routeName, 'admin.'));
+                    $action = in_array(end($parts), ['index', 'create', 'edit', 'show', 'update', 'store', 'destroy'], true)
+                        ? array_pop($parts) : null;
+                    if ($action === 'index') { $action = null; }
+                    $accum = 'admin';
+                    foreach (array_values($parts) as $i => $seg) {
+                        $accum .= '.' . $seg;
+                        $url = null;
+                        if (\Illuminate\Support\Facades\Route::has($accum . '.index')) {
+                            try { $url = route($accum . '.index'); } catch (\Throwable $e) { $url = null; }
+                        }
+                        $isLast = ($i === count($parts) - 1) && ! $action;
+                        $crumbs[] = [
+                            'label' => $labelOverrides[$seg] ?? (string) \Illuminate\Support\Str::of($seg)->replace('-', ' ')->title(),
+                            'url' => $isLast ? null : $url,
+                        ];
+                    }
+                    if ($action) {
+                        $crumbs[] = ['label' => $actionLabels[$action] ?? \Illuminate\Support\Str::title($action), 'url' => null];
+                    }
+                }
+            @endphp
+            @if(count($crumbs) > 1)
+                <nav class="admin-breadcrumb" aria-label="breadcrumb">
+                    @foreach($crumbs as $crumb)
+                        @if(!$loop->first)<span class="sep">/</span>@endif
+                        @if($crumb['url'])
+                            <a href="{{ $crumb['url'] }}">{{ $crumb['label'] }}</a>
+                        @else
+                            <span class="current">{{ $crumb['label'] }}</span>
+                        @endif
+                    @endforeach
+                </nav>
+            @endif
+
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     {{ session('success') }}
