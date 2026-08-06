@@ -263,6 +263,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       return true;
     }
     const val = answers[question.id];
+    if (typeof val === 'string') return val.trim() === '';
     return val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
   };
 

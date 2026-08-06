@@ -26,7 +26,38 @@ const isEmpty = (value) =>
   value === null ||
   value === undefined ||
   value === '' ||
+  // Whitespace-only strings are empty — a required field can't be satisfied
+  // with spaces alone (bug report EOP-43, EOP-39).
+  (typeof value === 'string' && value.trim() === '') ||
   (Array.isArray(value) && value.length === 0);
+
+// Built-in formats a question can request via validation_rules.format, so a
+// plain text field can enforce email / URL / phone / alphabetic input without
+// each question needing a hand-written regex. URL and email are matched
+// case-insensitively (EOP-54: uppercase URLs are valid).
+const FORMAT_VALIDATORS = {
+  email: {
+    test: (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s),
+    message: 'Enter a valid email address.',
+  },
+  url: {
+    test: (s) => /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/i.test(s),
+    message: 'Enter a valid website URL.',
+  },
+  phone: {
+    // 7–15 digits, optional leading + and separators (spaces, -, (), .).
+    test: (s) => /^\+?[\d\s().-]{7,20}$/.test(s) && (s.match(/\d/g) || []).length >= 7,
+    message: 'Enter a valid phone number.',
+  },
+  alpha: {
+    test: (s) => /^[\p{L}\s.'-]+$/u.test(s),
+    message: 'Only letters are allowed.',
+  },
+  alphanumeric: {
+    test: (s) => /^[\p{L}\p{N}\s.'-]+$/u.test(s),
+    message: 'Only letters and numbers are allowed.',
+  },
+};
 
 const toDateOnly = (input) => {
   if (!input) return null;
@@ -56,7 +87,7 @@ const compileRegex = (pattern) => {
 
 export const validateText = (value, rules = {}) => {
   if (isEmpty(value)) return null;
-  const str = String(value);
+  const str = String(value).trim();
 
   if (rules.min_length != null && str.length < Number(rules.min_length)) {
     return `Must be at least ${rules.min_length} characters.`;
@@ -64,9 +95,17 @@ export const validateText = (value, rules = {}) => {
   if (rules.max_length != null && str.length > Number(rules.max_length)) {
     return `Must be at most ${rules.max_length} characters.`;
   }
+  if (rules.format && FORMAT_VALIDATORS[rules.format]) {
+    const fmt = FORMAT_VALIDATORS[rules.format];
+    if (!fmt.test(str)) {
+      return rules.pattern_message || fmt.message;
+    }
+  }
   if (rules.pattern) {
     const re = compileRegex(String(rules.pattern));
-    if (re && !re.test(str)) {
+    // Match case-insensitively when the field is a URL (EOP-54).
+    const patternRe = re && rules.format === 'url' ? new RegExp(re.source, 'i') : re;
+    if (patternRe && !patternRe.test(str)) {
       return rules.pattern_message || 'Value does not match the required format.';
     }
   }
