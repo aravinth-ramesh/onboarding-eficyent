@@ -53,13 +53,22 @@ class CompanyName
         return $best;
     }
 
-    /** Recompute and persist company_name if it changed. */
+    /**
+     * Recompute and persist company_name if it changed. Best-effort: this is a
+     * denormalisation convenience for admin lists, so it must never break the
+     * client's ability to save answers or advance a step (e.g. if the column
+     * is missing because a migration hasn't run, or a value is malformed).
+     */
     public static function sync(UserOnboarding $onboarding): void
     {
-        $name = self::resolve($onboarding);
+        try {
+            $name = self::resolve($onboarding);
 
-        if ($name !== $onboarding->company_name) {
-            $onboarding->forceFill(['company_name' => $name])->save();
+            if ($name !== $onboarding->company_name) {
+                $onboarding->forceFill(['company_name' => $name])->save();
+            }
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 }
