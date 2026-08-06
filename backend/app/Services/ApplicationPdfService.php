@@ -30,7 +30,54 @@ class ApplicationPdfService
             'onboarding' => $onboarding,
             'sections' => $sections,
             'formatted' => fn ($answer) => $this->formatValue($answer),
+            'tableData' => fn ($answer) => $this->tableData($answer),
         ]);
+    }
+
+    /**
+     * Structured rows/columns for a table-type answer so the PDF can render a
+     * real table (field-wise, wrapping) instead of one flattened line
+     * (EOP-88). Returns null for non-table answers.
+     *
+     * @return array{columns: string[], rows: string[][]}|null
+     */
+    public function tableData($answer): ?array
+    {
+        if (($answer->question->type ?? null) !== 'table') {
+            return null;
+        }
+
+        $rows = json_decode((string) $answer->value, true);
+        if (! is_array($rows) || $rows === []) {
+            return null;
+        }
+
+        $columns = collect($answer->question->options['columns'] ?? [])
+            ->map(fn ($c) => [
+                'key' => $c['key'] ?? '',
+                'label' => $c['label'] ?? ($c['key'] ?? ''),
+                'type' => $c['type'] ?? 'text',
+            ])->values();
+
+        $displayRows = collect($rows)->map(fn ($row) => $columns->map(function ($col) use ($row) {
+            $cell = is_array($row) ? ($row[$col['key']] ?? null) : null;
+
+            if ($col['type'] === 'file') {
+                $name = is_array($cell) ? ($cell['filename'] ?? $cell['original_filename'] ?? null) : null;
+
+                return $name ?: 'Not Uploaded';
+            }
+            if (is_array($cell)) {
+                $joined = implode(', ', array_map(fn ($f) => is_array($f) ? ($f['original_filename'] ?? $f['filename'] ?? '') : (string) $f, $cell));
+
+                return $joined !== '' ? $joined : '—';
+            }
+            $str = trim((string) $cell);
+
+            return $str === '' ? '—' : $str;
+        })->all())->all();
+
+        return ['columns' => $columns->pluck('label')->all(), 'rows' => $displayRows];
     }
 
     /**

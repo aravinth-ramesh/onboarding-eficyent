@@ -21,6 +21,13 @@
         .qa .q { font-weight: bold; margin-bottom: 1px; }
         .qa .a { color: #37424e; }
         .qa .a div { margin-bottom: 1px; }
+        .answer-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 3px; }
+        .answer-table th, .answer-table td {
+            border: 1px solid #d8dee6; padding: 4px 6px; font-size: 10px; text-align: left;
+            vertical-align: top; word-wrap: break-word; overflow-wrap: break-word;
+        }
+        .answer-table th { background: #f1f4f8; color: #1a3a5c; font-weight: bold; }
+        .answer-table td { color: #37424e; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 9px; color: #9aa5b1; padding: 6px; border-top: 1px solid #e4e9ef; }
     </style>
 </head>
@@ -83,9 +90,34 @@
                 <div class="qa">
                     <div class="q">{{ $answer->question->label }}</div>
                     <div class="a">
-                        @foreach($formatted($answer) as $line)
-                            <div>{{ $line }}</div>
-                        @endforeach
+                        @php $table = $tableData($answer); @endphp
+                        @if($table)
+                            {{-- Structured table (Directors / UBOs) instead of one flattened line (EOP-88). --}}
+                            <table class="answer-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 22px;">#</th>
+                                        @foreach($table['columns'] as $col)
+                                            <th>{{ $col }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($table['rows'] as $rowIndex => $row)
+                                        <tr>
+                                            <td>{{ $rowIndex + 1 }}</td>
+                                            @foreach($row as $cell)
+                                                <td>{{ $cell }}</td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @else
+                            @foreach($formatted($answer) as $line)
+                                <div>{{ $line }}</div>
+                            @endforeach
+                        @endif
                     </div>
                 </div>
             @endforeach
