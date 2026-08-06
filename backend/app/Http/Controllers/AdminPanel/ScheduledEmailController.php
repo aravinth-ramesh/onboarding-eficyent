@@ -96,10 +96,11 @@ class ScheduledEmailController extends Controller
      */
     public function preview(ScheduledEmail $scheduledEmail, AdminEmailService $emailService): \Illuminate\Http\Response
     {
-        $recipient = UserOnboarding::with('user')
+        $recipients = UserOnboarding::with('user')
             ->whereIn('id', $scheduledEmail->onboarding_ids)
             ->get()
-            ->first(fn ($o) => $o->user?->email);
+            ->filter(fn ($o) => $o->user?->email);
+        $recipient = $recipients->first();
 
         $vars = $recipient
             ? ['name' => $recipient->user->name ?: 'there', 'reference' => $recipient->reference]
@@ -115,7 +116,19 @@ class ScheduledEmailController extends Controller
             'Open Portal',
         ))->render();
 
-        return response($html);
+        // Show who the email will go to — the preview otherwise hid the
+        // recipients, so the admin couldn't verify the audience (EOP-101).
+        $chips = $recipients->take(20)->map(fn ($o) => e(trim(($o->displayName ?: $o->user->name).' <'.$o->user->email.'>')))
+            ->implode('</span> <span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:4px;padding:2px 8px;margin:2px;font-size:12px;">');
+        $more = $recipients->count() > 20 ? ' <span style="color:#6c757d;font-size:12px;">+'.($recipients->count() - 20).' more</span>' : '';
+        $banner = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:16px auto 0;padding:12px 16px;background:#fff;border:1px solid #e1e5eb;border-radius:8px;">'
+            .'<div style="font-size:13px;font-weight:600;color:#1a3a5c;margin-bottom:6px;">Recipients ('.$recipients->count().')</div>'
+            .($recipients->isEmpty()
+                ? '<div style="color:#6c757d;font-size:13px;">No valid recipients.</div>'
+                : '<span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:4px;padding:2px 8px;margin:2px;font-size:12px;">'.$chips.'</span>'.$more)
+            .'</div>';
+
+        return response($banner.$html);
     }
 
     /**

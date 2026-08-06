@@ -196,6 +196,10 @@ class ScheduledEmailTest extends TestCase
         $this->assertStringContainsString('Eficyent', $html);
         $this->assertStringNotContainsString('{{name}}', $html);
         $this->assertStringNotContainsString('{{reference}}', $html);
+        // The preview now lists who the email goes to (EOP-101).
+        $this->assertStringContainsString('Recipients (2)', $html);
+        $this->assertStringContainsString($this->a->user->email, $html);
+        $this->assertStringContainsString($this->b->user->email, $html);
     }
 
     public function test_preview_falls_back_to_sample_data_when_no_recipient_is_reachable(): void
