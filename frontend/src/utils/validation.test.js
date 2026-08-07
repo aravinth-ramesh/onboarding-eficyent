@@ -65,6 +65,30 @@ describe('field validation engine', () => {
     expect(validateText('mlro@acme.com / +91 98765 43210', rules)).toBeNull();
   });
 
+  test('integer rule rejects a fractional count (EOP-18)', () => {
+    const rules = { min: 0, integer: true };
+    expect(validateByType('number', '12.5', rules)).toBe('Must be a whole number.');
+    expect(validateByType('number', '12', rules)).toBeNull();
+    expect(validateByType('number', '-1', rules)).toBeTruthy();
+  });
+
+  test('IBAN uses the mod-97 check, not just a shape (EOP-24)', () => {
+    const rules = { format: 'iban' };
+    expect(validateText('GB82 WEST 1234 5698 7654 32', rules)).toBeNull();
+    expect(validateText('DE89370400440532013000', rules)).toBeNull();
+    // Correct shape, transposed digits — a regex alone would accept this.
+    expect(validateText('GB82WEST12345698765433', rules)).toBeTruthy();
+    expect(validateText('not-an-iban', rules)).toBeTruthy();
+  });
+
+  test('SWIFT/BIC accepts 8 or 11 characters only (EOP-24)', () => {
+    const rules = { format: 'swift' };
+    expect(validateText('DEUTDEFF', rules)).toBeNull();
+    expect(validateText('DEUTDEFF500', rules)).toBeNull();
+    expect(validateText('DEUT', rules)).toBeTruthy();
+    expect(validateText('1234DEFF', rules)).toBeTruthy();
+  });
+
   test('a date column rejects a future date of birth (EOP-32)', () => {
     const rules = { allow_future: false };
     const future = new Date();

@@ -453,9 +453,15 @@
                 : 0;
         @endphp
         <nav class="sidebar-nav">
-            <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                <i class="bi bi-grid-1x2"></i> Dashboard
-            </a>
+            {{-- Analysts are redirected off the platform dashboard to their own
+                 queue, so the link could never be reached or shown active —
+                 it read as a dashboard that fails to load. Their home is the
+                 Onboardings queue below (EOP-90). --}}
+            @unless($me?->seesOnlyAssignedOnboardings())
+                <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-grid-1x2"></i> Dashboard
+                </a>
+            @endunless
 
             @if($can(\App\Enums\Ability::MANAGE_TEMPLATES) || $can(\App\Enums\Ability::MANAGE_EMAILS))
                 <div class="sidebar-heading">Configuration</div>

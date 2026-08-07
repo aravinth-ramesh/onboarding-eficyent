@@ -11,6 +11,7 @@ class AdminQuestion extends Model
     protected $fillable = [
         'user_id',
         'admin_id',
+        'question_group_id',
         'label',
         'description',
         'type',
@@ -36,6 +37,12 @@ class AdminQuestion extends Model
     public function admin(): BelongsTo
     {
         return $this->belongsTo(Admin::class);
+    }
+
+    /** The section this follow-up relates to, when the admin named one (EOP-95). */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(QuestionGroup::class, 'question_group_id');
     }
 
     public function answer(): HasOne

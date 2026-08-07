@@ -28,6 +28,18 @@ class FieldValidationRules
         'contact email and number' => ['format' => 'contact'],
     ];
 
+    /**
+     * Questions to retype, keyed by label substring. A count captured as free
+     * text accepted "12.5" and "abc" (EOP-18); a free-text explanation was
+     * typed as a number (EOP-19).
+     *
+     * label needle => [type, rules]
+     */
+    private const QUESTION_TYPES = [
+        'number of transactions per month' => ['number', ['min' => 0, 'integer' => true]],
+        'source of funds' => ['textarea', ['min_length' => 20, 'max_length' => 1000, 'requires_letter' => true]],
+    ];
+
     /** Table columns: column key => rules (text columns only). */
     private const COLUMN_RULES = [
         'full_name' => ['format' => 'alpha'],
@@ -41,6 +53,27 @@ class FieldValidationRules
         'id_number' => ['min_length' => 4, 'max_length' => 30],
         'passport_number' => ['min_length' => 4, 'max_length' => 30],
         'license_number' => ['min_length' => 3, 'max_length' => 50],
+
+        // Primary bank account. The seeded column keys carry the legacy
+        // punctuation, which is why none of them matched before and every bank
+        // field accepted anything at all (EOP-23, EOP-24).
+        'bank_name_:' => ['format' => 'alphanumeric', 'requires_letter' => true, 'min_length' => 2, 'max_length' => 100],
+        'branch_name_/_location_:' => ['requires_letter' => true, 'min_length' => 2, 'max_length' => 120],
+        'account_holder_name_:' => ['format' => 'alpha', 'min_length' => 2, 'max_length' => 120],
+        'bank_address_:' => ['requires_letter' => true, 'min_length' => 5, 'max_length' => 200],
+        'account_number_/_iban_:' => ['format' => 'iban'],
+        'swift_/_bic_code_:' => ['format' => 'swift'],
+    ];
+
+    /**
+     * Free-text follow-ups that accepted a single character. They explain a
+     * regulatory action, so they need real prose (EOP-29).
+     *
+     * @var array<int, string>
+     */
+    private const EXPLANATION_NEEDLES = [
+        'provide the reason, regulator, date, and final outcome',
+        'provide dates, regulators, reasons, outcomes',
     ];
 
     /**
@@ -62,15 +95,43 @@ class FieldValidationRules
 
     private static function applyToQuestions(): void
     {
-        Question::where('type', 'text')->get()->each(function (Question $question) {
+        // `textarea` is included so a retyped question can still be matched on
+        // a later run.
+        Question::whereIn('type', ['text', 'textarea'])->get()->each(function (Question $question) {
+            $label = strtolower((string) $question->label);
+
+            // Retype first: a count captured as text, or an explanation
+            // captured as a number, can never be validated correctly.
+            foreach (self::QUESTION_TYPES as $needle => [$type, $rules]) {
+                if (str_contains($label, $needle)) {
+                    $question->update([
+                        'type' => $type,
+                        'validation_rules' => self::isUnset($question->validation_rules)
+                            ? $rules
+                            : $question->validation_rules,
+                    ]);
+
+                    return;
+                }
+            }
+
             if (! self::isUnset($question->validation_rules)) {
                 return;
             }
 
-            $label = strtolower((string) $question->label);
             foreach (self::QUESTION_RULES as $needle => $rules) {
                 if (str_contains($label, $needle)) {
                     $question->update(['validation_rules' => $rules]);
+
+                    return;
+                }
+            }
+
+            foreach (self::EXPLANATION_NEEDLES as $needle) {
+                if (str_contains($label, $needle)) {
+                    $question->update(['validation_rules' => [
+                        'min_length' => 20, 'max_length' => 1000, 'requires_letter' => true,
+                    ]]);
 
                     return;
                 }

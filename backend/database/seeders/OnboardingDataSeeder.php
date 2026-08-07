@@ -49,6 +49,7 @@ class OnboardingDataSeeder extends Seeder
         \App\Support\UboWidgetConsolidation::apply();
         \App\Support\CountryListQuestions::apply();
         \App\Support\FieldValidationRules::apply();
+        \App\Support\DuplicateRegistrationQuestions::apply();
     }
 
     /**

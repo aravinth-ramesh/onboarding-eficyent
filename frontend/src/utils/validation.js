@@ -62,6 +62,17 @@ const FORMAT_VALIDATORS = {
     test: (s) => /^[\p{L}\p{N}\s.'-]+$/u.test(s),
     message: 'Only letters and numbers are allowed.',
   },
+  // SWIFT/BIC: 8 or 11 characters, bank + country + location (+ branch).
+  swift: {
+    test: (s) => /^[A-Za-z]{6}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?$/.test(s.replace(/\s/g, '')),
+    message: 'Enter a valid 8 or 11 character SWIFT/BIC code.',
+  },
+  // IBAN: structure plus the mod-97 check, which catches transposed digits a
+  // pattern alone cannot (EOP-24).
+  iban: {
+    test: (s) => isValidIban(s),
+    message: 'Enter a valid IBAN.',
+  },
   // A single field holding both an email address and a phone number, e.g.
   // "AML Officer Contact Email & Number" — require both parts (EOP-42).
   contact: {
@@ -70,6 +81,28 @@ const FORMAT_VALIDATORS = {
     message: 'Enter both a valid email address and a phone number.',
   },
 };
+
+/**
+ * IBAN check: length/shape per ISO 13616, then the mod-97 checksum. A regex
+ * alone accepts a transposed digit, which is exactly the typo this catches
+ * (EOP-24).
+ */
+function isValidIban(value) {
+  const iban = String(value || '').replace(/\s/g, '').toUpperCase();
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$/.test(iban)) return false;
+
+  // Move the first four characters to the end, then letters -> 10..35.
+  const rearranged = iban.slice(4) + iban.slice(0, 4);
+  const digits = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+
+  // Mod-97 in chunks, since the number exceeds Number.MAX_SAFE_INTEGER.
+  let remainder = 0;
+  for (let i = 0; i < digits.length; i += 7) {
+    remainder = Number(String(remainder) + digits.substr(i, 7)) % 97;
+  }
+
+  return remainder === 1;
+}
 
 const toDateOnly = (input) => {
   if (!input) return null;
@@ -134,6 +167,11 @@ export const validateNumber = (value, rules = {}) => {
   const num = Number(value);
   if (Number.isNaN(num)) return 'Must be a valid number.';
 
+  // A count of transactions can't be fractional (EOP-18).
+  if (rules.integer && !Number.isInteger(num)) {
+    return 'Must be a whole number.';
+  }
+
   if (rules.min != null && num < Number(rules.min)) {
     return `Must be at least ${rules.min}.`;
   }
@@ -177,6 +215,47 @@ export const validateDate = (value, rules = {}) => {
 // Dispatcher used for both top-level questions and individual table cells.
 // `type` is one of the question/column types (text, textarea, number, date,
 // ...) and `rules` is the validation metadata block sent from the backend.
+/**
+ * Beneficial-owner list. The `ubo` widget marks Full Name, Ownership %,
+ * Nationality and ID number as required and warns when the total exceeds
+ * 100%, but none of that was ever enforced — the question fell through to
+ * `default` and the client advanced with half-filled owners (EOP-31).
+ */
+export const validateUbo = (value) => {
+  let owners = value;
+  if (typeof owners === 'string') {
+    try { owners = JSON.parse(owners); } catch { return null; }
+  }
+  if (!Array.isArray(owners) || owners.length === 0) return null;
+
+  const blank = (v) => v === null || v === undefined || String(v).trim() === '';
+
+  for (let i = 0; i < owners.length; i += 1) {
+    const owner = owners[i] || {};
+    // Ignore an entirely empty row — that's the "add" scaffolding.
+    const touched = Object.values(owner).some((v) => !blank(v));
+    if (!touched) continue;
+
+    for (const [field, label] of [
+      ['full_name', 'Full name'],
+      ['ownership_percent', 'Ownership %'],
+      ['nationality', 'Nationality'],
+      ['id_number', 'ID / passport number'],
+    ]) {
+      if (blank(owner[field])) {
+        return `Beneficial owner ${i + 1}: ${label} is required.`;
+      }
+    }
+  }
+
+  const total = owners.reduce((sum, o) => sum + (Number(o?.ownership_percent) || 0), 0);
+  if (total > 100) {
+    return `Total ownership is ${total}%, which cannot exceed 100%.`;
+  }
+
+  return null;
+};
+
 export const validateByType = (type, value, rules) => {
   // A phone field carries its own country in the "+CC number" value, so it is
   // always checked against that country's numbering plan — it needs no
@@ -186,6 +265,11 @@ export const validateByType = (type, value, rules) => {
     return isEmpty(value) || isValidPhone(value)
       ? null
       : 'Enter a valid phone number for the selected country.';
+  }
+
+  // Like phone, a UBO list validates itself and needs no configured rules.
+  if (type === 'ubo') {
+    return validateUbo(value);
   }
 
   if (!rules || typeof rules !== 'object') return null;

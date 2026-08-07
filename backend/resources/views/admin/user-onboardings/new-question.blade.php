@@ -24,6 +24,25 @@
                         @error('label')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
+                    {{-- There was no way to say which section a follow-up was
+                         about, so neither the client nor the reviewer could
+                         tell what it related to (EOP-95). --}}
+                    <div class="mb-3">
+                        <label for="question_group_id" class="form-label">Related Section</label>
+                        <select class="form-select @error('question_group_id') is-invalid @enderror"
+                                id="question_group_id" name="question_group_id">
+                            <option value="">— No particular section —</option>
+                            @foreach($questionGroups as $group)
+                                <option value="{{ $group->id }}" @selected(old('question_group_id') == $group->id)>{{ $group->name }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">
+                            Shown with the question so the client knows which part of their application it concerns.
+                            The question is delivered in their notifications, not inside the section itself.
+                        </div>
+                        @error('question_group_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description"

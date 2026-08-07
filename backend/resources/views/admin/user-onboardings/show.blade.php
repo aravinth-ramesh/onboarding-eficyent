@@ -1027,7 +1027,9 @@
                                     <strong>{{ $notif->userAnswer->question->label }}</strong>
                                 @elseif($notif->type === 'new_question' && $notif->adminQuestion)
                                     <div class="text-muted small text-uppercase" style="letter-spacing: .03em;">
-                                        <i class="bi bi-patch-question"></i> Follow-up question
+                                        <i class="bi bi-patch-question"></i>
+                                        {{-- Name the section when the admin chose one (EOP-95). --}}
+                                        {{ $notif->adminQuestion->group->name ?? 'Follow-up question' }}
                                     </div>
                                     <strong>{{ $notif->adminQuestion->label }}</strong>
                                 @else

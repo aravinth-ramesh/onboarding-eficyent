@@ -354,7 +354,7 @@ class UserOnboardingController extends Controller
 
         // Load admin notifications for this user
         $notifications = AdminNotification::where('user_id', $userOnboarding->user_id)
-            ->with(['admin', 'userAnswer.question.group', 'adminQuestion.answer'])
+            ->with(['admin', 'userAnswer.question.group', 'adminQuestion.answer', 'adminQuestion.group'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -1010,7 +1010,10 @@ class UserOnboardingController extends Controller
 
         $userOnboarding->load(['user']);
 
-        return view('admin.user-onboardings.new-question', compact('userOnboarding'));
+        // So the admin can say which section the follow-up relates to (EOP-95).
+        $questionGroups = QuestionGroup::where('is_active', true)->orderBy('order')->get();
+
+        return view('admin.user-onboardings.new-question', compact('userOnboarding', 'questionGroups'));
     }
 
     public function storeQuestion(Request $request, UserOnboarding $userOnboarding): RedirectResponse
@@ -1028,6 +1031,8 @@ class UserOnboardingController extends Controller
             // `table` is offered in the form but was missing here, so choosing
             // it always failed validation (found while triaging EOP-95).
             'type' => 'required|in:text,radio,date,select,multi_select,textarea,number,file,table',
+            // Which section the follow-up relates to (EOP-95).
+            'question_group_id' => 'nullable|exists:question_groups,id',
             'options' => 'nullable|json',
             'is_required' => 'boolean',
             'placeholder' => 'nullable|string|max:255',
@@ -1040,6 +1045,7 @@ class UserOnboardingController extends Controller
 
         $questionData = [
             'label' => $validated['label'],
+            'question_group_id' => $validated['question_group_id'] ?? null,
             'description' => $validated['description'] ?? null,
             'type' => $validated['type'],
             'options' => isset($validated['options']) ? json_decode($validated['options'], true) : null,
