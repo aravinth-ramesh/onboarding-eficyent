@@ -409,8 +409,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
     setTableCellErrors({});
 
-    // Auto-save on group navigation
-    await handleSave();
+    // Auto-save on group navigation. Only advance if the save succeeded —
+    // a failed/rejected document upload must not let the user skip past a
+    // mandatory document (EOP-51). Mirrors handleSubmitAll's gating.
+    const saved = await handleSave();
+    if (!saved) return;
     setActiveGroupIndex((prev) => prev + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
