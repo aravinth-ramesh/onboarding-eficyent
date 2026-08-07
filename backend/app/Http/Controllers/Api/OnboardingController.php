@@ -162,6 +162,17 @@ class OnboardingController extends Controller
                 }
             }
 
+            // A registration identifier belongs to exactly one legal entity, so
+            // the same value on another application is a duplicate or worse.
+            // Opt a field out with 'unique' => false (EOP-47).
+            if ($value !== '' && ($field['unique'] ?? true)
+                && $this->registrationIdentifierTaken($onboarding, $countryCode, $field['key'], $value)) {
+                $errors["values.{$field['key']}"] = [
+                    "This {$field['label']} is already used by another onboarding application. If this is your company, please contact support.",
+                ];
+                continue;
+            }
+
             if ($value !== '') {
                 $stored[$field['key']] = ['label' => $field['label'], 'value' => $value];
             }
@@ -192,6 +203,31 @@ class OnboardingController extends Controller
         // Once submitted (and after any decision) the application is locked;
         // post-submission edits go through admin change requests only.
         return in_array($onboarding->status, ['completed', 'approved', 'rejected'], true);
+    }
+
+    /**
+     * Is this registration identifier already recorded on a different
+     * application? Scoped to the same country — a number is only unique within
+     * the jurisdiction that issued it — and the client's own application is
+     * excluded so they can re-save their own details (EOP-47).
+     */
+    private function registrationIdentifierTaken(
+        UserOnboarding $onboarding,
+        string $countryCode,
+        string $key,
+        string $value,
+    ): bool {
+        // The key comes from the trusted country catalog, but it is
+        // interpolated into a JSON path — keep it to a safe shape regardless.
+        if (preg_match('/^[A-Za-z0-9_]+$/', $key) !== 1) {
+            return false;
+        }
+
+        return UserOnboarding::query()
+            ->whereKeyNot($onboarding->id)
+            ->where('country_code', $countryCode)
+            ->where("registration_details->{$key}->value", $value)
+            ->exists();
     }
 
     /**

@@ -18,6 +18,10 @@
 |   pattern_message message when the pattern fails
 |   placeholder     example value
 |   help            tooltip explanation
+|   unique          optional bool, defaults to true — the value must not already
+|                   appear on another application for the same country. Set
+|                   false for an identifier legitimately shared between
+|                   entities (EOP-47).
 |
 | NOTE: This is a curated starting dataset. Formats and which IDs are
 | mandatory should be reviewed by compliance and are editable per-deployment
