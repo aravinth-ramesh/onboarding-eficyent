@@ -13,6 +13,8 @@ class OnboardingNoteController extends Controller
 {
     public function store(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $validated = $request->validate(['note' => 'required|string|max:5000']);
 
         $userOnboarding->notes()->create([
@@ -26,6 +28,8 @@ class OnboardingNoteController extends Controller
 
     public function destroy(UserOnboarding $userOnboarding, OnboardingNote $note): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ((int) $note->user_onboarding_id !== (int) $userOnboarding->id) {
             abort(404);
         }

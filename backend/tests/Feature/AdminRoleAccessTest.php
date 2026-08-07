@@ -108,6 +108,36 @@ class AdminRoleAccessTest extends TestCase
         $this->actingAs($analyst, 'admin')->get(route('admin.user-onboardings.show', $notMine))->assertForbidden();
     }
 
+    public function test_analyst_cannot_reach_any_surface_of_a_company_not_assigned_to_them(): void
+    {
+        // Every per-application admin surface must honour visibility, not just
+        // show/decisions — exportPdf and answerHistory in particular exposed
+        // the full application to any admin (EOP-92).
+        $analyst = $this->admin(AdminRole::Analyst, 'a@t.com');
+        $notMine = $this->onboarding('other@co.com', null);
+
+        $group = \App\Models\QuestionGroup::create(['name' => 'G', 'slug' => 'g', 'order' => 1, 'is_active' => true]);
+        $question = \App\Models\Question::create(['question_group_id' => $group->id, 'label' => 'Legal name', 'type' => 'text', 'is_required' => true, 'order' => 1, 'is_active' => true]);
+        $answer = \App\Models\UserAnswer::create(['user_id' => $notMine->user_id, 'question_id' => $question->id, 'user_onboarding_id' => $notMine->id, 'value' => 'Secret Ltd']);
+
+        $this->actingAs($analyst, 'admin')
+            ->get(route('admin.user-onboardings.export-pdf', $notMine))->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->get(route('admin.user-onboardings.answers.history', [$notMine, $answer]))->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->post(route('admin.user-onboardings.messages.reply', $notMine), ['body' => 'hi'])->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->post(route('admin.user-onboardings.answers.request-change', [$notMine, $answer]), ['message' => 'fix'])->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->get(route('admin.user-onboardings.new-question', $notMine))->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->post(route('admin.user-onboardings.archive', $notMine))->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->post(route('admin.user-onboardings.unarchive', $notMine))->assertForbidden();
+        $this->actingAs($analyst, 'admin')
+            ->post(route('admin.user-onboardings.notes.store', $notMine), ['note' => 'x'])->assertForbidden();
+    }
+
     // --- Route ability gating -----------------------------------------------
 
     public function test_analyst_is_blocked_from_configuration_and_decisions(): void

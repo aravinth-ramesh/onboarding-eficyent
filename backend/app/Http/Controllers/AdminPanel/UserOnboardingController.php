@@ -385,6 +385,8 @@ class UserOnboardingController extends Controller
 
     public function answerHistory(UserOnboarding $userOnboarding, UserAnswer $answer): View
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ((int) $answer->user_onboarding_id !== (int) $userOnboarding->id) {
             abort(404);
         }
@@ -566,6 +568,8 @@ class UserOnboardingController extends Controller
 
     public function toggleStep(UserOnboarding $userOnboarding, UserOnboardingStep $step): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ((int) $step->user_onboarding_id !== (int) $userOnboarding->id) {
             abort(404);
         }
@@ -588,6 +592,13 @@ class UserOnboardingController extends Controller
      */
     public function checkResponse(Request $request, AdminNotification $notification): RedirectResponse
     {
+        // Scope through the answer's application so an analyst can't clear
+        // items belonging to a company they cannot see (EOP-92).
+        $onboarding = $notification->userAnswer?->onboarding;
+        if ($onboarding) {
+            abort_unless($onboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+        }
+
         if ($notification->status !== 'resolved') {
             return redirect()->back()->with('error', 'That request has not been answered yet.');
         }
@@ -603,6 +614,8 @@ class UserOnboardingController extends Controller
 
     public function archive(UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         // Only finished lifecycles are archivable — anything still moving
         // (draft, awaiting review) stays in the active lists.
         if (! in_array($userOnboarding->status, ['approved', 'rejected'], true)) {
@@ -621,6 +634,8 @@ class UserOnboardingController extends Controller
 
     public function unarchive(UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $userOnboarding->update(['archived_at' => null, 'archived_by' => null]);
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
@@ -749,6 +764,8 @@ class UserOnboardingController extends Controller
 
     public function replyMessage(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         $validated = $request->validate(['body' => 'required|string|max:5000']);
 
         $message = $userOnboarding->messages()->create([
@@ -772,6 +789,8 @@ class UserOnboardingController extends Controller
 
     public function exportPdf(UserOnboarding $userOnboarding, \App\Services\ApplicationPdfService $pdfService)
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if (! in_array($userOnboarding->status, ['completed', 'approved', 'rejected'], true)) {
             return redirect()->route('admin.user-onboardings.show', $userOnboarding)
                 ->with('error', 'The application PDF is available once the client has submitted.');
@@ -876,6 +895,8 @@ class UserOnboardingController extends Controller
 
     public function requestChange(Request $request, UserOnboarding $userOnboarding, UserAnswer $answer): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ($userOnboarding->status === 'approved') {
             return redirect()->route('admin.user-onboardings.show', $userOnboarding)
                 ->with('error', 'This application is already approved — changes cannot be requested on a decided application.');
@@ -920,6 +941,8 @@ class UserOnboardingController extends Controller
 
     public function createQuestion(UserOnboarding $userOnboarding): View|RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ($userOnboarding->status === 'approved') {
             return redirect()->route('admin.user-onboardings.show', $userOnboarding)
                 ->with('error', 'This application is already approved — new questions cannot be added to a decided application.');
@@ -932,6 +955,8 @@ class UserOnboardingController extends Controller
 
     public function storeQuestion(Request $request, UserOnboarding $userOnboarding): RedirectResponse
     {
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
         if ($userOnboarding->status === 'approved') {
             return redirect()->route('admin.user-onboardings.show', $userOnboarding)
                 ->with('error', 'This application is already approved — new questions cannot be added to a decided application.');
