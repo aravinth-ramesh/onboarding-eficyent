@@ -596,9 +596,11 @@
                         <form method="POST" action="{{ route('admin.user-onboardings.sections.review', [$userOnboarding, $groupId]) }}" class="section-review-form d-flex align-items-center gap-1">
                             @csrf
                             <input type="text" name="note" class="form-control form-control-sm section-review-note" placeholder="Note (optional)" value="{{ $review->note ?? '' }}" style="max-width: 200px;">
+                            {{-- Sign-off is one-way: a reviewed section reopens only
+                                 through a change request or an application reopen (EOP-74). --}}
                             <select name="status" class="form-select form-select-sm" style="width: auto;">
-                                <option value="pending" @selected($reviewStatus === 'pending')>Not started</option>
-                                <option value="in_progress" @selected($reviewStatus === 'in_progress')>In review</option>
+                                <option value="pending" @selected($reviewStatus === 'pending') @disabled($reviewStatus === 'completed')>Not started</option>
+                                <option value="in_progress" @selected($reviewStatus === 'in_progress') @disabled($reviewStatus === 'completed')>In review</option>
                                 <option value="completed" @selected($reviewStatus === 'completed')>Reviewed</option>
                             </select>
                             <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>

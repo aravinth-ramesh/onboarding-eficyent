@@ -433,6 +433,26 @@ class UserOnboardingController extends Controller
 
         $completed = $validated['status'] === 'completed';
 
+        // A reviewed section is a sign-off, not a toggle: it can't be quietly
+        // walked back to "In review"/"Not started", which would also silently
+        // decrement the approval progress gate (EOP-74). It reopens only
+        // through a change request or a full application reopen.
+        $existingReview = OnboardingSectionReview::where('user_onboarding_id', $userOnboarding->id)
+            ->where('question_group_id', $group->id)
+            ->first();
+
+        if ($existingReview && $existingReview->status === 'completed' && ! $completed) {
+            $error = 'This section is already signed off as reviewed. Request a change on one of its answers to reopen it.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $error], 422);
+            }
+
+            return redirect()
+                ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+                ->with('error', $error);
+        }
+
         // A section with an outstanding change request isn't done — the client
         // still has to resubmit it. Don't let it be marked reviewed (EOP-71).
         if ($completed) {
@@ -912,6 +932,16 @@ class UserOnboardingController extends Controller
 
         $admin = Auth::guard('admin')->user();
         $notification = $this->notificationService->createChangeRequest($admin, $answer, $request->input('message'));
+
+        // If the answer's section was already signed off, requesting a change
+        // reopens it — otherwise the completed marker (and the approval gate)
+        // would survive a change the client still has to make (EOP-71).
+        if ($answer->question?->question_group_id) {
+            OnboardingSectionReview::where('user_onboarding_id', $userOnboarding->id)
+                ->where('question_group_id', $answer->question->question_group_id)
+                ->where('status', 'completed')
+                ->update(['status' => 'in_progress', 'reviewed_at' => null]);
+        }
 
         // An email notification always accompanies a change request; the form
         // may override the default subject/body. A mail failure must not undo

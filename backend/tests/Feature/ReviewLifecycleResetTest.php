@@ -90,4 +90,47 @@ class ReviewLifecycleResetTest extends TestCase
 
         $this->assertSame('completed', OnboardingSectionReview::where('user_onboarding_id', $onb->id)->first()->status);
     }
+
+    public function test_a_reviewed_section_cannot_be_walked_back(): void
+    {
+        // Sign-off is one-way; reverting would silently decrement the approval
+        // progress gate (EOP-74).
+        $onb = $this->onboarding('completed');
+        UserAnswer::create(['user_id' => $this->user->id, 'question_id' => $this->textQ->id, 'user_onboarding_id' => $onb->id, 'value' => 'Acme']);
+        $admin = Admin::create(['name' => 'M', 'email' => 'm@t.com', 'password' => 'x', 'is_active' => true, 'role' => AdminRole::Manager]);
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.user-onboardings.sections.review', [$onb, $this->group]), ['status' => 'completed'])
+            ->assertSessionHas('success');
+
+        foreach (['in_progress', 'pending'] as $regression) {
+            $this->actingAs($admin, 'admin')
+                ->post(route('admin.user-onboardings.sections.review', [$onb, $this->group]), ['status' => $regression])
+                ->assertSessionHas('error');
+        }
+
+        $this->assertSame('completed', OnboardingSectionReview::where('user_onboarding_id', $onb->id)->first()->status);
+    }
+
+    public function test_requesting_a_change_reopens_an_already_reviewed_section(): void
+    {
+        // Otherwise the completed marker (and the approval gate) survives a
+        // change the client still has to make (EOP-71, ordering gap).
+        $onb = $this->onboarding('completed');
+        $answer = UserAnswer::create(['user_id' => $this->user->id, 'question_id' => $this->textQ->id, 'user_onboarding_id' => $onb->id, 'value' => 'Acme']);
+        $admin = Admin::create(['name' => 'M', 'email' => 'm@t.com', 'password' => 'x', 'is_active' => true, 'role' => AdminRole::Manager]);
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.user-onboardings.sections.review', [$onb, $this->group]), ['status' => 'completed'])
+            ->assertSessionHas('success');
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.user-onboardings.answers.request-change', [$onb, $answer]), ['message' => 'Please correct this.'])
+            ->assertRedirect();
+
+        $review = OnboardingSectionReview::where('user_onboarding_id', $onb->id)->first();
+        $this->assertSame('in_progress', $review->status, 'the section must reopen when a change is requested');
+        $this->assertNull($review->reviewed_at);
+        $this->assertFalse($onb->fresh()->sectionReviewProgress()['complete'], 'the approval gate must close again');
+    }
 }
