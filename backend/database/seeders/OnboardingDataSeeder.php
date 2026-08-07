@@ -41,6 +41,11 @@ class OnboardingDataSeeder extends Seeder
         $this->seedKybSections();
         $this->seedOnboardingSteps();
         $this->applyDocumentPolicies();
+
+        // Last: every question must exist before rules are applied, and the
+        // data migration that also applies them runs before any of this on a
+        // fresh install (and clean() drops them on a re-seed).
+        \App\Support\FieldValidationRules::apply();
     }
 
     /**

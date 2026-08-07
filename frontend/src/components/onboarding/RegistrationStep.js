@@ -16,6 +16,17 @@ const matchesPattern = (pattern, value) => {
   }
 };
 
+// Registration identifiers (GSTIN, PAN, VAT, company numbers) are
+// conventionally upper-case and their patterns only accept A-Z, so a
+// lower-case entry read as malformed. Normalise instead of rejecting (EOP-45).
+const normalizeIdentifier = (field, value) => {
+  const pattern = field?.pattern || '';
+  if (pattern.includes('A-Z') && !pattern.includes('a-z')) {
+    return value.toUpperCase();
+  }
+  return value;
+};
+
 const CATEGORY_LABEL = { fi: 'Financial Institution', corporate: 'Corporate' };
 
 function RegistrationStep({ step, onBack, isFirstStep }) {
@@ -73,7 +84,7 @@ function RegistrationStep({ step, onBack, isFirstStep }) {
   const validate = () => {
     const next = {};
     fields.forEach((f) => {
-      const val = (values[f.key] || '').trim();
+      const val = normalizeIdentifier(f, (values[f.key] || '').trim());
       if (f.required && val === '') {
         next[f.key] = `${f.label} is required.`;
         return;
@@ -103,7 +114,13 @@ function RegistrationStep({ step, onBack, isFirstStep }) {
 
     setSaving(true);
     try {
-      await onboardingApi.saveRegistration(country, values);
+      // Persist the normalised identifiers so what is stored matches what was
+      // validated (EOP-45).
+      const normalized = fields.reduce(
+        (acc, f) => ({ ...acc, [f.key]: normalizeIdentifier(f, (values[f.key] || '').trim()) }),
+        { ...values }
+      );
+      await onboardingApi.saveRegistration(country, normalized);
       const result = await dispatch(completeOnboardingStep(step.id));
       if (!result.error) {
         dispatch(fetchOnboardingStatus());

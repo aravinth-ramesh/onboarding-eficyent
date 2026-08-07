@@ -134,6 +134,15 @@ class OnboardingController extends Controller
         foreach ($fields as $field) {
             $value = trim((string) ($values[$field['key']] ?? ''));
 
+            // Registration identifiers (GSTIN, PAN, VAT, company numbers) are
+            // conventionally upper-case and their patterns only accept A-Z, so
+            // a lower-case entry was rejected as malformed. Normalise instead
+            // of failing the client (EOP-45).
+            if ($value !== '' && ! empty($field['pattern'])
+                && str_contains($field['pattern'], 'A-Z') && ! str_contains($field['pattern'], 'a-z')) {
+                $value = strtoupper($value);
+            }
+
             if (($field['required'] ?? false) && $value === '') {
                 $errors["values.{$field['key']}"] = ["{$field['label']} is required."];
                 continue;

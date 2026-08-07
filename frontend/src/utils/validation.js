@@ -57,6 +57,13 @@ const FORMAT_VALIDATORS = {
     test: (s) => /^[\p{L}\p{N}\s.'-]+$/u.test(s),
     message: 'Only letters and numbers are allowed.',
   },
+  // A single field holding both an email address and a phone number, e.g.
+  // "AML Officer Contact Email & Number" — require both parts (EOP-42).
+  contact: {
+    test: (s) =>
+      /[^\s@]+@[^\s@]+\.[^\s@]+/.test(s) && (s.replace(/[^\d]/g, '').length >= 7),
+    message: 'Enter both a valid email address and a phone number.',
+  },
 };
 
 const toDateOnly = (input) => {
@@ -100,6 +107,11 @@ export const validateText = (value, rules = {}) => {
     if (!fmt.test(str)) {
       return rules.pattern_message || fmt.message;
     }
+  }
+  // Fields like Position are alphanumeric but must not be digits-only
+  // ("12345" is not a job title) — EOP-37.
+  if (rules.requires_letter && !/\p{L}/u.test(str)) {
+    return 'Must contain letters, not only numbers.';
   }
   if (rules.pattern) {
     const re = compileRegex(String(rules.pattern));
