@@ -96,4 +96,40 @@ class PostApprovalLockTest extends TestCase
             ->get(route('admin.user-onboardings.new-question', $onb))
             ->assertRedirect(route('admin.user-onboardings.show', $onb));
     }
+
+    public function test_completing_a_step_cannot_reopen_an_approved_application(): void
+    {
+        // completeStep was the one client write with no submitted-check: on an
+        // approved application it fell through to the "no next step" branch and
+        // knocked the status back to completed (EOP-44 / EOP-77).
+        $onb = $this->onboarding('approved');
+        $step = $onb->steps()->orderBy('order')->first();
+
+        \Laravel\Sanctum\Sanctum::actingAs($onb->user);
+        $this->postJson("/api/onboarding/steps/{$step->id}/complete")->assertForbidden();
+
+        $this->assertSame('approved', $onb->refresh()->status);
+    }
+
+    public function test_a_pending_change_request_cannot_be_resolved_after_approval(): void
+    {
+        $onb = $this->onboarding('approved');
+        $group = QuestionGroup::create(['name' => 'G', 'slug' => 'g', 'order' => 1, 'is_active' => true]);
+        $q = Question::create(['question_group_id' => $group->id, 'label' => 'Legal name', 'type' => 'text', 'is_required' => true, 'order' => 1, 'is_active' => true]);
+        $answer = UserAnswer::create(['user_id' => $onb->user_id, 'question_id' => $q->id, 'user_onboarding_id' => $onb->id, 'value' => 'Acme']);
+        $admin = Admin::create(['name' => 'M', 'email' => 'm@t.com', 'password' => 'x', 'is_active' => true, 'role' => AdminRole::Manager]);
+
+        // Raised while the application was still under review, still pending
+        // when the decision landed.
+        $notification = AdminNotification::create([
+            'user_id' => $onb->user_id, 'admin_id' => $admin->id, 'type' => 'change_request',
+            'user_answer_id' => $answer->id, 'message' => 'fix', 'status' => 'pending',
+        ]);
+
+        \Laravel\Sanctum\Sanctum::actingAs($onb->user);
+        $this->postJson("/api/notifications/{$notification->id}/resolve", ['value' => 'Changed After Approval'])
+            ->assertForbidden();
+
+        $this->assertSame('Acme', $answer->fresh()->value, 'the approved application must not be edited');
+    }
 }

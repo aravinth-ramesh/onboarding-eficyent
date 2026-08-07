@@ -663,6 +663,14 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Step not found.'], 404);
         }
 
+        // The only client write that wasn't locked after submission: on an
+        // approved application it fell through to the "no next step" branch,
+        // knocking the status back to completed and re-firing the submission
+        // notifications (EOP-44 / EOP-77).
+        if ($this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
+        }
+
         $onboarding = $this->onboardingService->completeStep($onboarding, $step);
 
         return response()->json([

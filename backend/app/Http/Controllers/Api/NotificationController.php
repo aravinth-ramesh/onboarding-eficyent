@@ -87,6 +87,10 @@ class NotificationController extends Controller
             return response()->json(['message' => 'Already resolved.'], 422);
         }
 
+        if ($this->isLockedByApproval($notification)) {
+            return response()->json(['message' => 'This application has been approved and can no longer be edited.'], 403);
+        }
+
         $request->validate([
             'value' => 'required',
         ]);
@@ -113,6 +117,10 @@ class NotificationController extends Controller
             return response()->json(['message' => 'Already resolved.'], 422);
         }
 
+        if ($this->isLockedByApproval($notification)) {
+            return response()->json(['message' => 'This application has been approved and can no longer be edited.'], 403);
+        }
+
         $request->validate([
             'files' => 'required|array|min:1',
             'files.*' => 'file|max:' . config('onboarding_uploads.max_file_size_kb', 5120),
@@ -127,6 +135,16 @@ class NotificationController extends Controller
         }
 
         return response()->json(['message' => 'File(s) submitted successfully.']);
+    }
+
+    /**
+     * Change requests are the sanctioned post-submission edit path, but once
+     * the application is approved it is final — a request still pending from
+     * before the decision must not reopen it for editing (EOP-77).
+     */
+    private function isLockedByApproval(AdminNotification $notification): bool
+    {
+        return ($notification->userAnswer?->onboarding?->status ?? null) === 'approved';
     }
 
     private function formatNotification(AdminNotification $notification): array
