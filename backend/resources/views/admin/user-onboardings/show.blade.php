@@ -47,15 +47,32 @@
         padding: 10px 12px;
         vertical-align: top;
         font-size: 0.875rem;
+        /* A long unbroken value (name, ID, URL) must wrap inside its cell
+           rather than stretch the review layout (EOP-69). */
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     .submitted-answers-label {
         width: 35%;
         color: #6c757d;
         font-weight: 500;
+        overflow-wrap: anywhere;
     }
     .submitted-answers-value {
         color: #2c3e50;
         font-weight: 500;
+        max-width: 0;
+        overflow-wrap: anywhere;
+    }
+    /* Nested tables (UBO / directors rows) inherit the same wrapping. */
+    .submitted-answers-value table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .submitted-answers-value table td,
+    .submitted-answers-value table th {
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     .submitted-answers-file-link {
         display: inline-flex;
