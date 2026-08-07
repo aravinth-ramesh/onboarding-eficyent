@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchQuestions,
+  refreshQuestionStructure,
   submitAnswers,
   setAnswer,
   completeOnboardingStep,
@@ -29,6 +30,25 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
 
   useEffect(() => {
     dispatch(fetchQuestions());
+  }, [dispatch]);
+
+  // Conditional rules are only loaded when this step mounts, so a client
+  // sitting on the form kept the old logic after an admin changed a rule
+  // (EOP-96). Pick up structure changes when the tab regains focus — answers
+  // are untouched, so nothing typed-but-unsaved is lost.
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') {
+        dispatch(refreshQuestionStructure());
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [dispatch]);
 
   // Answers augmented with virtual fields (country of incorporation) that

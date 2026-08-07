@@ -50,6 +50,21 @@ export const fetchQuestions = createAsyncThunk(
   }
 );
 
+// Pull the latest question structure — notably conditional rules changed in
+// the admin panel — WITHOUT rehydrating answers, so a client who has typed
+// something and not yet saved doesn't lose it (EOP-96).
+export const refreshQuestionStructure = createAsyncThunk(
+  'onboarding/refreshQuestionStructure',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.getQuestions();
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to refresh questions');
+    }
+  }
+);
+
 export const submitAnswers = createAsyncThunk(
   'onboarding/submitAnswers',
   async ({ answers, fileAnswers, tableFileAnswers, fileJustifications }, { rejectWithValue }) => {
@@ -260,6 +275,10 @@ const onboardingSlice = createSlice({
       .addCase(fetchQuestions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Structure only — `answers` is deliberately left as the client has it.
+      .addCase(refreshQuestionStructure.fulfilled, (state, action) => {
+        state.questionGroups = action.payload;
       })
       // Submit Answers
       .addCase(submitAnswers.pending, (state) => {

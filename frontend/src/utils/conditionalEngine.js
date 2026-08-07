@@ -12,26 +12,38 @@ export function evaluateConditionalRules(rules, answers) {
   const rulesArray = Array.isArray(rules) ? rules : Object.values(rules);
   if (rulesArray.length === 0) return true;
 
-  // Default null/undefined logical_operator to 'and'
-  const andRules = rulesArray.filter(
-    (r) => !r.logical_operator || r.logical_operator === 'and'
-  );
-  const orRules = rulesArray.filter((r) => r.logical_operator === 'or');
+  // Each rule carries its own action. Evaluating the whole set under the FIRST
+  // rule's action meant a newly added `hide` rule was silently treated as a
+  // `show` condition (and vice versa) whenever the question already had a rule
+  // — the admin's new rule appeared to do nothing (EOP-96).
+  const showRules = rulesArray.filter((r) => (r.action || 'show') === 'show');
+  const hideRules = rulesArray.filter((r) => r.action === 'hide');
 
-  let andResult = true;
-  if (andRules.length > 0) {
-    andResult = andRules.every((rule) => evaluateSingleRule(rule, answers));
+  // Show rules gate visibility; hide rules then take it away.
+  let visible = showRules.length > 0 ? combineRules(showRules, answers) : true;
+  if (visible && hideRules.length > 0 && combineRules(hideRules, answers)) {
+    visible = false;
   }
 
-  let orResult = true;
-  if (orRules.length > 0) {
-    orResult = orRules.some((rule) => evaluateSingleRule(rule, answers));
-  }
+  return visible;
+}
 
-  const passed = andResult && orResult;
-  const action = rulesArray[0]?.action || 'show';
+/**
+ * Combine a set of same-action rules: every `and` rule must pass and at least
+ * one `or` rule must pass. A missing logical_operator counts as `and`.
+ */
+function combineRules(rules, answers) {
+  const andRules = rules.filter((r) => !r.logical_operator || r.logical_operator === 'and');
+  const orRules = rules.filter((r) => r.logical_operator === 'or');
 
-  return action === 'show' ? passed : !passed;
+  const andResult = andRules.length > 0
+    ? andRules.every((rule) => evaluateSingleRule(rule, answers))
+    : true;
+  const orResult = orRules.length > 0
+    ? orRules.some((rule) => evaluateSingleRule(rule, answers))
+    : true;
+
+  return andResult && orResult;
 }
 
 /**
