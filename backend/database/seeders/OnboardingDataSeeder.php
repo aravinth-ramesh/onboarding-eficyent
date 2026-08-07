@@ -47,6 +47,7 @@ class OnboardingDataSeeder extends Seeder
         // fresh install (and clean() drops them on a re-seed).
         \App\Support\UboTableColumns::apply();
         \App\Support\UboWidgetConsolidation::apply();
+        \App\Support\CountryListQuestions::apply();
         \App\Support\FieldValidationRules::apply();
     }
 

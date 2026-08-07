@@ -85,6 +85,10 @@ export const submitAnswers = createAsyncThunk(
         documentValidation: data?.code === 'document_validation_failed'
           ? data.document_validation
           : null,
+        // A collaborator's concurrent edit (409) — carried through so the
+        // step can show who changed what (EOP-97).
+        code: data?.code ?? null,
+        questionId: data?.question_id ?? null,
       });
     }
   }
@@ -169,6 +173,9 @@ const onboardingSlice = createSlice({
     userTypes: [],
     questionGroups: [],
     answers: {},
+    // questionId -> the version we loaded, echoed back on save so a
+    // collaborator's concurrent edit is detected, not overwritten (EOP-97).
+    answerVersions: {},
     kycDocStatus: {},
     loading: false,
     error: null,
@@ -251,6 +258,7 @@ const onboardingSlice = createSlice({
         // Populate existing answers (parse JSON strings for multi_select and table)
         action.payload.forEach((group) => {
           group.questions.forEach((q) => {
+            state.answerVersions[q.id] = q.answer_version ?? null;
             if (q.answer !== null && q.answer !== undefined) {
               if ((q.type === 'multi_select' || q.type === 'table' || q.type === 'ubo') && typeof q.answer === 'string') {
                 try {
@@ -276,9 +284,17 @@ const onboardingSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Structure only — `answers` is deliberately left as the client has it.
+      // Structure and answer versions only — `answers` is deliberately left as
+      // the client has it, so unsaved input survives (EOP-96). Refreshing the
+      // versions here is what lets the client keep saving after its own write
+      // without losing conflict detection (EOP-97).
       .addCase(refreshQuestionStructure.fulfilled, (state, action) => {
         state.questionGroups = action.payload;
+        action.payload.forEach((group) => {
+          group.questions.forEach((q) => {
+            state.answerVersions[q.id] = q.answer_version ?? null;
+          });
+        });
       })
       // Submit Answers
       .addCase(submitAnswers.pending, (state) => {

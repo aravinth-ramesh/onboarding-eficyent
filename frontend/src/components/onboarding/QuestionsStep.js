@@ -15,7 +15,7 @@ import HelpTip from '../common/HelpTip';
 
 function QuestionsStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
-  const { questionGroups, answers, loading, countryCode } = useSelector((state) => state.onboarding);
+  const { questionGroups, answers, answerVersions, loading, countryCode } = useSelector((state) => state.onboarding);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [draftSaved, setDraftSaved] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -419,7 +419,10 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
         });
 
         return { question_id: qid, value: cleanedRows };
-      });
+      })
+      // Attach the version we loaded so the server can reject a save that
+      // would overwrite a collaborator's newer answer (EOP-97).
+      .map((entry) => ({ ...entry, version: answerVersions[entry.question_id] ?? null }));
 
     // Collect file answers (only those with actual File objects)
     const filePayload = {};
@@ -440,6 +443,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       fileAnswersRef.current = {};
       setDocValidationErrors({});
       setDocJustifications({});
+      // Pick up the versions our own write produced, so the next save still
+      // has conflict detection (EOP-97). Answers are untouched by this.
+      dispatch(refreshQuestionStructure());
       return true;
     }
 
@@ -447,6 +453,13 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     if (docFailures) {
       setDocValidationErrors(docFailures);
       setSubmitError('One or more documents did not pass validation. Review the highlighted uploads below.');
+      return false;
+    }
+
+    // A collaborator saved first — say who and what, and don't pretend the
+    // save worked (EOP-97).
+    if (result.payload?.code === 'answer_conflict') {
+      setSubmitError(result.payload.message);
       return false;
     }
 

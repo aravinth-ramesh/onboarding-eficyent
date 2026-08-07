@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react'
 import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 import { dateBound } from '../../utils/dateBounds';
 import { partitionBySize, oversizeMessage } from '../../utils/files';
+import SearchableSelect from '../common/SearchableSelect';
 
 /** Cap a cell at its limit counting the trimmed value (EOP-11, EOP-12). */
 const capCellToLimit = (next, max) => {
@@ -240,7 +241,21 @@ function TableField({ question, value, onChange, cellErrors }) {
           />
         );
 
-      case 'select':
+      case 'select': {
+        // Long option lists (nationality is 215 countries) need search; short
+        // ones are fine as a native select (EOP-13).
+        const opts = column.options || [];
+        if (opts.length > 12) {
+          return (
+            <SearchableSelect
+              options={opts}
+              value={cellValue}
+              onChange={(next) => handleCellChange(rowIndex, column.key, next)}
+              ariaLabel={column.label}
+            />
+          );
+        }
+
         return (
           <select
             className="form-select form-select-sm table-field-input"
@@ -248,13 +263,14 @@ function TableField({ question, value, onChange, cellErrors }) {
             onChange={(e) => handleCellChange(rowIndex, column.key, e.target.value)}
           >
             <option value="">-- Select --</option>
-            {(column.options || []).map((opt) => (
+            {opts.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
         );
+      }
 
       case 'checkbox': {
         const selected = Array.isArray(rowValue) ? rowValue : [];

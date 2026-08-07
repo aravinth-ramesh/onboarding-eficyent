@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { completeOnboardingStep, fetchOnboardingStatus } from '../../store/slices/onboardingSlice';
 import * as onboardingApi from '../../api/onboarding';
 import HelpTip from '../common/HelpTip';
+import SearchableSelect from '../common/SearchableSelect';
 import { isChecksumValid } from '../../utils/checksum';
 
 // Anchored pattern test mirroring the backend / utils/validation semantics.
@@ -179,16 +180,15 @@ function RegistrationStep({ step, onBack, isFirstStep }) {
             Country of Incorporation<span className="required">*</span>
             <HelpTip content="The country where your company is legally registered — this determines which registration numbers we require." label="About country of incorporation" />
           </label>
-          <select
-            className="form-select"
+          {/* Searchable: scanning 200+ countries in a native select, whose
+              type-ahead only matches from the start, is unusable (EOP-13). */}
+          <SearchableSelect
+            options={(catalog?.countries || []).map((c) => ({ value: c.code, label: c.name, keywords: c.code }))}
             value={country}
-            onChange={(e) => handleCountryChange(e.target.value)}
-          >
-            <option value="">-- Select country --</option>
-            {(catalog?.countries || []).map((c) => (
-              <option key={c.code} value={c.code}>{c.name}</option>
-            ))}
-          </select>
+            onChange={handleCountryChange}
+            placeholder="-- Select country --"
+            ariaLabel="Country of incorporation"
+          />
         </div>
 
         {country && fields.length > 0 && (

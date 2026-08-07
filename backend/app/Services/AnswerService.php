@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\StaleAnswerException;
 use App\Models\AnswerAuditLog;
 use App\Models\AnswerFile;
 use App\Models\Question;
@@ -26,6 +27,7 @@ class AnswerService
         int $questionId,
         mixed $value,
         ?User $editedBy = null,
+        ?string $expectedVersion = null,
     ): UserAnswer {
         $editedBy = $editedBy ?? $user;
 
@@ -39,6 +41,13 @@ class AnswerService
             ->first();
 
         if ($existing) {
+            // Optimistic concurrency: the client sends back the version it
+            // loaded. If someone else saved in the meantime, refuse rather
+            // than silently overwriting their work (EOP-97).
+            if ($expectedVersion !== null && self::versionOf($existing) !== $expectedVersion) {
+                throw new StaleAnswerException($existing, $questionId);
+            }
+
             $oldValue = $existing->value;
 
             if ($oldValue !== $normalizedValue) {
@@ -68,6 +77,26 @@ class AnswerService
             'user_onboarding_id' => $onboarding->id,
             'value' => $normalizedValue,
         ]);
+    }
+
+    /**
+     * The version token a client echoes back to prove it edited the answer it
+     * was shown.
+     *
+     * A hash of the stored value rather than updated_at: timestamps are only
+     * second-precision on some drivers, so two edits within the same second
+     * would compare equal and the conflict would slip through. Hashing the
+     * value detects exactly what matters — the answer changed underneath us —
+     * and needs no schema change. Two people saving the identical value is
+     * not a conflict worth reporting.
+     */
+    public static function versionOf(?UserAnswer $answer): ?string
+    {
+        if (! $answer) {
+            return null;
+        }
+
+        return substr(hash('sha256', (string) $answer->value), 0, 16);
     }
 
     /**
@@ -245,21 +274,26 @@ class AnswerService
         array $answers,
         ?User $editedBy = null,
     ): array {
-        $saved = [];
+        // One transaction so a conflict partway through doesn't leave half the
+        // group saved (EOP-97).
+        return DB::transaction(function () use ($user, $onboarding, $answers, $editedBy) {
+            $saved = [];
 
-        foreach ($answers as $answer) {
-            $saved[] = $this->saveAnswer(
-                $user,
-                $onboarding,
-                $answer['question_id'],
-                $answer['value'],
-                $editedBy,
-            );
-        }
+            foreach ($answers as $answer) {
+                $saved[] = $this->saveAnswer(
+                    $user,
+                    $onboarding,
+                    $answer['question_id'],
+                    $answer['value'],
+                    $editedBy,
+                    $answer['version'] ?? null,
+                );
+            }
 
-        // Keep the denormalised company name current as the form is filled.
-        \App\Support\CompanyName::sync($onboarding);
+            // Keep the denormalised company name current as the form is filled.
+            \App\Support\CompanyName::sync($onboarding);
 
-        return $saved;
+            return $saved;
+        });
     }
 }

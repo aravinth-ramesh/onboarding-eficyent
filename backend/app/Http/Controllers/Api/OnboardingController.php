@@ -474,6 +474,9 @@ class OnboardingController extends Controller
                     'help_text' => $question->help_text,
                     'validation_rules' => $question->validation_rules,
                     'answer' => $answers[$question->id] ?? null,
+                    // Echoed back on save so a collaborator's concurrent edit
+                    // is detected instead of silently overwritten (EOP-97).
+                    'answer_version' => \App\Services\AnswerService::versionOf($answerModels[$question->id] ?? null),
                     'conditional_rules' => $rules->map(fn ($rule) => [
                         'parent_question_id' => $rule->parent_question_id,
                         'parent_field' => $rule->parent_field,
@@ -552,11 +555,26 @@ class OnboardingController extends Controller
         // Save non-file answers
         $textAnswers = $request->validated('answers') ?? [];
         if (!empty($textAnswers)) {
-            $this->answerService->saveBulkAnswers(
-                $user,
-                $onboarding,
-                $textAnswers,
-            );
+            try {
+                $this->answerService->saveBulkAnswers(
+                    $user,
+                    $onboarding,
+                    $textAnswers,
+                );
+            } catch (\App\Exceptions\StaleAnswerException $e) {
+                // A collaborator saved this answer first. Refuse the whole
+                // group rather than discarding their edit (EOP-97).
+                return response()->json([
+                    'message' => sprintf(
+                        '"%s" was changed by %s %s. Reload to see their answer before saving yours.',
+                        $e->questionLabel(),
+                        $e->changedBy() ?? 'someone else',
+                        $e->changedAt() ?? 'just now',
+                    ),
+                    'code' => 'answer_conflict',
+                    'question_id' => $e->questionId,
+                ], 409);
+            }
         }
 
         // Save file answers (grouped by question_id)

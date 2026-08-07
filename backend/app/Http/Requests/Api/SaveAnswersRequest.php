@@ -21,6 +21,9 @@ class SaveAnswersRequest extends FormRequest
             'answers' => ['sometimes', 'array'],
             'answers.*.question_id' => ['required', 'exists:questions,id'],
             'answers.*.value' => ['present'],
+            // Optional: the version the client loaded, for conflict detection
+            // (EOP-97). Absent means "no expectation" — older clients still work.
+            'answers.*.version' => ['sometimes', 'nullable', 'string'],
 
             // File answers (optional)
             'file_answers' => ['sometimes', 'array'],

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PHONE_COUNTRY_CODES } from '../../config/phoneCountryCodes';
 import { statesFor } from '../../config/states';
+import SearchableSelect from '../common/SearchableSelect';
 
 function parseAddress(value) {
   if (!value) return {};
@@ -39,17 +40,14 @@ function AddressField({ question, value, onChange }) {
       />
 
       <div className="address-row">
-        <select
-          className="form-select"
+        {/* Searchable — ~200 countries in a native select is unusable (EOP-13). */}
+        <SearchableSelect
+          options={PHONE_COUNTRY_CODES.map((c) => ({ value: c.iso, label: c.name, keywords: c.iso }))}
           value={addr.country || ''}
-          onChange={(e) => update({ country: e.target.value, state: '' })}
-          aria-label="Country"
-        >
-          <option value="">Country</option>
-          {PHONE_COUNTRY_CODES.map((c) => (
-            <option key={c.iso} value={c.iso}>{c.name}</option>
-          ))}
-        </select>
+          onChange={(next) => update({ country: next, state: '' })}
+          placeholder="Country"
+          ariaLabel="Country"
+        />
 
         {states ? (
           <select

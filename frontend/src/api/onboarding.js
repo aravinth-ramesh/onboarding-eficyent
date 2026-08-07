@@ -36,6 +36,11 @@ export const saveAnswersWithFiles = (answers, fileAnswers, tableFileAnswers, fil
       ? JSON.stringify(answer.value)
       : (answer.value ?? '');
     formData.append(`answers[${index}][value]`, val);
+    // The version we loaded, so the server can reject a save that would
+    // overwrite a collaborator's newer answer (EOP-97).
+    if (answer.version) {
+      formData.append(`answers[${index}][version]`, answer.version);
+    }
   });
 
   // Append file answers
