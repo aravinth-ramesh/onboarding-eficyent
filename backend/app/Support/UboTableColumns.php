@@ -50,25 +50,29 @@ class UboTableColumns
             $changed = false;
 
             foreach ($columns as $i => $column) {
-                if (($column['key'] ?? '') !== 'nationality' || ($column['type'] ?? 'text') !== 'text') {
+                if (($column['key'] ?? '') !== 'nationality') {
                     continue;
                 }
-                $columns[$i]['type'] = 'select';
-                $columns[$i]['options'] = self::countryOptions();
-                // A dropdown can't hold free text, so any format rule is moot.
-                unset($columns[$i]['validation']);
-                $changed = true;
+
+                $type = $column['type'] ?? 'text';
+                // Free text -> dropdown, and an earlier name-valued dropdown ->
+                // ISO-valued, so the table shares the `ubo` widget's vocabulary.
+                if ($type === 'text' || ($type === 'select' && self::isNameValued($column['options'] ?? []))) {
+                    $columns[$i]['type'] = 'select';
+                    $columns[$i]['options'] = self::countryOptions();
+                    // A dropdown can't hold free text, so any format rule is moot.
+                    unset($columns[$i]['validation']);
+                    $changed = true;
+                }
             }
 
-            if (! in_array('id_type', $keys, true)) {
-                $columns[] = [
-                    'key' => 'id_type',
-                    'label' => 'ID Type',
-                    'type' => 'select',
-                    'required' => false,
-                    'options' => self::ID_TYPES,
-                ];
-                $changed = true;
+            // Fields the retired `ubo` widget captured that the table did not,
+            // so the table can carry the whole owner record on its own.
+            foreach (self::supplementaryColumns() as $column) {
+                if (! in_array($column['key'], $keys, true)) {
+                    $columns[] = $column;
+                    $changed = true;
+                }
             }
 
             if ($changed) {
@@ -81,12 +85,62 @@ class UboTableColumns
         return $changedQuestions;
     }
 
-    /** @return array<int, array{label: string, value: string}> */
+    /**
+     * Our first pass shipped country options whose value was the country name.
+     * Detect that shape so it can be upgraded to ISO codes without touching a
+     * genuinely custom option list an admin may have configured.
+     *
+     * @param  array<int, array<string, mixed>>  $options
+     */
+    private static function isNameValued(array $options): bool
+    {
+        if ($options === []) {
+            return true;
+        }
+
+        foreach ($options as $option) {
+            if (($option['value'] ?? null) !== ($option['label'] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * ID Type, ID Number and the PEP flag came from the `ubo` widget; PEP
+     * screening in particular is compliance-critical, so the table must carry
+     * it once that widget is retired.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function supplementaryColumns(): array
+    {
+        return [
+            ['key' => 'id_type', 'label' => 'ID Type', 'type' => 'select', 'required' => false, 'options' => self::ID_TYPES],
+            ['key' => 'id_number', 'label' => 'ID / Passport Number', 'type' => 'text', 'required' => false,
+                'validation' => ['min_length' => 4, 'max_length' => 30]],
+            ['key' => 'is_pep', 'label' => 'Politically Exposed Person (PEP)?', 'type' => 'select', 'required' => false,
+                'options' => [['value' => 'no', 'label' => 'No'], ['value' => 'yes', 'label' => 'Yes']]],
+        ];
+    }
+
+    /**
+     * Country options keyed by ISO code — the same vocabulary the `ubo` widget
+     * used, so its answers migrate into the table without remapping.
+     *
+     * @return array<int, array{label: string, value: string}>
+     */
     private static function countryOptions(): array
     {
-        $names = array_values(config('country_registrations.countries', []));
-        sort($names);
+        $countries = config('country_registrations.countries', []);
+        asort($countries);
 
-        return array_map(fn ($name) => ['label' => $name, 'value' => $name], $names);
+        $options = [];
+        foreach ($countries as $code => $name) {
+            $options[] = ['label' => $name, 'value' => $code];
+        }
+
+        return $options;
     }
 }

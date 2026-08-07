@@ -46,6 +46,7 @@ class OnboardingDataSeeder extends Seeder
         // data migration that also applies them runs before any of this on a
         // fresh install (and clean() drops them on a re-seed).
         \App\Support\UboTableColumns::apply();
+        \App\Support\UboWidgetConsolidation::apply();
         \App\Support\FieldValidationRules::apply();
     }
 
