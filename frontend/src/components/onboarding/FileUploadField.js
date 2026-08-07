@@ -12,7 +12,11 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
   const [dragActive, setDragActive] = useState(false);
   const [sizeError, setSizeError] = useState(null);
 
-  const isMultiple = question.options?.multiple !== false;
+  // Single file by default; a question must opt in with options.multiple = true
+  // to accept several. Previously the default was multiple, so an extra upload
+  // dropzone appeared after the first file with no indication it was wanted
+  // (EOP-50).
+  const isMultiple = question.options?.multiple === true;
   const selectedFiles = useMemo(
     () => (Array.isArray(value) ? value : []),
     [value]
