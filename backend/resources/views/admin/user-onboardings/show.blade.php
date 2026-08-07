@@ -277,6 +277,12 @@
                             && (int) $userOnboarding->submitted_for_approval_by === (int) $meDecide?->id;
                         $decideProgress = $userOnboarding->sectionReviewProgress();
                         $sectionsDone = $decideProgress['total'] === 0 || $decideProgress['complete'];
+                        // Assigned work belongs to its reviewer — approve and
+                        // reject are gated identically (EOP-89).
+                        $mayDecide = $meDecide
+                            && app(\App\Services\OnboardingService::class)->canDecide($userOnboarding, $meDecide);
+                        $notMineNote = 'Assigned to ' . ($userOnboarding->assignee->name ?? 'another reviewer')
+                            . ' — they decide, or it must be submitted for approval or escalated first';
                     @endphp
                     <hr>
 
@@ -315,15 +321,15 @@
                             <form method="POST" action="{{ route('admin.user-onboardings.approve', $userOnboarding) }}"
                                   onsubmit="return confirm('Approve this application? The client will be notified by email.')">
                                 @csrf
-                                <button class="btn btn-success btn-sm" @disabled($isMaker || !$sectionsDone)
-                                        title="{{ $isMaker ? 'You submitted this — a different reviewer must approve (four-eyes)' : (!$sectionsDone ? 'Every section must be reviewed first' : 'Approve') }}">
+                                <button class="btn btn-success btn-sm" @disabled($isMaker || !$sectionsDone || !$mayDecide)
+                                        title="{{ $isMaker ? 'You submitted this — a different reviewer must approve (four-eyes)' : (!$mayDecide ? $notMineNote : (!$sectionsDone ? 'Every section must be reviewed first' : 'Approve')) }}">
                                     <i class="bi bi-check-circle"></i> Approve
                                 </button>
                             </form>
                         @endif
                         @if($canReject)
-                            <button type="button" class="btn btn-outline-danger btn-sm" @disabled($isMaker)
-                                    title="{{ $isMaker ? 'You submitted this — a different reviewer must decide (four-eyes)' : 'Reject' }}"
+                            <button type="button" class="btn btn-outline-danger btn-sm" @disabled($isMaker || !$mayDecide)
+                                    title="{{ $isMaker ? 'You submitted this — a different reviewer must decide (four-eyes)' : (!$mayDecide ? $notMineNote : 'Reject') }}"
                                     data-bs-toggle="modal" data-bs-target="#rejectModal">
                                 <i class="bi bi-x-circle"></i> Reject
                             </button>

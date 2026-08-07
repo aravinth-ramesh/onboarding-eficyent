@@ -311,6 +311,28 @@ class OnboardingService
         return in_array($onboarding->status, ['completed', 'approved', 'rejected'], true);
     }
 
+    /**
+     * May this admin take the approve/reject decision?
+     *
+     * Unassigned work is anyone's. Once assigned, the decision belongs to the
+     * reviewer holding it — unless it has been handed off for approval or
+     * escalated, which is precisely the act of inviting someone else to decide.
+     * Admin / Super Admin can always step in, so absence or a stuck case is
+     * never a deadlock (EOP-89).
+     */
+    public function canDecide(UserOnboarding $onboarding, Admin $admin): bool
+    {
+        if (! $onboarding->assigned_to || (int) $onboarding->assigned_to === (int) $admin->id) {
+            return true;
+        }
+
+        if ($onboarding->approval_state !== null) {
+            return true; // pending_approval or escalated — open to a checker
+        }
+
+        return $admin->isRole(AdminRole::Admin) || $admin->isRole(AdminRole::SuperAdmin);
+    }
+
     private function decide(UserOnboarding $onboarding, Admin $admin, string $status, ?string $comment): UserOnboarding
     {
         if ($onboarding->status !== 'completed') {
@@ -322,6 +344,15 @@ class OnboardingService
         if ($onboarding->submitted_for_approval_by
             && (int) $onboarding->submitted_for_approval_by === (int) $admin->id) {
             throw new \DomainException('A different reviewer must decide this — you submitted it for approval (four-eyes).');
+        }
+
+        // An assigned application belongs to its reviewer: an uninvolved admin
+        // must not take a terminal, client-facing decision on someone else's
+        // case. This gates approve and reject identically — rejection used to
+        // be reachable when approval was not, which read as inconsistent
+        // access control (EOP-89).
+        if (! $this->canDecide($onboarding, $admin)) {
+            throw new \DomainException('This application is assigned to another reviewer. Ask them to decide, or have it submitted for approval or escalated first.');
         }
 
         // An approval means the whole application checks out, so every section

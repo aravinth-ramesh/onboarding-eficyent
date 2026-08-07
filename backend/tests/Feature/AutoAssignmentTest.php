@@ -85,7 +85,10 @@ class AutoAssignmentTest extends TestCase
         $onboarding = $this->submit('a@test.com');
         $onboarding->update(['assigned_to' => $this->alice->id]);
 
-        $this->service->reject($onboarding->fresh(), $this->bob, 'Fix the UBO section.');
+        // The assigned reviewer rejects it — an uninvolved admin no longer can
+        // (EOP-89). Who rejects is incidental here; the assertion is that the
+        // reviewer survives the round trip.
+        $this->service->reject($onboarding->fresh(), $this->alice, 'Fix the UBO section.');
         $this->service->reopen($onboarding->fresh());
         $reviewStep = $onboarding->fresh()->steps()->where('component_key', 'review')->first();
         $this->service->completeStep($onboarding->fresh(), $reviewStep);
