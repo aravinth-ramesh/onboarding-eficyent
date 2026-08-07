@@ -144,34 +144,7 @@ class OnboardingDataSeeder extends Seeder
         $groupMap = $this->seedGroupsFromRows($groupRows);
         $questionMap = $this->seedQuestionsFromRows($questionRows, $groupMap);
         $this->attachOptionsFromRows($optionRows, $questionMap);
-        $this->constrainCountryOfIncorporation($questionMap);
-    }
-
-    /**
-     * "Country of Incorporation" (legacy id 3) shipped as a free-text field, so
-     * a client could type several countries. A company has exactly one, so make
-     * it a single-country dropdown sourced from the same catalog the
-     * Registration step uses (EOP-46).
-     *
-     * @param  array<int, Question>  $questionMap
-     */
-    private function constrainCountryOfIncorporation(array $questionMap): void
-    {
-        $question = $questionMap[3] ?? null;
-        if (! $question) {
-            return;
-        }
-
-        $names = array_values(config('country_registrations.countries', []));
-        sort($names);
-        if ($names === []) {
-            return;
-        }
-
-        $question->update([
-            'type' => 'select',
-            'options' => array_map(fn ($name) => ['label' => $name, 'value' => $name], $names),
-        ]);
+        \App\Support\CountryOfIncorporationField::apply();
     }
 
     /**
