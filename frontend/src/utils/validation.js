@@ -1,3 +1,5 @@
+import { isValidPhone } from './phone';
+
 // Field-level validation driven by per-question metadata sent from the
 // backend.  Each question (or table column) can carry a `validation_rules`
 // object whose keys are interpreted based on the field type:
@@ -34,7 +36,8 @@ const isEmpty = (value) =>
 // Built-in formats a question can request via validation_rules.format, so a
 // plain text field can enforce email / URL / phone / alphabetic input without
 // each question needing a hand-written regex. URL and email are matched
-// case-insensitively (EOP-54: uppercase URLs are valid).
+// case-insensitively (EOP-54: uppercase URLs are valid); phone is checked
+// against the selected country's numbering plan (EOP-34).
 const FORMAT_VALIDATORS = {
   email: {
     test: (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s),
@@ -45,9 +48,11 @@ const FORMAT_VALIDATORS = {
     message: 'Enter a valid website URL.',
   },
   phone: {
-    // 7–15 digits, optional leading + and separators (spaces, -, (), .).
-    test: (s) => /^\+?[\d\s().-]{7,20}$/.test(s) && (s.match(/\d/g) || []).length >= 7,
-    message: 'Enter a valid phone number.',
+    // Validated against the real numbering plan of the country in the dial
+    // code, not just a digit count — "+91 12345" is the right length for a
+    // generic check but is not a valid Indian number (EOP-34).
+    test: (s) => isValidPhone(s),
+    message: 'Enter a valid phone number for the selected country.',
   },
   alpha: {
     test: (s) => /^[\p{L}\s.'-]+$/u.test(s),
@@ -173,6 +178,16 @@ export const validateDate = (value, rules = {}) => {
 // `type` is one of the question/column types (text, textarea, number, date,
 // ...) and `rules` is the validation metadata block sent from the backend.
 export const validateByType = (type, value, rules) => {
+  // A phone field carries its own country in the "+CC number" value, so it is
+  // always checked against that country's numbering plan — it needs no
+  // configured rules, and previously had no case here at all, which is why
+  // phone questions went completely unvalidated (EOP-34).
+  if (type === 'phone') {
+    return isEmpty(value) || isValidPhone(value)
+      ? null
+      : 'Enter a valid phone number for the selected country.';
+  }
+
   if (!rules || typeof rules !== 'object') return null;
   switch (type) {
     case 'text':
