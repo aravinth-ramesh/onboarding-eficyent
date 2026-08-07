@@ -658,6 +658,50 @@ class OnboardingController extends Controller
      * Upload file(s) for a file-type question.
      * Accepts multipart/form-data with question_id and files[].
      */
+    /**
+     * Remove an uploaded document so a wrong file can be deleted or replaced.
+     * There was no delete path at all, so a mistaken upload was permanent from
+     * the client's side (EOP-22).
+     */
+    public function destroyAnswerFile(\App\Models\AnswerFile $file): JsonResponse
+    {
+        /**@disregard */
+        $user = auth()->user();
+        $onboarding = $user->activeOnboarding();
+
+        // The file must belong to this client's own application.
+        if (! $onboarding || (int) ($file->answer?->user_onboarding_id) !== (int) $onboarding->id) {
+            return response()->json(['message' => 'File not found.'], 404);
+        }
+
+        if ($this->isSubmitted($onboarding)) {
+            return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
+        }
+
+        $answer = $file->answer;
+        $path = $file->s3_path;
+        $disk = $file->disk;
+
+        $file->delete();
+
+        // Keep the answer's stored path list in step with what remains.
+        $remaining = $answer->files()->pluck('s3_path')->values()->all();
+        $answer->update(['value' => $remaining === [] ? '' : json_encode($remaining)]);
+
+        try {
+            Storage::disk($disk)->delete($path);
+        } catch (\Throwable $e) {
+            // The record is gone either way; a stranded blob must not fail the
+            // request the client is waiting on.
+            report($e);
+        }
+
+        return response()->json([
+            'message' => 'Document removed.',
+            'remaining' => count($remaining),
+        ]);
+    }
+
     public function uploadFileAnswer(UploadFileAnswerRequest $request): JsonResponse
     {
         /**@disregard */

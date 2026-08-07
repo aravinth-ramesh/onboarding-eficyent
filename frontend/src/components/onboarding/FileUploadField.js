@@ -7,7 +7,7 @@ import { MAX_FILE_SIZE_MB, partitionBySize, oversizeMessage } from '../../utils/
  * Supports single or multiple file selection.
  * Stores actual File objects and notifies parent via onChange.
  */
-function FileUploadField({ question, value, onChange, existingFiles }) {
+function FileUploadField({ question, value, onChange, existingFiles, onRemoveUploaded }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [sizeError, setSizeError] = useState(null);
@@ -84,7 +84,9 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
   // Show the dropzone whenever the user can still add another file:
   // - always when nothing is selected and no existing file is shown
   // - in multi-file mode, also when files already exist (to add more)
-  const showDropzone = !hasExistingFiles && (!hasNewFiles || isMultiple);
+  // - in single-file mode with an existing file, so a wrong document can be
+  //   replaced rather than being stuck forever (EOP-22)
+  const showDropzone = !hasNewFiles || isMultiple;
 
   return (
     <div>
@@ -116,6 +118,9 @@ function FileUploadField({ question, value, onChange, existingFiles }) {
                   : file.review_decision === 'resubmit_requested' ? 'resubmit_requested'
                   : (file.reviewed ? 'reviewed' : file.validation_status)
               }
+              /* Saved documents had no Remove, so a wrong upload was
+                 permanent from the client's side (EOP-22). */
+              onRemove={onRemoveUploaded ? () => onRemoveUploaded(file) : undefined}
             />
           ))}
         </div>

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchQuestions,
   refreshQuestionStructure,
+  deleteAnswerFile,
   submitAnswers,
   setAnswer,
   completeOnboardingStep,
@@ -64,6 +65,17 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       return true;
     }
     return evaluateConditionalRules(question.conditional_rules, evalAnswers);
+  };
+
+  // Same test by id, for deciding what belongs in a save. A question we can't
+  // find (another step's) is left alone rather than dropped.
+  const isQuestionAnswerable = (questionId) => {
+    for (const group of questionGroups) {
+      const question = group.questions.find((q) => q.id === questionId);
+      if (question) return isQuestionVisible(question);
+    }
+
+    return true;
   };
 
   // Reorder a group's questions so any conditional child is emitted directly
@@ -383,6 +395,11 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     // that were dropped into table cells so they can be uploaded as multipart.
     const answersPayload = Object.entries(answers)
       .filter(([questionId]) => !fileQuestionIds.has(parseInt(questionId)))
+      // A question hidden by a conditional rule is not part of this
+      // application, but its answer was still submitted on every save — so
+      // answering "No" left the "Yes" data attached (EOP-41). The stored value
+      // is kept, just detached, so a toggle can't destroy anything.
+      .filter(([questionId]) => isQuestionAnswerable(parseInt(questionId)))
       .map(([questionId, value]) => {
         const qid = parseInt(questionId);
         const question = tableQuestionMap[qid];
@@ -427,7 +444,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     // Collect file answers (only those with actual File objects)
     const filePayload = {};
     Object.entries(fileAnswersRef.current).forEach(([questionId, files]) => {
-      if (Array.isArray(files) && files.length > 0) {
+      // Same rule for uploads: don't attach a document to a question the
+      // client's answers have hidden (EOP-41).
+      if (Array.isArray(files) && files.length > 0 && isQuestionAnswerable(parseInt(questionId))) {
         filePayload[questionId] = files;
       }
     });
@@ -540,6 +559,18 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
   };
 
+  // Remove an already-uploaded document so a wrong file can be replaced — the
+  // client previously had no way to undo an upload (EOP-22).
+  const handleRemoveUploadedFile = async (file) => {
+    if (!window.confirm(`Remove "${file.original_filename}"? You can upload a replacement afterwards.`)) {
+      return;
+    }
+    const result = await dispatch(deleteAnswerFile(file.id));
+    if (result.error) {
+      setSubmitError(result.payload || 'Could not remove the document. Please try again.');
+    }
+  };
+
   // Saving a draft gave no feedback beyond the transient "Saving..." label, so
   // there was no way to tell it had worked (EOP-15).
   const handleSaveDraft = async () => {
@@ -611,6 +642,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
               }
               onChange={handleAnswerChange}
               cellErrors={tableCellErrors[question.id]}
+              onRemoveUploaded={handleRemoveUploadedFile}
             />
             {validationErrors[question.id] && (
               <div className="question-error">{validationErrors[question.id]}</div>

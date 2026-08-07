@@ -84,6 +84,10 @@ export const gotoStep = (stepId, returnToStepId = null) =>
     returnToStepId ? { return_to: returnToStepId } : {}
   );
 
+// Remove an already-uploaded document so it can be deleted or replaced (EOP-22).
+export const deleteAnswerFile = (fileId) =>
+  client.delete(`/onboarding/answers/files/${fileId}`);
+
 export const reopenOnboarding = () =>
   client.post('/onboarding/reopen');
 

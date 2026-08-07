@@ -38,7 +38,7 @@ function CharacterCount({ value, max }) {
   );
 }
 
-function QuestionField({ question, value, onChange, cellErrors }) {
+function QuestionField({ question, value, onChange, cellErrors, onRemoveUploaded }) {
   const handleChange = (newValue) => {
     onChange(question.id, newValue);
   };
@@ -204,6 +204,7 @@ function QuestionField({ question, value, onChange, cellErrors }) {
           value={value}
           onChange={onChange}
           existingFiles={question.files}
+          onRemoveUploaded={onRemoveUploaded}
         />
       );
 

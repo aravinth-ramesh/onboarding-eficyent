@@ -50,6 +50,21 @@ export const fetchQuestions = createAsyncThunk(
   }
 );
 
+// Remove an already-uploaded document, then refresh so the question's file
+// list reflects it (EOP-22).
+export const deleteAnswerFile = createAsyncThunk(
+  'onboarding/deleteAnswerFile',
+  async (fileId, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await onboardingApi.deleteAnswerFile(fileId);
+      await dispatch(fetchQuestions());
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove the document');
+    }
+  }
+);
+
 // Pull the latest question structure — notably conditional rules changed in
 // the admin panel — WITHOUT rehydrating answers, so a client who has typed
 // something and not yet saved doesn't lose it (EOP-96).

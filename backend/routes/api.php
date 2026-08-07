@@ -51,6 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/registration', [Api\OnboardingController::class, 'saveRegistration']);
         Route::post('/answers', [Api\OnboardingController::class, 'saveAnswers']);
         Route::post('/answers/upload', [Api\OnboardingController::class, 'uploadFileAnswer']);
+        // Remove a wrongly uploaded document so it can be deleted or replaced (EOP-22).
+        Route::delete('/answers/files/{file}', [Api\OnboardingController::class, 'destroyAnswerFile']);
         Route::post('/reopen', [Api\OnboardingController::class, 'reopen']);
         Route::delete('/draft', [Api\OnboardingController::class, 'destroyDraft']);
         Route::get('/download-pdf', [Api\OnboardingController::class, 'downloadPdf']);
