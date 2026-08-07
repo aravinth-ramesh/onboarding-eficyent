@@ -25,20 +25,20 @@ class NotificationService
     /**
      * Tell the review team a client has responded. Goes to the application's
      * assigned reviewer when there is one (they asked for it), otherwise to
-     * every active admin so a response is never left unseen. Never lets a
-     * mail failure undo the client's submission.
+     * the managers who distribute work — not every admin (EOP-87). Never lets
+     * a mail failure undo the client's submission.
      */
     private function notifyAdminsOfResponse(AdminNotification $notification, string $summary): void
     {
         try {
             $notification->loadMissing(['user', 'admin', 'userAnswer.question', 'adminQuestion']);
 
-            $assignee = $notification->user?->activeOnboarding()?->assignee;
-            $recipients = $assignee && $assignee->is_active
-                ? collect([$assignee->email])
-                : Admin::where('is_active', true)->pluck('email');
+            $onboarding = $notification->user?->activeOnboarding();
+            $recipients = $onboarding
+                ? $onboarding->notificationRecipientEmails()
+                : collect();
 
-            foreach ($recipients->filter() as $email) {
+            foreach ($recipients as $email) {
                 Mail::to($email)->queue(new ClientRespondedMail($notification, $summary));
             }
         } catch (\Throwable $e) {

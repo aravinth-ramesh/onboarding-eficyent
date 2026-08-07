@@ -137,6 +137,30 @@ class UserOnboarding extends Model
     }
 
     /**
+     * Who hears about activity on this application: the assigned reviewer if
+     * there is one, otherwise the managers who distribute work — never every
+     * admin in the system (EOP-87).
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public function notificationRecipientEmails(): \Illuminate\Support\Collection
+    {
+        if ($this->assignee && $this->assignee->is_active) {
+            return collect([$this->assignee->email])->filter()->values();
+        }
+
+        return Admin::where('is_active', true)
+            ->whereIn('role', [
+                \App\Enums\AdminRole::Manager->value,
+                \App\Enums\AdminRole::Admin->value,
+                \App\Enums\AdminRole::SuperAdmin->value,
+            ])
+            ->pluck('email')
+            ->filter()
+            ->values();
+    }
+
+    /**
      * Restrict a query to the onboardings an admin may see. Analysts see only
      * companies assigned to them; every other role sees all.
      */

@@ -51,7 +51,9 @@ class MessageController extends Controller
         ]);
 
         try {
-            foreach (Admin::where('is_active', true)->pluck('email') as $email) {
+            // The assigned reviewer, else the managers who distribute work —
+            // not every admin in the system (EOP-87).
+            foreach ($onboarding->notificationRecipientEmails() as $email) {
                 Mail::to($email)->queue(new NewMessageMail($message));
             }
         } catch (\Throwable $e) {
