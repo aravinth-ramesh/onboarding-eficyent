@@ -28,6 +28,18 @@ function NotificationDetail({ notificationId, onClose }) {
     };
   }, [dispatch, notificationId]);
 
+  // Prefill the editor with the previous answer so the client edits only what
+  // was flagged instead of re-entering everything — and, for multi-row tables,
+  // so untouched rows aren't wiped when the answer is saved (EOP-72). Files are
+  // re-uploaded, so they are not prefilled.
+  useEffect(() => {
+    if (!selectedNotification) return;
+    if (selectedNotification.type !== 'change_request') return;
+    if (selectedNotification.question?.type === 'file') return;
+    const prev = selectedNotification.old_answer;
+    setAnswer(prev == null ? '' : prev);
+  }, [selectedNotification]);
+
   const handleFieldChange = (questionId, value) => {
     setAnswer(value);
   };
