@@ -78,6 +78,28 @@ class OnboardingService
             'completed_at' => now(),
         ]);
 
+        // An out-of-order edit started from the Final Review page returns
+        // straight there rather than walking forward step by step — and must
+        // not fall through to the "all steps complete" submit branch below,
+        // since the later steps are already completed (EOP-52).
+        $returnTo = $onboarding->return_to_step_id && $onboarding->return_to_step_id !== $step->id
+            ? $onboarding->steps()->where('id', $onboarding->return_to_step_id)->first()
+            : null;
+
+        if ($returnTo) {
+            $returnTo->update([
+                'status' => 'in_progress',
+                'completed_at' => null,
+                'started_at' => $returnTo->started_at ?? now(),
+            ]);
+            $onboarding->update([
+                'current_step_id' => $returnTo->id,
+                'return_to_step_id' => null,
+            ]);
+
+            return $onboarding->fresh('steps');
+        }
+
         // Find next pending step (skip over skipped steps)
         $nextStep = $onboarding->steps()
             ->where('order', '>', $step->order)
@@ -97,6 +119,7 @@ class OnboardingService
                 'status' => 'completed',
                 'completed_at' => now(),
                 'current_step_id' => null,
+                'return_to_step_id' => null,
             ]);
 
             // Lock in the company name at submission for the review queues.
@@ -446,8 +469,20 @@ class OnboardingService
      * user re-advances through them — this keeps later steps consistent when
      * an earlier answer (and its conditional logic) may have changed.
      */
-    public function goToStep(UserOnboarding $onboarding, UserOnboardingStep $targetStep): UserOnboarding
-    {
+    /**
+     * Navigate back to an earlier step.
+     *
+     * Passing $returnTo marks this as an out-of-order edit (the "Edit" links on
+     * the Final Review page): the later steps keep their completed state and
+     * completing the edited step jumps straight back to $returnTo, instead of
+     * demoting everything and making the client re-walk the whole form
+     * (EOP-52).
+     */
+    public function goToStep(
+        UserOnboarding $onboarding,
+        UserOnboardingStep $targetStep,
+        ?UserOnboardingStep $returnTo = null,
+    ): UserOnboarding {
         // A submitted or decided application is locked: navigating steps must
         // not re-open it for editing or revert its status to in_progress
         // (EOP-44, EOP-77). Editing resumes only via reopen/resubmission.
@@ -464,11 +499,19 @@ class OnboardingService
             return $onboarding->fresh('steps');
         }
 
-        // Demote everything after the target back to pending.
-        $onboarding->steps()
-            ->where('order', '>', $targetStep->order)
-            ->where('status', '!=', 'skipped')
-            ->update(['status' => 'pending', 'started_at' => null, 'completed_at' => null]);
+        // Only a later, already-completed step is a valid place to return to.
+        $isEditAndReturn = $returnTo
+            && $returnTo->order > $targetStep->order
+            && $returnTo->status === 'completed';
+
+        if (! $isEditAndReturn) {
+            // Plain back-navigation: a change here may invalidate what follows,
+            // so demote everything after the target back to pending.
+            $onboarding->steps()
+                ->where('order', '>', $targetStep->order)
+                ->where('status', '!=', 'skipped')
+                ->update(['status' => 'pending', 'started_at' => null, 'completed_at' => null]);
+        }
 
         // Re-open the target step.
         $targetStep->update([
@@ -481,6 +524,7 @@ class OnboardingService
             'status' => 'in_progress',
             'completed_at' => null,
             'current_step_id' => $targetStep->id,
+            'return_to_step_id' => $isEditAndReturn ? $returnTo->id : null,
         ]);
 
         return $onboarding->fresh('steps');

@@ -101,9 +101,13 @@ export const goToPreviousStep = createAsyncThunk(
 
 export const goToOnboardingStep = createAsyncThunk(
   'onboarding/goToStep',
-  async (stepId, { rejectWithValue }) => {
+  // Accepts either a step id, or { stepId, returnToStepId } for an
+  // out-of-order edit that should come back to `returnToStepId` (EOP-52).
+  async (payload, { rejectWithValue }) => {
+    const { stepId, returnToStepId = null } =
+      typeof payload === 'object' && payload !== null ? payload : { stepId: payload };
     try {
-      const response = await onboardingApi.gotoStep(stepId);
+      const response = await onboardingApi.gotoStep(stepId, returnToStepId);
       return response.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to navigate to step');

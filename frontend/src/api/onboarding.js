@@ -71,8 +71,13 @@ export const completeStep = (stepId) =>
 export const previousStep = (stepId) =>
   client.post(`/onboarding/steps/${stepId}/previous`);
 
-export const gotoStep = (stepId) =>
-  client.post(`/onboarding/steps/${stepId}/goto`);
+// `returnToStepId` marks an out-of-order edit: once this step is completed the
+// server sends the client straight back there (EOP-52).
+export const gotoStep = (stepId, returnToStepId = null) =>
+  client.post(
+    `/onboarding/steps/${stepId}/goto`,
+    returnToStepId ? { return_to: returnToStepId } : {}
+  );
 
 export const reopenOnboarding = () =>
   client.post('/onboarding/reopen');

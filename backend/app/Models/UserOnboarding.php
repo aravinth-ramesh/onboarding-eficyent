@@ -17,6 +17,7 @@ class UserOnboarding extends Model
         'registration_details',
         'status',
         'current_step_id',
+        'return_to_step_id',
         'template_version',
         'started_at',
         'completed_at',

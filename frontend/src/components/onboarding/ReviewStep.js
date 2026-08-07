@@ -19,10 +19,14 @@ function ReviewStep({ step, onBack, isFirstStep }) {
   const stepForGroup = (slug) =>
     steps.find((s) => Array.isArray(s.config?.groups) && s.config.groups.includes(slug));
 
+  // Editing one section from the review shouldn't cost a walk back through
+  // every later step — ask the server to return here once it's saved (EOP-52).
   const handleEditSection = (targetStep) => {
-    dispatch(goToOnboardingStep(targetStep.id)).then((result) => {
-      if (!result.error) dispatch(fetchOnboardingStatus());
-    });
+    dispatch(goToOnboardingStep({ stepId: targetStep.id, returnToStepId: step.id })).then(
+      (result) => {
+        if (!result.error) dispatch(fetchOnboardingStatus());
+      }
+    );
   };
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

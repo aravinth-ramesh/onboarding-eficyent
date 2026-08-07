@@ -691,7 +691,7 @@ class OnboardingController extends Controller
     /**
      * Jump directly to an earlier (already-reached) step.
      */
-    public function goToStep(UserOnboardingStep $step): JsonResponse
+    public function goToStep(Request $request, UserOnboardingStep $step): JsonResponse
     {
         /**@disregard */
         $user = auth()->user();
@@ -701,7 +701,17 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Step not found.'], 404);
         }
 
-        $onboarding = $this->onboardingService->goToStep($onboarding, $step);
+        // Optional: where to go once this step is completed again. Used by the
+        // Final Review page's "Edit" links so a single-section fix doesn't
+        // require re-walking the rest of the form (EOP-52).
+        $returnTo = null;
+        if ($request->filled('return_to')) {
+            $returnTo = $onboarding->steps()
+                ->where('id', (int) $request->input('return_to'))
+                ->first();
+        }
+
+        $onboarding = $this->onboardingService->goToStep($onboarding, $step, $returnTo);
 
         return response()->json([
             'message' => 'Navigated to step.',
