@@ -395,7 +395,11 @@ class OnboardingController extends Controller
         // inactive — an inactive group must not appear in the client form.
         // Grouping by a null group->id would also 500 the whole endpoint.
         $mappings = $mappings
-            ->filter(fn ($m) => $m->question && $m->question->group && $m->question->group->is_active)
+            // A question deactivated in the admin panel must stop rendering for
+            // clients, not just one whose whole group was deactivated — without
+            // the question check, retiring a single question had no effect.
+            ->filter(fn ($m) => $m->question && $m->question->is_active
+                && $m->question->group && $m->question->group->is_active)
             ->values();
 
         // Get existing answers (with files for file-type questions). Keyed by
