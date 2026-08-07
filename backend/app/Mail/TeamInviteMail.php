@@ -21,6 +21,7 @@ class TeamInviteMail extends Mailable implements ShouldQueue
     public function __construct(
         public UserOnboarding $onboarding,
         public User $inviter,
+        public ?string $inviteToken = null,
     ) {}
 
     public function envelope(): Envelope
@@ -39,7 +40,12 @@ class TeamInviteMail extends Mailable implements ShouldQueue
             with: [
                 'onboarding' => $this->onboarding,
                 'inviter' => $this->inviter,
-                'portalUrl' => rtrim(config('app.frontend_url'), '/') . '/home',
+                // Tokenised link: it identifies the invitation, so the portal
+                // can require the invitee to sign in as themselves instead of
+                // dropping them into whatever session the browser holds
+                // (EOP-53). Falls back to the plain portal for legacy sends.
+                'portalUrl' => rtrim(config('app.frontend_url'), '/')
+                    . ($this->inviteToken ? '/login?invite=' . urlencode($this->inviteToken) : '/home'),
             ],
         );
     }

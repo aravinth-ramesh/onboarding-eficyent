@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /**
  * Team management for an application: the owner invites colleagues by
@@ -80,15 +81,71 @@ class TeamController extends Controller
             'user_onboarding_id' => $onboarding->id,
             'user_id' => $invitee->id,
             'invited_by' => $user->id,
+            'invite_token' => Str::random(48),
         ]);
 
         try {
-            Mail::to($email)->queue(new TeamInviteMail($onboarding->load('user'), $user));
+            Mail::to($email)->queue(new TeamInviteMail($onboarding->load('user'), $user, $collaborator->invite_token));
         } catch (\Throwable $e) {
             Log::warning('team invite email failed', ['error' => $e->getMessage()]);
         }
 
         return response()->json(['data' => ['id' => $collaborator->id]], 201);
+    }
+
+    /**
+     * Public: describe an invitation so the portal can tell the visitor which
+     * address it was sent to, before anyone authenticates. Reveals only the
+     * invited email and who invited them — never the application's contents.
+     */
+    public function showInvitation(string $token): JsonResponse
+    {
+        $collaborator = OnboardingCollaborator::with(['user', 'inviter', 'onboarding'])
+            ->where('invite_token', $token)
+            ->first();
+
+        if (! $collaborator) {
+            return response()->json(['message' => 'This invitation link is not valid.'], 404);
+        }
+
+        return response()->json(['data' => [
+            'email' => $collaborator->user->email,
+            'inviter' => $collaborator->inviter->name ?? $collaborator->inviter->email,
+            'company' => $collaborator->onboarding->displayName ?? null,
+            'accepted' => $collaborator->accepted_at !== null,
+        ]]);
+    }
+
+    /**
+     * Accept an invitation as the signed-in user. The authenticated account
+     * must be the invited address — following the link from someone else's
+     * session must never join (or expose) their application (EOP-53).
+     */
+    public function acceptInvitation(string $token): JsonResponse
+    {
+        /**@disregard */
+        $user = auth()->user();
+
+        $collaborator = OnboardingCollaborator::with('user')
+            ->where('invite_token', $token)
+            ->first();
+
+        if (! $collaborator) {
+            return response()->json(['message' => 'This invitation link is not valid.'], 404);
+        }
+
+        if (strtolower($collaborator->user->email) !== strtolower($user->email)) {
+            return response()->json([
+                'message' => 'This invitation was sent to ' . $collaborator->user->email
+                    . '. Sign in with that address to join.',
+            ], 403);
+        }
+
+        if (! $collaborator->accepted_at) {
+            $collaborator->update(['accepted_at' => now()]);
+        }
+
+        return response()->json(['data' => ['accepted' => true]]);
     }
 
     public function remove(OnboardingCollaborator $collaborator): JsonResponse

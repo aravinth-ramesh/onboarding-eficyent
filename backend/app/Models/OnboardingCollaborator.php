@@ -14,7 +14,14 @@ class OnboardingCollaborator extends Model
         'user_onboarding_id',
         'user_id',
         'invited_by',
+        'invite_token',
+        'accepted_at',
     ];
+
+    protected function casts(): array
+    {
+        return ['accepted_at' => 'datetime'];
+    }
 
     public function onboarding(): BelongsTo
     {

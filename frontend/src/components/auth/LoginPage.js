@@ -1,7 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { sendOtp, verifyOtp, clearError, resetOtpState } from '../../store/slices/authSlice';
+import { sendOtp, verifyOtp, clearError, resetOtpState, logoutUser } from '../../store/slices/authSlice';
 import { Navigate, useLocation } from 'react-router-dom';
+import { getInvitation, acceptInvitation } from '../../api/team';
 import appConfig from '../../appConfig';
 
 // Where to land after login. Sources, in order: the location ProtectedRoute
@@ -20,11 +21,50 @@ function postLoginTarget(location) {
 function LoginPage() {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { isAuthenticated, loading, otpSent, error, email } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, loading, otpSent, error, email } = useSelector((state) => state.auth);
 
   const [emailInput, setEmailInput] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
+
+  // Team invitation deep link (?invite=token). The link must never simply drop
+  // the visitor into whatever session the browser already holds — that is how
+  // an invitee ended up inside the owner's account (EOP-53).
+  const inviteToken = new URLSearchParams(location.search).get('invite');
+  const [invitation, setInvitation] = useState(null);
+  const [inviteError, setInviteError] = useState(null);
+  const [inviteAccepted, setInviteAccepted] = useState(false);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    getInvitation(inviteToken)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data.data;
+        setInvitation(data);
+        setEmailInput((prev) => prev || data.email);
+      })
+      .catch(() => {
+        if (!cancelled) setInviteError('This invitation link is not valid or has expired.');
+      });
+    return () => { cancelled = true; };
+  }, [inviteToken]);
+
+  // Signed in as the invited address: bind the membership, then continue.
+  const invitedEmail = invitation?.email?.toLowerCase();
+  const currentEmail = user?.email?.toLowerCase();
+  const wrongAccount = Boolean(inviteToken && invitation && isAuthenticated && currentEmail && currentEmail !== invitedEmail);
+
+  useEffect(() => {
+    if (!inviteToken || !isAuthenticated || !invitation) return;
+    if (!currentEmail || currentEmail !== invitedEmail) return;
+    let cancelled = false;
+    acceptInvitation(inviteToken)
+      .catch(() => { /* already a member, or already accepted */ })
+      .finally(() => { if (!cancelled) setInviteAccepted(true); });
+    return () => { cancelled = true; };
+  }, [inviteToken, isAuthenticated, invitation, currentEmail, invitedEmail]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -85,6 +125,45 @@ function LoginPage() {
     setOtpDigits(['', '', '', '', '', '']);
   };
 
+  // An invite link in a browser already signed in as someone else must stop
+  // here — redirecting would show that account's application (EOP-53).
+  if (wrongAccount) {
+    return (
+      <div className="login-page">
+        <div className="login-right-panel">
+          <div className="login-card">
+            <h2>Wrong account</h2>
+            <p className="login-subtitle">
+              This invitation was sent to <strong>{invitation.email}</strong>, but you are
+              signed in as <strong>{user.email}</strong>.
+            </p>
+            <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
+              Sign out and sign in as {invitation.email} to join the application.
+            </div>
+            <button
+              type="button"
+              className="btn-primary-custom"
+              onClick={() => dispatch(logoutUser())}
+              style={{ width: '100%', justifyContent: 'center', padding: '0.7rem' }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Hold the redirect until the invitation is bound to this account.
+  if (isAuthenticated && inviteToken && !inviteAccepted && !inviteError) {
+    return (
+      <div className="spinner-corporate" style={{ minHeight: '100vh' }}>
+        <div className="spinner-border" role="status" />
+        <p>Joining the application...</p>
+      </div>
+    );
+  }
+
   if (isAuthenticated) {
     return <Navigate to={postLoginTarget(location)} replace />;
   }
@@ -114,8 +193,18 @@ function LoginPage() {
         <div className="login-card">
           {!otpSent ? (
             <>
-              <h2>{appConfig.login.heading}</h2>
-              <p className="login-subtitle">{appConfig.login.subheading}</p>
+              <h2>{invitation ? 'Join the application' : appConfig.login.heading}</h2>
+              <p className="login-subtitle">
+                {invitation
+                  ? `${invitation.inviter} invited you to collaborate${invitation.company ? ` on ${invitation.company}` : ''}. Verify your email to join.`
+                  : appConfig.login.subheading}
+              </p>
+
+              {inviteError && (
+                <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
+                  {inviteError}
+                </div>
+              )}
 
               {error && (
                 <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
@@ -135,9 +224,17 @@ function LoginPage() {
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     required
-                    autoFocus
+                    autoFocus={!invitation}
+                    /* The invitation is bound to one address — signing in as
+                       anyone else must not join this application (EOP-53). */
+                    readOnly={Boolean(invitation)}
                     style={{ width: '100%', padding: '0.65rem 0.85rem' }}
                   />
+                  {invitation && (
+                    <div className="login-subtitle" style={{ fontSize: '0.8rem', marginTop: 6 }}>
+                      This invitation is for this address only.
+                    </div>
+                  )}
                 </div>
                 <button
                   type="submit"

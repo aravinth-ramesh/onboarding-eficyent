@@ -14,6 +14,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/verify-otp', [Api\AuthController::class, 'verifyOtp']);
 });
 
+// Public: an invitee follows the emailed link before authenticating, so the
+// portal must be able to name the invited address without a session (EOP-53).
+Route::get('/team/invitation/{token}', [Api\TeamController::class, 'showInvitation']);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated User API Routes
@@ -55,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/notification-preferences', [Api\NotificationPreferenceController::class, 'update']);
         Route::get('/team', [Api\TeamController::class, 'index']);
         Route::post('/team/invite', [Api\TeamController::class, 'invite']);
+        Route::post('/team/invitation/{token}/accept', [Api\TeamController::class, 'acceptInvitation']);
         Route::delete('/team/{collaborator}', [Api\TeamController::class, 'remove']);
         Route::get('/messages', [Api\MessageController::class, 'index']);
         Route::post('/messages', [Api\MessageController::class, 'store']);
