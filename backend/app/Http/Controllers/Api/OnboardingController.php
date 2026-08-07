@@ -59,7 +59,11 @@ class OnboardingController extends Controller
             'country_code' => $onboarding->country_code,
             'registration_details' => $onboarding->registration_details,
             'template_version' => $onboarding->template_version,
-            'current_step' => $steps->firstWhere('id', $onboarding->current_step_id),
+            // Fall back to the first outstanding step if the recorded current
+            // step is gone (e.g. an admin skipped it) — the client must never
+            // be left with "No active onboarding step found" (EOP-94).
+            'current_step' => $steps->firstWhere('id', $onboarding->current_step_id)
+                ?? $steps->first(fn ($s) => $s['status'] !== 'completed'),
             'steps' => $steps,
             'started_at' => $onboarding->started_at,
             'completed_at' => $onboarding->completed_at,

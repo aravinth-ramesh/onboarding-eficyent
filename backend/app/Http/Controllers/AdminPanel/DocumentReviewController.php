@@ -35,8 +35,11 @@ class DocumentReviewController extends Controller
             ->when(
                 $status,
                 fn ($q) => $q->where('validation_status', $status),
+                // "All" must mean all: excluding `skipped` hid every document
+                // whose question has no AI policy, which reads as "only
+                // mandatory documents are shown" (EOP-105).
                 fn ($q) => $showAll
-                    ? $q->where('validation_status', '!=', 'skipped')
+                    ? $q
                     : $q->whereIn('validation_status', self::ATTENTION_STATUSES),
             )
             ->when(! $showReviewed, fn ($q) => $q->whereNull('reviewed_at'))

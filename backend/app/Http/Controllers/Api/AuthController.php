@@ -28,8 +28,12 @@ class AuthController extends Controller
 
         $this->otpService->send($email);
 
+        // The client can't show how long the code is good for, or when a
+        // resend becomes available, unless we tell it (EOP-3, EOP-4).
         return response()->json([
             'message' => 'Verification code sent to your email.',
+            'expires_in_seconds' => $this->otpService->expirySeconds(),
+            'resend_available_in_seconds' => $this->otpService->resendCooldownSeconds(),
         ]);
     }
 

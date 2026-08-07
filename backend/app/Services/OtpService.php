@@ -83,4 +83,16 @@ class OtpService
 
         return $lastOtp->created_at->addMinutes(self::RATE_LIMIT_MINUTES)->isPast();
     }
+
+    /** How long a freshly issued code stays valid, for the client countdown (EOP-4). */
+    public function expirySeconds(): int
+    {
+        return self::OTP_EXPIRY_MINUTES * 60;
+    }
+
+    /** How long until a resend is allowed, so the button can show a cooldown (EOP-3). */
+    public function resendCooldownSeconds(): int
+    {
+        return self::RATE_LIMIT_MINUTES * 60;
+    }
 }

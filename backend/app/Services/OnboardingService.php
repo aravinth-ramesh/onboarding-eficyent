@@ -336,7 +336,13 @@ class OnboardingService
     private function decide(UserOnboarding $onboarding, Admin $admin, string $status, ?string $comment): UserOnboarding
     {
         if ($onboarding->status !== 'completed') {
-            throw new \DomainException('Only submitted applications awaiting review can be approved or rejected.');
+            // Say what state it is actually in — "Only submitted applications
+            // awaiting review..." left the admin guessing why (EOP-80, EOP-83).
+            throw new \DomainException(sprintf(
+                'This application is %s, so it cannot be %s. Only an application awaiting review can be decided.',
+                strtolower($onboarding->statusLabel),
+                $status === 'approved' ? 'approved' : 'rejected',
+            ));
         }
 
         // Four-eyes: the reviewer who submitted an application for approval

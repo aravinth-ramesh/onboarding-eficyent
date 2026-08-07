@@ -594,12 +594,42 @@ class UserOnboardingController extends Controller
             abort(404);
         }
 
+        $wasCurrent = (int) $userOnboarding->current_step_id === (int) $step->id;
+
         if ($step->status === 'skipped') {
             $step->update(['status' => 'pending']);
             $message = "Step \"{$step->name}\" has been enabled.";
+
+            // Adopt it when the client had nowhere to go.
+            if (! $userOnboarding->current_step_id) {
+                $step->update(['status' => 'in_progress', 'started_at' => now()]);
+                $userOnboarding->update(['current_step_id' => $step->id, 'status' => 'in_progress']);
+            }
         } else {
             $step->update(['status' => 'skipped', 'started_at' => null, 'completed_at' => null]);
             $message = "Step \"{$step->name}\" has been disabled (skipped).";
+
+            // Skipping the step the client is on left current_step_id pointing
+            // at a step the API filters out, so the portal showed "No active
+            // onboarding step found" and the client was stuck (EOP-94).
+            if ($wasCurrent) {
+                $next = $userOnboarding->steps()
+                    ->where('order', '>', $step->order)
+                    ->whereNotIn('status', ['completed', 'skipped'])
+                    ->orderBy('order')
+                    ->first();
+
+                if ($next) {
+                    $next->update(['status' => 'in_progress', 'started_at' => now()]);
+                    $userOnboarding->update(['current_step_id' => $next->id]);
+                    $message .= " The client has been moved on to \"{$next->name}\".";
+                } else {
+                    // Nothing left to do — treat it as the client having
+                    // finished rather than stranding them on a dead step.
+                    $userOnboarding->update(['current_step_id' => null]);
+                    $message .= ' It was the last outstanding step, so the application has no step in progress.';
+                }
+            }
         }
 
         return redirect()->route('admin.user-onboardings.show', $userOnboarding)
@@ -995,7 +1025,9 @@ class UserOnboardingController extends Controller
         $validated = $request->validate([
             'label' => 'required|string|max:500',
             'description' => 'nullable|string|max:2000',
-            'type' => 'required|in:text,radio,date,select,multi_select,textarea,number,file',
+            // `table` is offered in the form but was missing here, so choosing
+            // it always failed validation (found while triaging EOP-95).
+            'type' => 'required|in:text,radio,date,select,multi_select,textarea,number,file,table',
             'options' => 'nullable|json',
             'is_required' => 'boolean',
             'placeholder' => 'nullable|string|max:255',

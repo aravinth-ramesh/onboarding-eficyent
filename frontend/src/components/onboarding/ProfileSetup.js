@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { updateProfile } from '../../store/slices/authSlice';
+import { validateText } from '../../utils/validation';
+
+// These fields previously took anything — "12345", "<script>alert(1)</script>"
+// — because ProfileSetup never used the validation engine, even though the
+// same rules were already applied to the equivalent table columns
+// (EOP-5, EOP-7). Values are rendered as escaped text everywhere, so this is
+// data quality rather than an injection fix.
+const NAME_RULES = { format: 'alpha', min_length: 2, max_length: 255 };
+const POSITION_RULES = { format: 'alphanumeric', requires_letter: true, min_length: 2, max_length: 255 };
 
 /**
  * Collected once, before the onboarding steps are shown: the user's Name and
@@ -15,11 +24,24 @@ function ProfileSetup() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
   const canSubmit = name.trim() !== '' && position.trim() !== '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
+
+    const nextErrors = {
+      name: validateText(name, NAME_RULES),
+      position: validateText(position, POSITION_RULES),
+    };
+    if (nextErrors.name || nextErrors.position) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+    setFieldErrors({});
+
     setSubmitting(true);
     setError(null);
     const result = await dispatch(
@@ -54,11 +76,12 @@ function ProfileSetup() {
               type="text"
               className="form-control"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setFieldErrors((p) => ({ ...p, name: null })); }}
               placeholder="Your full name"
               required
               autoFocus
             />
+            {fieldErrors.name && <div className="question-error">{fieldErrors.name}</div>}
           </div>
 
           <div className="question-field">
@@ -69,10 +92,11 @@ function ProfileSetup() {
               type="text"
               className="form-control"
               value={position}
-              onChange={(e) => setPosition(e.target.value)}
+              onChange={(e) => { setPosition(e.target.value); setFieldErrors((p) => ({ ...p, position: null })); }}
               placeholder="e.g. Managing Partner"
               required
             />
+            {fieldErrors.position && <div className="question-error">{fieldErrors.position}</div>}
           </div>
         </form>
       </div>

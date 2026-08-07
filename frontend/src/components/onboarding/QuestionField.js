@@ -9,6 +9,35 @@ import UboField from './UboField';
 // `utils/validation.js` is authoritative.
 import { dateBound } from '../../utils/dateBounds';
 
+/**
+ * Cap input at the limit, counting the trimmed value. A raw `maxLength`
+ * attribute counted leading/trailing spaces towards the budget and silently
+ * stopped typing with no explanation (EOP-11, EOP-12).
+ */
+const capToLimit = (next, max) => {
+  if (max == null) return next;
+  const limit = Number(max);
+  if (next.trim().length <= limit) return next;
+  // Preserve any leading whitespace the user has typed while capping content.
+  const leading = next.length - next.trimStart().length;
+
+  return next.slice(0, leading + limit);
+};
+
+/** Live "n/max" counter so the limit is visible before it's hit (EOP-11). */
+function CharacterCount({ value, max }) {
+  if (max == null) return null;
+  const used = String(value ?? '').trim().length;
+  const limit = Number(max);
+  const atLimit = used >= limit;
+
+  return (
+    <div className={`question-char-count${atLimit ? ' is-at-limit' : ''}`}>
+      {used}/{limit}{atLimit ? ' — limit reached' : ''}
+    </div>
+  );
+}
+
 function QuestionField({ question, value, onChange, cellErrors }) {
   const handleChange = (newValue) => {
     onChange(question.id, newValue);
@@ -19,26 +48,30 @@ function QuestionField({ question, value, onChange, cellErrors }) {
   switch (question.type) {
     case 'text':
       return (
-        <input
-          type="text"
-          className="form-control"
-          placeholder={question.placeholder || ''}
-          value={value || ''}
-          maxLength={v.max_length ?? undefined}
-          onChange={(e) => handleChange(e.target.value)}
-        />
+        <>
+          <input
+            type="text"
+            className="form-control"
+            placeholder={question.placeholder || ''}
+            value={value || ''}
+            onChange={(e) => handleChange(capToLimit(e.target.value, v.max_length))}
+          />
+          <CharacterCount value={value} max={v.max_length} />
+        </>
       );
 
     case 'textarea':
       return (
-        <textarea
-          className="form-control"
-          rows={3}
-          placeholder={question.placeholder || ''}
-          value={value || ''}
-          maxLength={v.max_length ?? undefined}
-          onChange={(e) => handleChange(e.target.value)}
-        />
+        <>
+          <textarea
+            className="form-control"
+            rows={3}
+            placeholder={question.placeholder || ''}
+            value={value || ''}
+            onChange={(e) => handleChange(capToLimit(e.target.value, v.max_length))}
+          />
+          <CharacterCount value={value} max={v.max_length} />
+        </>
       );
 
     case 'number':

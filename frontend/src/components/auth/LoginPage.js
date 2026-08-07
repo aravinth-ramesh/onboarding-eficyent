@@ -5,6 +5,15 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { getInvitation, acceptInvitation } from '../../api/team';
 import appConfig from '../../appConfig';
 
+// Stricter than the browser's `type="email"`, which follows the WHATWG rule
+// and accepts a dotless domain such as "aaaa@a" (EOP-2).
+const isValidEmail = (value) => /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(String(value || '').trim());
+
+const formatCountdown = (seconds) => {
+  const s = Math.max(0, seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
 // Where to land after login. Sources, in order: the location ProtectedRoute
 // stashed when it bounced the user here, or a ?redirect= param set by the
 // 401 interceptor. Only same-origin paths are honoured.
@@ -24,7 +33,11 @@ function LoginPage() {
   const { isAuthenticated, user, loading, otpSent, error, email } = useSelector((state) => state.auth);
 
   const [emailInput, setEmailInput] = useState('');
+  const [emailError, setEmailError] = useState(null);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  // Seconds until the code expires, and until a resend is allowed (EOP-3/EOP-4).
+  const [expiresIn, setExpiresIn] = useState(null);
+  const [resendIn, setResendIn] = useState(0);
   const inputRefs = useRef([]);
 
   // Team invitation deep link (?invite=token). The link must never simply drop
@@ -66,11 +79,46 @@ function LoginPage() {
     return () => { cancelled = true; };
   }, [inviteToken, isAuthenticated, invitation, currentEmail, invitedEmail]);
 
+  const requestOtp = useCallback(async (address) => {
+    dispatch(clearError());
+    const result = await dispatch(sendOtp(address));
+    // The API reports how long the code lasts and when a resend is allowed.
+    const payload = result?.payload;
+    if (payload && !result.error) {
+      setExpiresIn(payload.expires_in_seconds ?? null);
+      setResendIn(payload.resend_available_in_seconds ?? 0);
+    }
+    return result;
+  }, [dispatch]);
+
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    dispatch(clearError());
-    await dispatch(sendOtp(emailInput));
+    // `type="email"` alone accepts a dotless domain like "aaaa@a", so the
+    // portal would mail a code to an undeliverable address (EOP-2).
+    const address = emailInput.trim();
+    if (!isValidEmail(address)) {
+      setEmailError('Enter a valid email address, for example name@company.com.');
+      return;
+    }
+    setEmailError(null);
+    await requestOtp(address);
   };
+
+  const handleResendOtp = async () => {
+    if (resendIn > 0) return;
+    setOtpDigits(['', '', '', '', '', '']);
+    await requestOtp(email);
+  };
+
+  // One ticker drives both the expiry countdown and the resend cooldown.
+  useEffect(() => {
+    if (!otpSent) return undefined;
+    const id = setInterval(() => {
+      setExpiresIn((v) => (v === null ? v : Math.max(0, v - 1)));
+      setResendIn((v) => Math.max(0, v - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [otpSent]);
 
   const submitOtp = useCallback((code) => {
     dispatch(clearError());
@@ -222,7 +270,7 @@ function LoginPage() {
                     className="form-control"
                     placeholder="name@company.com"
                     value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
+                    onChange={(e) => { setEmailInput(e.target.value); if (emailError) setEmailError(null); }}
                     required
                     autoFocus={!invitation}
                     /* The invitation is bound to one address — signing in as
@@ -230,6 +278,9 @@ function LoginPage() {
                     readOnly={Boolean(invitation)}
                     style={{ width: '100%', padding: '0.65rem 0.85rem' }}
                   />
+                  {emailError && (
+                    <div className="question-error" style={{ marginTop: 6 }}>{emailError}</div>
+                  )}
                   {invitation && (
                     <div className="login-subtitle" style={{ fontSize: '0.8rem', marginTop: 6 }}>
                       This invitation is for this address only.
@@ -252,6 +303,15 @@ function LoginPage() {
               <p className="login-subtitle">
                 We sent a 6-digit code to <strong>{email}</strong>
               </p>
+              {expiresIn !== null && (
+                <p className="login-subtitle" style={{ marginTop: -8 }}>
+                  {expiresIn > 0 ? (
+                    <>This code expires in <strong>{formatCountdown(expiresIn)}</strong>.</>
+                  ) : (
+                    <>This code has expired — request a new one.</>
+                  )}
+                </p>
+              )}
 
               {error && (
                 <div className="alert-corporate danger" style={{ marginBottom: 16 }}>
@@ -285,7 +345,17 @@ function LoginPage() {
                   {loading ? 'Verifying...' : 'Verify & Sign In'}
                 </button>
 
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {/* Without this the only recovery from a lost or expired
+                      code was to start over (EOP-3). */}
+                  <button
+                    type="button"
+                    className="btn-link-custom"
+                    onClick={handleResendOtp}
+                    disabled={loading || resendIn > 0}
+                  >
+                    {resendIn > 0 ? `Resend code in ${formatCountdown(resendIn)}` : 'Resend code'}
+                  </button>
                   <button type="button" className="btn-link-custom" onClick={handleBack}>
                     &#8592; Use a different email
                   </button>

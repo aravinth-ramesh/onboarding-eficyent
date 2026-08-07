@@ -343,8 +343,18 @@
                             </button>
                         @endif
                     </div>
+                    {{-- A title="" on a disabled button never surfaces — browsers
+                         suppress its events — so the reason Approve was greyed
+                         out was invisible (EOP-91). State it in the page. --}}
                     @if($isMaker)
                         <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> You submitted this for approval, so a second reviewer must make the decision.</div>
+                    @elseif(!$mayDecide)
+                        <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> {{ $notMineNote }}.</div>
+                    @elseif(!$sectionsDone)
+                        <div class="small text-muted mt-2">
+                            <i class="bi bi-info-circle"></i>
+                            Approval needs every section reviewed — {{ $decideProgress['done'] }} of {{ $decideProgress['total'] }} done so far. Rejection is available at any point.
+                        </div>
                     @endif
                 @elseif(in_array($userOnboarding->status, ['approved', 'rejected']))
                     <hr>

@@ -173,14 +173,18 @@
                                 <input type="checkbox" class="form-check-input" id="bulkSelectAll" title="Select all">
                             </th>
                         @endif
-                        <th>ID</th>
+                        {{-- Headings must match what the cells actually show and
+                             the wording used in the CSV export and search hint:
+                             the reference, not the raw row id, and the
+                             submission timestamp, not "Completed" (EOP-64). --}}
+                        <th>Reference</th>
                         <th>Company</th>
-                        <th>User Type</th>
+                        <th>Organization Type</th>
                         <th>Subcategory</th>
                         <th>Status</th>
-                        <th>Assigned</th>
+                        <th>Assigned To</th>
                         <th>Started</th>
-                        <th>Completed</th>
+                        <th>Submitted</th>
                         <th style="width: 80px;">Actions</th>
                     </tr>
                 </thead>
@@ -195,7 +199,7 @@
                                            @unless($onboarding->user?->email) data-no-email="1" @endunless>
                                 </td>
                             @endif
-                            <td>{{ $onboarding->id }}</td>
+                            <td class="text-nowrap">{{ $onboarding->reference }}</td>
                             <td style="max-width: 240px;">
                                 <div class="fw-semibold text-truncate" title="{{ $onboarding->displayName }}">{{ $onboarding->displayName }}</div>
                                 <small class="text-muted d-block text-truncate" title="{{ trim(($onboarding->company_name && $onboarding->user?->name ? $onboarding->user->name.' · ' : '').($onboarding->user->email ?? '')) }}">

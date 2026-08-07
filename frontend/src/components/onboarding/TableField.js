@@ -3,6 +3,16 @@ import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 import { dateBound } from '../../utils/dateBounds';
 import { partitionBySize, oversizeMessage } from '../../utils/files';
 
+/** Cap a cell at its limit counting the trimmed value (EOP-11, EOP-12). */
+const capCellToLimit = (next, max) => {
+  if (max == null) return next;
+  const limit = Number(max);
+  if (next.trim().length <= limit) return next;
+  const leading = next.length - next.trimStart().length;
+
+  return next.slice(0, leading + limit);
+};
+
 function TableFileCell({ column, value, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
@@ -287,8 +297,9 @@ function TableField({ question, value, onChange, cellErrors }) {
             className="form-control form-control-sm table-field-input"
             placeholder={column.placeholder || ''}
             value={cellValue}
-            maxLength={v.max_length ?? undefined}
-            onChange={(e) => handleCellChange(rowIndex, column.key, e.target.value)}
+            /* Trim-aware cap: a raw maxLength spent the budget on spaces
+               and stopped typing with no explanation (EOP-11, EOP-12). */
+            onChange={(e) => handleCellChange(rowIndex, column.key, capCellToLimit(e.target.value, v.max_length))}
           />
         );
     }

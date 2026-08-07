@@ -14,7 +14,8 @@ class VerifyOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'max:255'],
+            // Matches SendOtpRequest — a dotless domain is not a real address (EOP-2).
+            'email' => ['required', 'email:filter', 'regex:/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/', 'max:255'],
             'code' => ['required', 'string', 'size:6'],
         ];
     }

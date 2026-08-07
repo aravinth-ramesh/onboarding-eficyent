@@ -17,6 +17,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
   const dispatch = useDispatch();
   const { questionGroups, answers, loading, countryCode } = useSelector((state) => state.onboarding);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
+  const [draftSaved, setDraftSaved] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [tableCellErrors, setTableCellErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
@@ -143,6 +144,18 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
   }, [visibleGroups.length, activeGroupIndex]);
 
+  // Errors belong to the group that produced them. Only a successful save
+  // cleared the document-validation panel, so an upload error followed by
+  // Back kept an amber warning pinned to a question on another page
+  // (EOP-40). The step spans several groups without remounting, so clear
+  // them whenever the group changes.
+  useEffect(() => {
+    setValidationErrors({});
+    setTableCellErrors({});
+    setDocValidationErrors({});
+    setSubmitError(null);
+  }, [activeGroupIndex, step.id]);
+
   // Build a set of file-type question IDs for quick lookup
   const fileQuestionIds = useMemo(() => {
     const ids = new Set();
@@ -189,6 +202,9 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
 
   const isCellFilled = (v) => {
     if (v === null || v === undefined || v === '') return false;
+    // Whitespace alone is not an answer — otherwise a single space in one cell
+    // satisfied every required check on the row (EOP-25).
+    if (typeof v === 'string' && v.trim() === '') return false;
     if (Array.isArray(v) && v.length === 0) return false;
     return true;
   };
@@ -227,10 +243,15 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       });
     }
 
+    // Rows up to min_rows are scaffolding the renderer pads in; anything
+    // beyond that the user explicitly added with "Add Entry" and must either
+    // complete or remove. Skipping every empty row past index 0 let a blank
+    // added entry through unvalidated (EOP-25, EOP-28, EOP-35).
+    const minRows = Number(question.options?.min_rows) || 1;
+
     rows.forEach((row, rowIndex) => {
-      // Skip wholly empty trailing rows when not required; always validate the first row.
       const rowEmpty = isRowEmpty(row);
-      if (rowEmpty && rowIndex !== 0) return;
+      if (rowEmpty && rowIndex !== 0 && rowIndex < minRows) return;
 
       columns.forEach((col) => {
         const cellValue = row?.[col.key];
@@ -284,7 +305,20 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
     const val = answers[question.id];
     if (typeof val === 'string') return val.trim() === '';
-    return val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
+    if (Array.isArray(val)) return val.length === 0;
+    // Address / UBO answers are objects. Every branch below was false for any
+    // object, so merely picking a country from the dropdown satisfied a
+    // required Registered Address (EOP-17).
+    if (val && typeof val === 'object') {
+      return !Object.values(val).some((v) => {
+        if (v === null || v === undefined) return false;
+        if (typeof v === 'string') return v.trim() !== '';
+        if (Array.isArray(v)) return v.length > 0;
+
+        return true;
+      });
+    }
+    return val === undefined || val === null || val === '';
   };
 
   const collectErrors = (questions) => {
@@ -493,6 +527,17 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
     }
   };
 
+  // Saving a draft gave no feedback beyond the transient "Saving..." label, so
+  // there was no way to tell it had worked (EOP-15).
+  const handleSaveDraft = async () => {
+    setDraftSaved(false);
+    const saved = await handleSave();
+    if (saved) {
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 4000);
+    }
+  };
+
   if (loading && questionGroups.length === 0) {
     return (
       <div className="spinner-corporate">
@@ -507,7 +552,7 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       <div className="ob-card-header">
         <h5>{activeGroup ? activeGroup.name : 'Onboarding Questions'}</h5>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button className="btn-outline-custom" onClick={handleSave} disabled={loading}>
+          <button className="btn-outline-custom" onClick={handleSaveDraft} disabled={loading}>
             {loading ? 'Saving...' : 'Save Draft'}
           </button>
         </div>
@@ -516,6 +561,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       <div className="ob-card-body">
         {submitError && (
           <div className="alert-corporate danger" style={{ marginBottom: 16 }}>{submitError}</div>
+        )}
+
+        {draftSaved && (
+          <div className="alert-corporate success" style={{ marginBottom: 16 }}>
+            Draft saved — you can safely close this page and continue later.
+          </div>
         )}
 
         {activeGroup && activeGroup.description && (
