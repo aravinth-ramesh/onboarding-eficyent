@@ -201,10 +201,21 @@
                             @endif
                             <td class="text-nowrap">{{ $onboarding->reference }}</td>
                             <td style="max-width: 240px;">
-                                <div class="fw-semibold text-truncate" title="{{ $onboarding->displayName }}">{{ $onboarding->displayName }}</div>
-                                <small class="text-muted d-block text-truncate" title="{{ trim(($onboarding->company_name && $onboarding->user?->name ? $onboarding->user->name.' · ' : '').($onboarding->user->email ?? '')) }}">
-                                    @if($onboarding->company_name && $onboarding->user?->name){{ $onboarding->user->name }} · @endif{{ $onboarding->user->email ?? '' }}
-                                </small>
+                                {{-- Only ever show a company name under "Company".
+                                     displayName falls back to the contact's own
+                                     name, which read as the registered company
+                                     on drafts that haven't reached the legal-name
+                                     question yet (EOP-64). The contact is already
+                                     on the line below. --}}
+                                @if($onboarding->company_name)
+                                    <div class="fw-semibold text-truncate" title="{{ $onboarding->company_name }}">{{ $onboarding->company_name }}</div>
+                                @else
+                                    <div class="fw-semibold text-truncate text-muted fst-italic" title="The company name is captured later in the form">Not provided yet</div>
+                                @endif
+                                @php
+                                    $contactLine = trim(($onboarding->user?->name ? $onboarding->user->name . ' · ' : '') . ($onboarding->user->email ?? ''), " ·");
+                                @endphp
+                                <small class="text-muted d-block text-truncate" title="{{ $contactLine }}">{{ $contactLine }}</small>
                             </td>
                             <td>{{ $onboarding->userType->name ?? 'N/A' }}</td>
                             <td>{{ $onboarding->subcategory->name ?? '-' }}</td>

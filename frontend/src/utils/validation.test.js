@@ -89,6 +89,21 @@ describe('field validation engine', () => {
     expect(validateText('1234DEFF', rules)).toBeTruthy();
   });
 
+  test('a date of birth must be at least 18 years ago (EOP-32)', () => {
+    const rules = { allow_future: false, min_age: 18 };
+    const yearsAgo = (n) => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - n);
+      return d.toISOString().slice(0, 10);
+    };
+
+    expect(validateByType('date', yearsAgo(17), rules)).toBe('User must be at least 18 years old.');
+    expect(validateByType('date', yearsAgo(18), rules)).toBeNull();
+    expect(validateByType('date', yearsAgo(40), rules)).toBeNull();
+    // A stray year is a typo, not a birth date.
+    expect(validateByType('date', '1832-04-12', rules)).toBe('Enter a valid date.');
+  });
+
   test('a date column rejects a future date of birth (EOP-32)', () => {
     const rules = { allow_future: false };
     const future = new Date();

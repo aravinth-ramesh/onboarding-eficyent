@@ -209,6 +209,23 @@ export const validateDate = (value, rules = {}) => {
   if (maxDate && date.getTime() > maxDate.getTime()) {
     return `Date must be on or before ${rules.max_date}.`;
   }
+
+  // Minimum age, expressed relative to today rather than as a fixed max_date
+  // so the rule can't go stale (EOP-32).
+  if (rules.min_age != null) {
+    const years = Number(rules.min_age);
+    const earliestBirthday = new Date(today);
+    earliestBirthday.setFullYear(earliestBirthday.getFullYear() - years);
+    if (date.getTime() > earliestBirthday.getTime()) {
+      return `User must be at least ${years} years old.`;
+    }
+  }
+
+  // A date centuries in the past is a typo, not a birth date.
+  if (rules.min_date == null && date.getFullYear() < 1900) {
+    return 'Enter a valid date.';
+  }
+
   return null;
 };
 

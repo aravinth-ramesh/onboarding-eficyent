@@ -83,8 +83,11 @@ class FieldValidationRules
      * column key => rules
      */
     private const DATE_COLUMNS = [
-        'date_of_birth' => ['allow_future' => false],
-        'dob' => ['allow_future' => false],
+        // A beneficial owner or director must be an adult, so a future date
+        // isn't the only invalid one — under-18 and a stray year like 1832 are
+        // too (EOP-32).
+        'date_of_birth' => ['allow_future' => false, 'min_age' => 18],
+        'dob' => ['allow_future' => false, 'min_age' => 18],
     ];
 
     public static function apply(): void
@@ -159,8 +162,13 @@ class FieldValidationRules
                         $columns[$i]['type'] = 'date';
                         $changed = true;
                     }
-                    if (empty($column['validation'])) {
-                        $columns[$i]['validation'] = self::DATE_COLUMNS[$key];
+                    // Fill missing keys rather than only writing when empty, so
+                    // a rule added later (min_age) reaches columns that an
+                    // earlier release already seeded with allow_future alone.
+                    $existing = is_array($column['validation'] ?? null) ? $column['validation'] : [];
+                    $merged = $existing + self::DATE_COLUMNS[$key];
+                    if ($merged != $existing) {
+                        $columns[$i]['validation'] = $merged;
                         $changed = true;
                     }
 
