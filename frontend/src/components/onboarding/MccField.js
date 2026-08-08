@@ -9,17 +9,26 @@ import SearchableSelect from '../common/SearchableSelect';
 // like "veterinary" matched nothing (EOP-14). The searchable control matches
 // the code, the label and the sector.
 function MccField({ question, value, onChange }) {
-  const options = useMemo(
-    () =>
-      MCC_GROUPS.flatMap((group) =>
-        group.codes.map((c) => ({
-          value: c.code,
-          label: `${c.code} – ${c.label}`,
-          keywords: `${c.label} ${group.category}`,
-        }))
-      ),
-    []
-  );
+  // Prefer the options the backend seeds onto the question so the picker and
+  // every admin surface read the same list; fall back to the bundled codes.
+  const options = useMemo(() => {
+    const seeded = question.options;
+    if (Array.isArray(seeded) && seeded.length > 0) {
+      return seeded.map((o) => ({
+        value: o.value,
+        label: `${o.value} – ${o.label}`,
+        keywords: `${o.label} ${o.group || ''}`,
+      }));
+    }
+
+    return MCC_GROUPS.flatMap((group) =>
+      group.codes.map((c) => ({
+        value: c.code,
+        label: `${c.code} – ${c.label}`,
+        keywords: `${c.label} ${group.category}`,
+      }))
+    );
+  }, [question.options]);
 
   return (
     <SearchableSelect

@@ -66,10 +66,16 @@ class AnswerValueFormatterTest extends TestCase
         $this->assertSame('Private Limited', AnswerValueFormatter::readable('ltd', $q));
     }
 
-    public function test_table_is_summarised_by_row_count(): void
+    public function test_table_rows_show_their_values(): void
     {
+        // Previously summarised as "3 rows", which made the audit trail read
+        // "1 row -> 1 row" and hid what the client actually changed (EOP-73).
         $raw = json_encode([['name' => 'Jane'], ['name' => 'John'], ['name' => 'Sam']]);
 
-        $this->assertSame('3 rows', AnswerValueFormatter::readable($raw, $this->question('table')));
+        $readable = AnswerValueFormatter::readable($raw, $this->question('table'));
+
+        $this->assertStringContainsString('Jane', $readable);
+        $this->assertStringContainsString('John', $readable);
+        $this->assertStringContainsString('Sam', $readable);
     }
 }

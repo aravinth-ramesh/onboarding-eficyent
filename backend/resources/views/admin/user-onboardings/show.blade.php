@@ -716,7 +716,9 @@
                                         @else
                                             <span class="text-muted">&mdash;</span>
                                         @endif
-                                    @elseif(in_array($type, ['radio', 'select']))
+                                    {{-- `mcc` included: it stores an industry code, which showed
+                                         as a bare "5942" instead of the industry name. --}}
+                                    @elseif(in_array($type, ['radio', 'select', 'mcc']))
                                         @php
                                             $opt = collect($options)->firstWhere('value', $val);
                                         @endphp

@@ -193,9 +193,16 @@
                         <tr>
                             @if($canBulk)
                                 <td>
+                                    {{-- Only an application awaiting review can be decided.
+                                         Letting the others be ticked meant selecting ten and
+                                         silently processing three (retest item 42). Email
+                                         actions still work for any row, so the row is only
+                                         locked out when it can't be decided at all. --}}
                                     <input type="checkbox" class="form-check-input bulk-check"
                                            value="{{ $onboarding->id }}"
                                            data-status="{{ $onboarding->status }}"
+                                           data-decidable="{{ $onboarding->status === 'completed' ? '1' : '0' }}"
+                                           title="{{ $onboarding->status === 'completed' ? '' : 'Only applications awaiting review can be approved or rejected' }}"
                                            @unless($onboarding->user?->email) data-no-email="1" @endunless>
                                 </td>
                             @endif
@@ -381,14 +388,25 @@
             return n;
         }
 
+        // How many of the current selection can't be approved or rejected.
+        function notDecidableCount() {
+            return selectedChecks().filter(function (c) { return c.dataset.decidable !== '1'; }).length;
+        }
+
         // ── Decisions (awaiting-review rows only) — approvers only ──
         var decisionForm = document.getElementById('bulkDecisionForm');
         var approveBtn = document.getElementById('bulkApproveBtn');
         if (approveBtn) {
             approveBtn.addEventListener('click', function () {
                 var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
-                if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
-                if (!confirm('Approve ' + n + ' application(s) awaiting review? Each client is notified by email.')) return;
+                if (n === 0) { alert('None of the selected applications are awaiting review, so there is nothing to approve.'); return; }
+                // Say up front how many of the selection will be left out and
+                // why, instead of silently processing a subset (retest item 42).
+                var skipped = notDecidableCount();
+                var note = skipped > 0
+                    ? '\n\n' + skipped + ' other selected application(s) will be skipped — only an application awaiting review can be decided.'
+                    : '';
+                if (!confirm('Approve ' + n + ' application(s) awaiting review? Each client is notified by email.' + note)) return;
                 document.getElementById('bulkDecision').value = 'approve';
                 document.getElementById('bulkComment').value = '';
                 decisionForm.submit();
@@ -398,7 +416,9 @@
                 var reason = document.getElementById('bulkRejectComment').value.trim();
                 if (!reason) { document.getElementById('bulkRejectComment').focus(); return; }
                 var n = fillIds(document.getElementById('bulkDecisionIds'), 'completed');
-                if (n === 0) { alert('None of the selected applications are awaiting review.'); return; }
+                if (n === 0) { alert('None of the selected applications are awaiting review, so there is nothing to reject.'); return; }
+                var skipped = notDecidableCount();
+                if (skipped > 0 && !confirm('Reject ' + n + ' application(s)?\n\n' + skipped + ' other selected application(s) will be skipped — only an application awaiting review can be decided.')) return;
                 document.getElementById('bulkDecision').value = 'reject';
                 document.getElementById('bulkComment').value = reason;
                 decisionForm.submit();
