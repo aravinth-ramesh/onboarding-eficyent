@@ -256,7 +256,21 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
+            // The portal is self-service, so this endpoint starts an
+            // application for any signed-in user who has none. An account that
+            // only exists because someone invited it onto a team is the
+            // exception: removing that member correctly cuts them off from the
+            // shared application, but auto-starting one here handed them a
+            // fresh application they owned (EOP-56). They get an empty state
+            // instead — no access, and no owner-level permissions.
+            if ($user->invited_at !== null) {
+                return response()->json([
+                    'data' => null,
+                    'message' => 'You do not have access to an application. Ask the application owner to invite you again.',
+                ]);
+            }
+
             $onboarding = $this->onboardingService->initializeForUser($user);
         }
 

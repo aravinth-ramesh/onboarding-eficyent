@@ -19,6 +19,7 @@ class User extends Authenticatable
         'name',
         'position',
         'email',
+        'invited_at',
         'is_admin',
         'status',
         'notification_preferences',
@@ -55,6 +56,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'invited_at' => 'datetime',
             'is_admin' => 'boolean',
             'notification_preferences' => 'array',
         ];

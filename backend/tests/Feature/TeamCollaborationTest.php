@@ -161,6 +161,46 @@ class TeamCollaborationTest extends TestCase
         $this->assertNull($colleague->fresh()->activeOnboarding());
     }
 
+    public function test_a_removed_member_is_not_handed_an_application_of_their_own(): void
+    {
+        // Losing the shared application was never the whole story: the status
+        // endpoint starts one for any signed-in user who has none, so logging
+        // back in made the removed member the owner of a fresh application
+        // (EOP-56).
+        $colleague = $this->inviteColleague();
+        $ownOnboardingId = $this->owner->activeOnboarding()->id;
+
+        Sanctum::actingAs($this->owner);
+        $this->deleteJson("/api/onboarding/team/{$colleague->collaboration->id}")->assertOk();
+
+        Sanctum::actingAs($colleague->fresh());
+        $response = $this->getJson('/api/onboarding/status');
+
+        $response->assertOk();
+        $response->assertJsonPath('data', null);
+
+        $this->assertDatabaseMissing('user_onboardings', ['user_id' => $colleague->id]);
+        $this->assertSame(
+            $ownOnboardingId,
+            $this->owner->fresh()->activeOnboarding()->id,
+            "the owner's application must be untouched",
+        );
+    }
+
+    public function test_a_genuine_new_user_still_gets_an_application(): void
+    {
+        // The guard keys off invitation-only accounts, so ordinary self-service
+        // sign-up must be unaffected.
+        $newcomer = User::create(['email' => 'newcomer@test.com', 'name' => 'New', 'position' => 'CFO']);
+
+        Sanctum::actingAs($newcomer);
+        $this->getJson('/api/onboarding/status')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending');
+
+        $this->assertDatabaseHas('user_onboardings', ['user_id' => $newcomer->id]);
+    }
+
     public function test_team_listing_shows_owner_and_members(): void
     {
         $this->inviteColleague();

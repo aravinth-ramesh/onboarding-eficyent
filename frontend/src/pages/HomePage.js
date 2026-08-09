@@ -12,9 +12,8 @@ import StatusTimeline from '../components/onboarding/StatusTimeline';
 
 function HomePage() {
   const dispatch = useDispatch();
-  const { steps, currentStep, status, loading, error, decisionComment } = useSelector(
-    (state) => state.onboarding
-  );
+  const { steps, currentStep, status, loading, error, decisionComment, hasApplication } =
+    useSelector((state) => state.onboarding);
   const user = useSelector((state) => state.auth.user);
   const profileCompleted = !!(user && user.profile_completed);
   const [viewingAnswers, setViewingAnswers] = useState(false);
@@ -68,6 +67,23 @@ function HomePage() {
         <div className="spinner-corporate">
           <div className="spinner-border" role="status" />
           <p>Loading your onboarding...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // A team member who has been removed keeps their login but has no
+  // application of their own -- and must not be given one (EOP-56).
+  if (!hasApplication) {
+    return (
+      <AppLayout pageTitle="Client Onboarding">
+        <div className="text-center py-5">
+          <i className="bi bi-lock display-4 text-muted d-block mb-3" />
+          <h5>No application available</h5>
+          <p className="text-muted mb-0">
+            You do not currently have access to an application. If you should have
+            access, ask the application owner to invite you again.
+          </p>
         </div>
       </AppLayout>
     );

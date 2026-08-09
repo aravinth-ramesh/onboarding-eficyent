@@ -192,6 +192,10 @@ const onboardingSlice = createSlice({
     // collaborator's concurrent edit is detected, not overwritten (EOP-97).
     answerVersions: {},
     kycDocStatus: {},
+    // False only for an account that exists purely because it was invited onto
+    // a team and has since been removed — it gets no application of its own
+    // (EOP-56).
+    hasApplication: true,
     loading: false,
     error: null,
   },
@@ -213,6 +217,18 @@ const onboardingSlice = createSlice({
       })
       .addCase(fetchOnboardingStatus.fulfilled, (state, action) => {
         state.loading = false;
+
+        // A removed team member is not handed an application of their own, so
+        // the endpoint returns no data (EOP-56).
+        if (!action.payload) {
+          state.hasApplication = false;
+          state.status = null;
+          state.steps = [];
+          state.currentStep = null;
+          return;
+        }
+
+        state.hasApplication = true;
         state.status = action.payload.status;
         state.steps = action.payload.steps;
         state.currentStep = action.payload.current_step;

@@ -74,7 +74,10 @@ class TeamController extends Controller
                 return response()->json(['message' => 'This person already belongs to a team.'], 422);
             }
         } else {
-            $invitee = User::create(['email' => $email]);
+            // Mark the account as invitation-only: it must not be handed an
+            // application of its own if this membership is later removed
+            // (EOP-56).
+            $invitee = User::create(['email' => $email, 'invited_at' => now()]);
         }
 
         $collaborator = OnboardingCollaborator::create([
