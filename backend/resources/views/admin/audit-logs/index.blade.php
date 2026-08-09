@@ -43,9 +43,36 @@
                             @php
                                 $oldText = \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question);
                                 $newText = \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question);
+                                // Uploads are linked so a reviewer can open the replaced
+                                // document and its replacement side by side (retest 40/41).
+                                $isFile = ($log->question->type ?? null) === 'file';
+                                $oldFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->old_value) : [];
+                                $newFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->new_value) : [];
                             @endphp
-                            <td><span class="text-danger" title="{{ $oldText }}">{{ Str::limit($oldText, 48) }}</span></td>
-                            <td><span class="text-success" title="{{ $newText }}">{{ Str::limit($newText, 48) }}</span></td>
+                            <td>
+                                @forelse($oldFiles as $i => $file)
+                                    <a href="{{ route('admin.audit-logs.document', [$log, 'old', $i]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="text-danger d-block text-truncate" style="max-width: 15rem"
+                                       title="Open {{ $file['name'] }}">
+                                        <i class="bi bi-file-earmark-text me-1"></i>{{ $file['name'] }}
+                                    </a>
+                                @empty
+                                    <span class="text-danger" title="{{ $oldText }}">{{ Str::limit($oldText, 48) }}</span>
+                                @endforelse
+                            </td>
+                            <td>
+                                @forelse($newFiles as $i => $file)
+                                    <a href="{{ route('admin.audit-logs.document', [$log, 'new', $i]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="text-success d-block text-truncate" style="max-width: 15rem"
+                                       title="Open {{ $file['name'] }}">
+                                        <i class="bi bi-file-earmark-text me-1"></i>{{ $file['name'] }}
+                                    </a>
+                                @empty
+                                    <span class="text-success" title="{{ $newText }}">{{ Str::limit($newText, 48) }}</span>
+                                @endforelse
+                            </td>
                             <td>
                                 {{ $log->editor->name ?? $log->editor->email ?? 'System' }}
                                 @if($log->editor && $log->user && $log->editor->id !== $log->user->id)

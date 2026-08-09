@@ -119,6 +119,10 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Monitoring — audit trails (Compliance / Admin+)
     Route::middleware('ability:' . Ability::VIEW_ACTIVITY_LOG)->group(function () {
         Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');
+        Route::get('audit-logs/{log}/document/{side}/{index}', [UserOnboardingController::class, 'auditLogDocument'])
+            ->whereNumber('index')
+            ->whereIn('side', ['old', 'new'])
+            ->name('audit-logs.document');
         Route::get('admin-activity', [\App\Http\Controllers\AdminPanel\AdminActivityLogController::class, 'index'])->name('admin-activity.index');
     });
 

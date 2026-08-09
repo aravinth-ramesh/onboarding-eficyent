@@ -19,11 +19,14 @@ use App\Models\UserOnboardingStep;
 use App\Models\UserType;
 use App\Services\AdminEmailService;
 use App\Services\NotificationService;
+use App\Support\AnswerValueFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserOnboardingController extends Controller
 {
@@ -941,6 +944,44 @@ class UserOnboardingController extends Controller
         $logs = $query->latest('edited_at')->paginate(20)->withQueryString();
 
         return view('admin.audit-logs.index', compact('logs'));
+    }
+
+    /**
+     * Serve one document named by an audit-log row, so a reviewer can open both
+     * the document a client replaced and the one they replaced it with. Client
+     * Changes rendered each side as plain text, so neither was openable and the
+     * reviewer had no way to compare them (retest items 40/41).
+     *
+     * The path is read out of the stored audit row, never taken from the
+     * request — the index only chooses among that row's own uploads, so this
+     * cannot be pointed at an arbitrary file.
+     */
+    public function auditLogDocument(Request $request, AnswerAuditLog $log, string $side, int $index): StreamedResponse
+    {
+        abort_unless(in_array($side, ['old', 'new'], true), 404);
+
+        $onboarding = $log->answer?->onboarding;
+        abort_unless($onboarding !== null, 404);
+        abort_unless($onboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $entries = AnswerValueFormatter::fileEntries($side === 'old' ? $log->old_value : $log->new_value);
+        abort_unless(isset($entries[$index]), 404);
+
+        $path = $entries[$index]['path'];
+        abort_if($path === '', 404);
+
+        // A replaced upload keeps its bytes but loses its answer_files row, so
+        // fall back to the configured upload disk when the record is gone.
+        $record = AnswerFile::where('s3_path', $path)->first();
+        $disk = Storage::disk($record?->disk ?? config('onboarding_uploads.disk'));
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->response(
+            $path,
+            $entries[$index]['name'],
+            ['Content-Type' => $record?->mime_type ?: 'application/octet-stream'],
+            $request->boolean('download') ? 'attachment' : 'inline',
+        );
     }
 
     public function requestChange(Request $request, UserOnboarding $userOnboarding, UserAnswer $answer): RedirectResponse

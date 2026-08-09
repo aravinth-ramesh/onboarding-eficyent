@@ -150,17 +150,61 @@ class AnswerValueFormatter
         return is_array($first) && (isset($first['original_filename']) || isset($first['s3_path']) || isset($first['path']));
     }
 
-    private static function files(array $decoded): string
+    /**
+     * The individual uploads behind a file answer, so the audit trail can link
+     * to each one rather than naming it in plain text — neither the previous
+     * nor the replacement document could be opened from Client Changes
+     * (retest items 40/41).
+     *
+     * The two sides store different shapes: an old value keeps the full record
+     * (original filename plus path), a new value only the stored paths.
+     *
+     * @return array<int, array{name: string, path: string}>
+     */
+    public static function fileEntries(?string $raw): array
     {
-        $names = [];
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            return [];
+        }
+
+        return self::entries($decoded);
+    }
+
+    /**
+     * @return array<int, array{name: string, path: string}>
+     */
+    private static function entries(array $decoded): array
+    {
+        $entries = [];
+
         foreach ($decoded as $item) {
             if (is_array($item)) {
-                $names[] = $item['original_filename'] ?? basename((string) ($item['s3_path'] ?? $item['path'] ?? ''));
+                $path = (string) ($item['s3_path'] ?? $item['path'] ?? '');
+                $name = (string) ($item['original_filename'] ?? $item['filename'] ?? basename($path));
             } elseif (is_string($item)) {
-                $names[] = basename($item);
+                $path = $item;
+                $name = basename($item);
+            } else {
+                continue;
+            }
+
+            if ($name !== '') {
+                $entries[] = ['name' => $name, 'path' => $path];
             }
         }
-        $names = array_values(array_filter($names, fn ($n) => $n !== ''));
+
+        return $entries;
+    }
+
+    private static function files(array $decoded): string
+    {
+        $names = array_column(self::entries($decoded), 'name');
 
         if ($names === []) {
             return '(no file)';
