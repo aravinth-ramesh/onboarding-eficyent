@@ -9,6 +9,15 @@
 @endsection
 
 @section('content')
+{{-- Each application keeps the steps it started with, so edits here look like
+     they have not applied when an in-progress application is checked. Say so,
+     rather than changing the snapshot and moving a client's progress under
+     them mid-journey (retest item 37). --}}
+<div class="alert alert-info d-flex align-items-center gap-2 py-2 mb-4" style="font-size: 0.9rem;">
+    <i class="bi bi-info-circle"></i>
+    <span>Changes to these steps apply to applications started from now on. Applications already in progress keep the steps they began with, so their journey does not change underneath them.</span>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
