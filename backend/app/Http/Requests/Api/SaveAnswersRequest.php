@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Models\Question;
+use App\Support\OwnershipTotal;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SaveAnswersRequest extends FormRequest
@@ -64,6 +66,41 @@ class SaveAnswersRequest extends FormRequest
             ) {
                 $validator->errors()->add('answers', 'At least one answer or file must be provided.');
             }
+
+            $this->rejectOverAllocatedOwnership($validator);
         });
+    }
+
+    /**
+     * Beneficial ownership cannot add up to more than the whole company.
+     *
+     * The browser enforces this too, but ownership is a compliance figure and
+     * the client is not the authority on it — a request made outside the form
+     * must be refused just the same (retest item 29).
+     */
+    private function rejectOverAllocatedOwnership($validator): void
+    {
+        foreach ((array) $this->input('answers', []) as $index => $answer) {
+            $question = Question::find($answer['question_id'] ?? null);
+
+            if (! $question || ! in_array($question->type, ['table', 'ubo'], true)) {
+                continue;
+            }
+
+            $key = OwnershipTotal::columnKey($question);
+
+            if ($key === null) {
+                continue;
+            }
+
+            $total = OwnershipTotal::of($answer['value'] ?? null, $key);
+
+            if ($total !== null && $total > 100) {
+                $validator->errors()->add(
+                    "answers.{$index}.value",
+                    "Total ownership is {$total}%, which cannot exceed 100%.",
+                );
+            }
+        }
     }
 }

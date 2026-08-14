@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Ability;
 use App\Enums\AdminRole;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -41,8 +42,18 @@ class Admin extends Authenticatable
     /** Active staff who can be assigned companies to review (analysts + managers). */
     public function scopeReviewers($query)
     {
+        // Whoever can actually review is assignable. This was a fixed list of
+        // analyst and manager, which left compliance officers holding
+        // REVIEW/APPROVE/REJECT yet absent from every Assign To dropdown — able
+        // to do the work but never to be given it (retest item 35). Deriving
+        // the list from the ability keeps the two in step as roles change.
+        $roles = collect(AdminRole::cases())
+            ->filter(fn (AdminRole $role) => in_array(Ability::REVIEW_ONBOARDING, $role->abilities(), true))
+            ->map(fn (AdminRole $role) => $role->value)
+            ->all();
+
         return $query->where('is_active', true)
-            ->whereIn('role', [AdminRole::Analyst->value, AdminRole::Manager->value])
+            ->whereIn('role', $roles)
             ->orderBy('name');
     }
 

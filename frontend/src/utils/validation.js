@@ -303,12 +303,53 @@ export const validateByType = (type, value, rules) => {
   }
 };
 
+// Beneficial ownership cannot add up to more than the whole company. The rule
+// lived only in validateUbo, but consolidating the two overlapping UBO widgets
+// left the surviving question typed `table`, which routes straight past it — so
+// two owners could each hold 100% (retest item 29).
+const OWNERSHIP_KEYS = ['%_ownership', 'ownership_percent', 'ownership', 'percentage_owned'];
+
+const ownershipColumnKey = (columns) => {
+  if (!Array.isArray(columns)) return null;
+
+  const byKey = columns.find((c) => OWNERSHIP_KEYS.includes(String(c?.key || '').toLowerCase()));
+  if (byKey) return byKey.key;
+
+  // Fall back to the label so a renamed column still gets caught.
+  const byLabel = columns.find((c) => /ownership|owned/i.test(String(c?.label || '')));
+  return byLabel ? byLabel.key : null;
+};
+
+export const validateOwnershipTotal = (value, columns) => {
+  const key = ownershipColumnKey(columns);
+  if (!key) return null;
+
+  let rows = value;
+  if (typeof rows === 'string') {
+    try { rows = JSON.parse(rows); } catch { return null; }
+  }
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+
+  const total = rows.reduce((sum, row) => sum + (Number(row?.[key]) || 0), 0);
+  const rounded = Math.round(total * 100) / 100;
+
+  return rounded > 100
+    ? `Total ownership is ${rounded}%, which cannot exceed 100%.`
+    : null;
+};
+
 // Validate a top-level question — checks `is_required` first, then the
 // type-specific rules from `validation_rules`.
 export const validateQuestion = (question, value) => {
   if (question.is_required && isEmpty(value)) {
     return 'This field is required.';
   }
+
+  if (question.type === 'table') {
+    const overOwned = validateOwnershipTotal(value, question.options?.columns);
+    if (overOwned) return overOwned;
+  }
+
   return validateByType(question.type, value, question.validation_rules);
 };
 

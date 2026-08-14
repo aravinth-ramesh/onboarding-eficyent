@@ -114,3 +114,34 @@ describe('field validation engine', () => {
     expect(validateByType('date', '1985-04-12', rules)).toBeNull();
   });
 });
+
+describe('ownership totals (retest item 29)', () => {
+  // Consolidating the two UBO widgets left the surviving question typed
+  // `table`, which routed past validateUbo's 100% ceiling entirely.
+  const columns = [
+    { key: 'full_legal_name', label: 'Full Legal Name', type: 'text' },
+    { key: '%_ownership', label: '% Ownership', type: 'number' },
+  ];
+  const question = { type: 'table', is_required: false, options: { columns } };
+
+  it('rejects two owners each holding the whole company', () => {
+    const value = JSON.stringify([{ '%_ownership': 100 }, { '%_ownership': 100 }]);
+    expect(validateQuestion(question, value)).toBe(
+      'Total ownership is 200%, which cannot exceed 100%.'
+    );
+  });
+
+  it('allows a split totalling exactly 100', () => {
+    const value = JSON.stringify([{ '%_ownership': 60 }, { '%_ownership': 40 }]);
+    expect(validateQuestion(question, value)).toBeNull();
+  });
+
+  it('leaves a table without an ownership column alone', () => {
+    const bank = {
+      type: 'table',
+      is_required: false,
+      options: { columns: [{ key: 'bank_name', label: 'Bank Name', type: 'text' }] },
+    };
+    expect(validateQuestion(bank, JSON.stringify([{ bank_name: 'Acme' }]))).toBeNull();
+  });
+});

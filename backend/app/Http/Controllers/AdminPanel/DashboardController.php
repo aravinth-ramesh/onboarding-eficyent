@@ -27,7 +27,11 @@ class DashboardController extends Controller
         }
 
         $stats = [
-            'users' => User::count(),
+            // Clients who actually hold an application, which is what the
+            // Onboardings module lists. Counting every user row also swept in
+            // invited team members and invitation-only accounts, so the two
+            // screens reported different totals (retest item 37).
+            'users' => User::whereHas('onboarding')->count(),
             'user_types' => UserType::count(),
             'question_groups' => QuestionGroup::count(),
             'questions' => Question::count(),
