@@ -162,6 +162,14 @@
         background: #d4edda;
         color: #155724;
     }
+
+    /* Onboarding detail tables (UBO, ownership, signatories, bank accounts)
+       were squeezed until headings and values wrapped one or two characters
+       per line. Give the table a floor width and let it scroll inside its
+       own container rather than compressing the columns (retest item 32). */
+    .answer-table { min-width: 680px; }
+    .answer-table th { white-space: nowrap; }
+    .answer-table td { min-width: 110px; vertical-align: top; word-break: normal; overflow-wrap: anywhere; }
 </style>
 @endpush
 
@@ -730,7 +738,7 @@
                                         @endphp
                                         @if(!empty($tableRows) && !empty($columns))
                                             <div class="table-responsive">
-                                                <table class="table table-sm table-bordered mb-0" style="font-size: 0.82rem;">
+                                                <table class="table table-sm table-bordered mb-0 answer-table" style="font-size: 0.82rem;">
                                                     <thead class="table-light">
                                                         <tr>
                                                             <th style="width: 40px;">#</th>

@@ -75,6 +75,21 @@ const FORMAT_VALIDATORS = {
   },
   // A single field holding both an email address and a phone number, e.g.
   // "AML Officer Contact Email & Number" — require both parts (EOP-42).
+  // Postal codes differ far too much between countries to pin to one pattern
+  // (Singapore is six digits, the UK "SW1A 1AA", Ireland "D02 AF30"), so this
+  // checks shape rather than a country format: at least three characters,
+  // starting and ending alphanumeric, with spaces and hyphens between. The
+  // field previously accepted a single character (retest item 21).
+  postal_code: {
+    test: (s) => /^[\p{L}\p{N}][\p{L}\p{N}\s-]{1,10}[\p{L}\p{N}]$/u.test(s.trim()),
+    message: 'Enter a valid postal code.',
+  },
+  // ID and passport numbers legitimately carry - and / separators, which the
+  // alphanumeric format rejected (retest item 31).
+  id_document: {
+    test: (s) => /^[\p{L}\p{N}][\p{L}\p{N}\s/-]*[\p{L}\p{N}]$/u.test(s.trim()),
+    message: 'Only letters, numbers, hyphens and slashes are allowed.',
+  },
   contact: {
     test: (s) =>
       /[^\s@]+@[^\s@]+\.[^\s@]+/.test(s) && (s.replace(/[^\d]/g, '').length >= 7),
@@ -289,6 +304,12 @@ export const validateByType = (type, value, rules) => {
     return validateUbo(value);
   }
 
+  // A structured address had no validator at all, so its postal code accepted
+  // a single character — or anything else (retest item 21).
+  if (type === 'address') {
+    return validateAddress(value);
+  }
+
   if (!rules || typeof rules !== 'object') return null;
   switch (type) {
     case 'text':
@@ -301,6 +322,25 @@ export const validateByType = (type, value, rules) => {
     default:
       return null;
   }
+};
+
+/**
+ * Check the parts of a structured address that have a checkable shape. Only the
+ * postal code qualifies — street, city and state are free text anywhere in the
+ * world. Blank stays valid here; `is_required` decides whether blank is allowed.
+ */
+export const validateAddress = (value) => {
+  let addr = value;
+  if (typeof addr === 'string') {
+    try { addr = JSON.parse(addr); } catch { return null; }
+  }
+  if (!addr || typeof addr !== 'object') return null;
+
+  const postal = addr.postal == null ? '' : String(addr.postal).trim();
+
+  return postal !== '' && !FORMAT_VALIDATORS.postal_code.test(postal)
+    ? FORMAT_VALIDATORS.postal_code.message
+    : null;
 };
 
 // Beneficial ownership cannot add up to more than the whole company. The rule

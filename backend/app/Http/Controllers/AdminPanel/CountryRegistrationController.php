@@ -22,8 +22,16 @@ class CountryRegistrationController extends Controller
             ->paginate(30)
             ->withQueryString();
 
+        // Offer only countries that actually have rules, so filtering always
+        // returns something. On a database with none configured that left the
+        // dropdown empty and looking broken, so fall back to the full list
+        // rather than showing nothing at all (retest item 7 / EOP-62).
         $usedCodes = CountryRegistration::query()
             ->select('country_code')->distinct()->orderBy('country_code')->pluck('country_code');
+
+        if ($usedCodes->isEmpty()) {
+            $usedCodes = collect(array_keys($this->countryNames()));
+        }
 
         return view('admin.country-registrations.index', [
             'registrations' => $registrations,

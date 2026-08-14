@@ -119,7 +119,7 @@ class UboTableColumns
         return [
             ['key' => 'id_type', 'label' => 'ID Type', 'type' => 'select', 'required' => false, 'options' => self::ID_TYPES],
             ['key' => 'id_number', 'label' => 'ID / Passport Number', 'type' => 'text', 'required' => false,
-                'validation' => ['min_length' => 4, 'max_length' => 30]],
+                'validation' => ['format' => 'id_document', 'min_length' => 4, 'max_length' => 30]],
             ['key' => 'is_pep', 'label' => 'Politically Exposed Person (PEP)?', 'type' => 'select', 'required' => false,
                 'options' => [['value' => 'no', 'label' => 'No'], ['value' => 'yes', 'label' => 'Yes']]],
         ];

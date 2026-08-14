@@ -49,10 +49,18 @@ class FieldValidationRules
         'title' => ['format' => 'alphanumeric', 'requires_letter' => true],
         'email' => ['format' => 'email'],
         'phone' => ['format' => 'phone'],
-        // A one-character ID was accepted before min_length (EOP-39).
-        'id_number' => ['min_length' => 4, 'max_length' => 30],
-        'passport_number' => ['min_length' => 4, 'max_length' => 30],
-        'license_number' => ['min_length' => 3, 'max_length' => 50],
+        // A one-character ID was accepted before min_length (EOP-39). The
+        // id_document format allows the - and / that real document numbers
+        // carry, which the alphanumeric format rejected (retest item 31).
+        'id_number' => ['format' => 'id_document', 'min_length' => 4, 'max_length' => 30],
+        'passport_number' => ['format' => 'id_document', 'min_length' => 4, 'max_length' => 30],
+        'license_number' => ['format' => 'id_document', 'min_length' => 3, 'max_length' => 50],
+
+        // A single character was accepted as a postal code (retest item 21).
+        'postal_code' => ['format' => 'postal_code', 'min_length' => 3, 'max_length' => 12],
+        'postal' => ['format' => 'postal_code', 'min_length' => 3, 'max_length' => 12],
+        'zip' => ['format' => 'postal_code', 'min_length' => 3, 'max_length' => 12],
+        'zip_code' => ['format' => 'postal_code', 'min_length' => 3, 'max_length' => 12],
 
         // Primary bank account. The seeded column keys carry the legacy
         // punctuation, which is why none of them matched before and every bank

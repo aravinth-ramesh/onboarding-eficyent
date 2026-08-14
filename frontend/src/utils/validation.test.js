@@ -145,3 +145,32 @@ describe('ownership totals (retest item 29)', () => {
     expect(validateQuestion(bank, JSON.stringify([{ bank_name: 'Acme' }]))).toBeNull();
   });
 });
+
+describe('postal codes and ID documents (retest items 21, 31)', () => {
+  const address = (postal) => JSON.stringify({ line1: '1 High St', city: 'London', postal });
+
+  it('rejects a single-character postal code', () => {
+    expect(validateByType('address', address('1'))).toBe('Enter a valid postal code.');
+  });
+
+  it('accepts postal codes from different countries', () => {
+    ['560001', 'SW1A 1AA', 'D02 AF30', '12345-6789'].forEach((code) => {
+      expect(validateByType('address', address(code))).toBeNull();
+    });
+  });
+
+  it('leaves a blank postal code to the required flag', () => {
+    expect(validateByType('address', address(''))).toBeNull();
+  });
+
+  it('accepts ID numbers containing hyphens and slashes', () => {
+    const rules = { format: 'id_document', min_length: 4, max_length: 30 };
+    expect(validateByType('text', 'AB-1234/X', rules)).toBeNull();
+    expect(validateByType('text', 'S1234567D', rules)).toBeNull();
+  });
+
+  it('still rejects an ID number of punctuation alone', () => {
+    const rules = { format: 'id_document', min_length: 4, max_length: 30 };
+    expect(validateByType('text', '///-', rules)).not.toBeNull();
+  });
+});

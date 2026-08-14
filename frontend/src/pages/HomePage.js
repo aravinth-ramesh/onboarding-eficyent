@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchOnboardingStatus, goToPreviousStep, reopenOnboarding } from '../store/slices/onboardingSlice';
+import { clearError, fetchOnboardingStatus, goToPreviousStep, reopenOnboarding } from '../store/slices/onboardingSlice';
 import AppLayout from '../components/layout/AppLayout';
 import StepIndicator from '../components/common/StepIndicator';
 import StepRenderer from '../components/onboarding/StepRenderer';
@@ -41,6 +41,14 @@ function HomePage() {
       dispatch(fetchOnboardingStatus());
     }
   }, [dispatch, profileCompleted]);
+
+  // Drop any error the moment the visible step changes: it belonged to the step
+  // the user has just left, and showing it against the new one is misleading
+  // (retest item 27). Keyed on the step id so it covers every route in --
+  // forward, back, and jumping in from Final Review.
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch, currentStep?.id]);
 
   const handleBack = () => {
     if (currentStep) {

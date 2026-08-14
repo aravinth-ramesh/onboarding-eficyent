@@ -200,6 +200,12 @@ const onboardingSlice = createSlice({
     error: null,
   },
   reducers: {
+    // An error raised on one step stayed on screen after the user moved to the
+    // next one, because `error` is a single slice-wide field that only some
+    // successes cleared (retest item 27).
+    clearError: (state) => {
+      state.error = null;
+    },
     setAnswer: (state, action) => {
       const { questionId, value } = action.payload;
       state.answers[questionId] = value;
@@ -392,5 +398,5 @@ const onboardingSlice = createSlice({
   },
 });
 
-export const { setAnswer, setKycDocStatus } = onboardingSlice.actions;
+export const { clearError, setAnswer, setKycDocStatus } = onboardingSlice.actions;
 export default onboardingSlice.reducer;
