@@ -22,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // Ahead of the sanctum guard, which stamps last_used_at while
+        // authenticating and would hide an idle session (retest item 38).
+        $middleware->prependToGroup('api', \App\Http\Middleware\ExpireIdleSessions::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\ApiLogger::class);
         $middleware->alias(['ability' => \App\Http\Middleware\RequireAbility::class]);
     })

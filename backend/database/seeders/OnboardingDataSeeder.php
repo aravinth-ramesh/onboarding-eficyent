@@ -50,6 +50,10 @@ class OnboardingDataSeeder extends Seeder
         \App\Support\CountryListQuestions::apply();
         \App\Support\IndustryClassificationOptions::apply();
         \App\Support\FieldValidationRules::apply();
+
+        // Give the AML/CFT control-measure fields room for a real answer
+        // (retest item 30).
+        \App\Support\ControlMeasureFields::apply();
         \App\Support\DuplicateRegistrationQuestions::apply();
     }
 

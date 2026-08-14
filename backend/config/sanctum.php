@@ -51,6 +51,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Idle Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a token may sit unused before it is revoked. Unlike `expiration`
+    | above, which caps a token's total life from issuance, this measures time
+    | since the last request, so an active client is never signed out mid-form.
+    | Set to 0 to disable. Enforced by the ExpireIdleSessions middleware.
+    |
+    */
+
+    'idle_timeout_minutes' => env('SANCTUM_IDLE_TIMEOUT_MINUTES', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |
