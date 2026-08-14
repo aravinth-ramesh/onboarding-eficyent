@@ -54,6 +54,10 @@ class OnboardingDataSeeder extends Seeder
         // Give the AML/CFT control-measure fields room for a real answer
         // (retest item 30).
         \App\Support\ControlMeasureFields::apply();
+
+        // Phone columns inside tables get the dial-code dropdown too
+        // (retest items 28 and 31).
+        \App\Support\PhoneColumnTypes::apply();
         \App\Support\DuplicateRegistrationQuestions::apply();
     }
 

@@ -3,6 +3,8 @@ import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 import { dateBound } from '../../utils/dateBounds';
 import { partitionBySize, oversizeMessage } from '../../utils/files';
 import SearchableSelect from '../common/SearchableSelect';
+import { PHONE_COUNTRY_CODES } from '../../config/phoneCountryCodes';
+import { parsePhone, formatPhone } from '../../utils/phoneValue';
 
 /** Cap a cell at its limit counting the trimmed value (EOP-11, EOP-12). */
 const capCellToLimit = (next, max) => {
@@ -293,6 +295,41 @@ function TableField({ question, value, onChange, cellErrors }) {
                 <span>{opt.label}</span>
               </label>
             ))}
+          </div>
+        );
+      }
+
+      // A phone cell gets the same dial-code dropdown as a standalone phone
+      // question. Without it, signatories and beneficial owners had to type
+      // the country code into the number box by hand, which then failed
+      // country-aware validation (retest items 28 and 31).
+      case 'phone': {
+        const { dial, number } = parsePhone(cellValue);
+        const emitPhone = (nextDial, nextNumber) =>
+          handleCellChange(rowIndex, column.key, formatPhone(nextDial, nextNumber));
+
+        return (
+          <div className="phone-field">
+            <select
+              className="form-select form-select-sm phone-field-dial"
+              value={dial}
+              onChange={(e) => emitPhone(e.target.value, number)}
+              aria-label={`${column.label || 'Phone'} country dial code`}
+            >
+              {PHONE_COUNTRY_CODES.map((c) => (
+                <option key={c.iso} value={c.dial}>
+                  {c.name} ({c.dial})
+                </option>
+              ))}
+            </select>
+            <input
+              type="tel"
+              inputMode="tel"
+              className="form-control form-control-sm phone-field-number"
+              placeholder={column.placeholder || 'Phone number'}
+              value={number}
+              onChange={(e) => emitPhone(dial, e.target.value)}
+            />
           </div>
         );
       }
