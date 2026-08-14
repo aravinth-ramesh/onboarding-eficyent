@@ -48,6 +48,13 @@
                                 $isFile = ($log->question->type ?? null) === 'file';
                                 $oldFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->old_value) : [];
                                 $newFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->new_value) : [];
+                                // Table answers name only the cells that moved, so one changed
+                                // phone number does not print every column of every row twice.
+                                $changed = \App\Support\AnswerValueFormatter::changedFields($log->old_value, $log->new_value, $log->question);
+                                if ($changed !== null && $changed !== []) {
+                                    $oldText = collect($changed)->map(fn ($c) => $c['label'].': '.$c['old'])->implode(' | ');
+                                    $newText = collect($changed)->map(fn ($c) => $c['label'].': '.$c['new'])->implode(' | ');
+                                }
                             @endphp
                             <td>
                                 @forelse($oldFiles as $i => $file)

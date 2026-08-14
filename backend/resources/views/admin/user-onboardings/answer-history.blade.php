@@ -191,16 +191,56 @@
                             <span>&middot;</span>
                             <span>{{ $log->edited_at?->format('h:i A') }}</span>
                         </div>
-                        <div class="timeline-diff">
-                            <div class="timeline-diff-row diff-old">
-                                <span class="diff-label">&minus;</span>
-                                <span class="diff-text">{{ \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question) }}</span>
+                        @php
+                            // Table answers list only the cells that actually moved — printing
+                            // both versions in full hid the change among unchanged columns.
+                            $changed = \App\Support\AnswerValueFormatter::changedFields($log->old_value, $log->new_value, $log->question);
+                            // Uploads are linked so the previous and replacement file can each be opened.
+                            $isFile = ($log->question->type ?? null) === 'file';
+                            $oldFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->old_value) : [];
+                            $newFiles = $isFile ? \App\Support\AnswerValueFormatter::fileEntries($log->new_value) : [];
+                        @endphp
+                        @if($changed !== null && $changed !== [])
+                            <div class="timeline-diff">
+                                @foreach($changed as $change)
+                                    <div class="timeline-diff-row diff-old">
+                                        <span class="diff-label">&minus;</span>
+                                        <span class="diff-text"><strong>{{ $change['label'] }}:</strong> {{ $change['old'] }}</span>
+                                    </div>
+                                    <div class="timeline-diff-row diff-new">
+                                        <span class="diff-label">+</span>
+                                        <span class="diff-text"><strong>{{ $change['label'] }}:</strong> {{ $change['new'] }}</span>
+                                    </div>
+                                @endforeach
                             </div>
-                            <div class="timeline-diff-row diff-new">
-                                <span class="diff-label">+</span>
-                                <span class="diff-text">{{ \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question) }}</span>
+                        @else
+                            <div class="timeline-diff">
+                                <div class="timeline-diff-row diff-old">
+                                    <span class="diff-label">&minus;</span>
+                                    <span class="diff-text">
+                                        @forelse($oldFiles as $i => $file)
+                                            <a href="{{ route('admin.audit-logs.document', [$log, 'old', $i]) }}" target="_blank" rel="noopener">
+                                                <i class="bi bi-file-earmark-text me-1"></i>{{ $file['name'] }}
+                                            </a>@if(! $loop->last), @endif
+                                        @empty
+                                            {{ \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question) }}
+                                        @endforelse
+                                    </span>
+                                </div>
+                                <div class="timeline-diff-row diff-new">
+                                    <span class="diff-label">+</span>
+                                    <span class="diff-text">
+                                        @forelse($newFiles as $i => $file)
+                                            <a href="{{ route('admin.audit-logs.document', [$log, 'new', $i]) }}" target="_blank" rel="noopener">
+                                                <i class="bi bi-file-earmark-text me-1"></i>{{ $file['name'] }}
+                                            </a>@if(! $loop->last), @endif
+                                        @empty
+                                            {{ \App\Support\AnswerValueFormatter::readable($log->new_value, $log->question) }}
+                                        @endforelse
+                                    </span>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                         @if($log->edit_reason)
                             <div class="timeline-reason">
                                 <i class="bi bi-chat-left-text"></i> {{ $log->edit_reason }}

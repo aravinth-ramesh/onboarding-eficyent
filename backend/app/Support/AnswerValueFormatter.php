@@ -151,6 +151,85 @@ class AnswerValueFormatter
     }
 
     /**
+     * The individual cells that differ between two versions of a table answer.
+     *
+     * Showing both versions in full made the history unreadable: changing one
+     * phone number printed every column of every row twice and left the
+     * reviewer to spot the difference themselves. Returns null when the answer
+     * is not table-shaped, in which case the caller falls back to rendering the
+     * whole value.
+     *
+     * @return array<int, array{label: string, old: string, new: string}>|null
+     */
+    public static function changedFields(?string $old, ?string $new, ?Question $question): ?array
+    {
+        if (! in_array($question?->type, ['table', 'ubo'], true)) {
+            return null;
+        }
+
+        $oldRows = self::rows($old);
+        $newRows = self::rows($new);
+
+        if ($oldRows === null || $newRows === null) {
+            return null;
+        }
+
+        $total = max(count($oldRows), count($newRows));
+
+        if ($total === 0) {
+            return [];
+        }
+
+        $columns = collect($question?->options['columns'] ?? []);
+        // Only number the rows when there is more than one to tell apart.
+        $multiRow = $total > 1;
+        $changes = [];
+
+        for ($i = 0; $i < $total; $i++) {
+            $oldRow = $oldRows[$i] ?? [];
+            $newRow = $newRows[$i] ?? [];
+
+            foreach (array_keys($oldRow + $newRow) as $key) {
+                $column = $columns->firstWhere('key', $key);
+                $before = self::cell($oldRow[$key] ?? null, $column);
+                $after = self::cell($newRow[$key] ?? null, $column);
+
+                if ($before === $after) {
+                    continue;
+                }
+
+                $label = $column['label'] ?? Str::headline((string) $key);
+
+                $changes[] = [
+                    'label' => $multiRow ? '#'.($i + 1).' '.$label : $label,
+                    'old' => $before === '' ? '—' : $before,
+                    'new' => $after === '' ? '—' : $after,
+                ];
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|null  null when the value is not JSON rows
+     */
+    private static function rows(?string $raw): ?array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            return null;
+        }
+
+        return array_values(array_filter($decoded, 'is_array'));
+    }
+
+    /**
      * The individual uploads behind a file answer, so the audit trail can link
      * to each one rather than naming it in plain text — neither the previous
      * nor the replacement document could be opened from Client Changes
