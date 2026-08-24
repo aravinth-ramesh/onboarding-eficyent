@@ -18,7 +18,9 @@ class AutoAssignmentTest extends TestCase
     use RefreshDatabase;
 
     private Admin $alice;
+
     private Admin $bob;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -40,7 +42,7 @@ class AutoAssignmentTest extends TestCase
 
     private function submit(string $email): UserOnboarding
     {
-        $user = User::create(['email' => $email, 'name' => 'Client ' . $email, 'position' => 'CFO']);
+        $user = User::create(['email' => $email, 'name' => 'Client '.$email, 'position' => 'CFO']);
         $onboarding = $this->service->initializeForUser($user);
         foreach ($onboarding->steps as $step) {
             $this->service->completeStep($onboarding->fresh(), $step);

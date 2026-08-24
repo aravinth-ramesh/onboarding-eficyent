@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class QuestionGroup extends Model
 {
-    use SoftDeletes, HasAutoOrder;
+    use HasAutoOrder, SoftDeletes;
 
     protected $fillable = [
         'name',

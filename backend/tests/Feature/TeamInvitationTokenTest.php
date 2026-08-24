@@ -22,6 +22,7 @@ class TeamInvitationTokenTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private $onboarding;
 
     protected function setUp(): void

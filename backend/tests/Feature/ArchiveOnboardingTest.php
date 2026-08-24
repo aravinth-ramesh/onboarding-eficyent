@@ -14,7 +14,9 @@ class ArchiveOnboardingTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private UserOnboarding $approved;
+
     private UserOnboarding $awaiting;
 
     protected function setUp(): void

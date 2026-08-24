@@ -40,7 +40,7 @@ class EditFromReviewTest extends TestCase
 
         // Four steps, all completed, sitting on the final Review step.
         foreach ([['One', 'questions'], ['Two', 'questions'], ['Three', 'questions'], ['Review', 'review']] as $i => [$name, $key]) {
-            $master = OnboardingStep::create(['name' => $name, 'slug' => strtolower($name) . '-s', 'component_key' => $key, 'order' => $i + 1, 'is_active' => true]);
+            $master = OnboardingStep::create(['name' => $name, 'slug' => strtolower($name).'-s', 'component_key' => $key, 'order' => $i + 1, 'is_active' => true]);
             $this->steps[] = UserOnboardingStep::create([
                 'user_onboarding_id' => $this->onboarding->id,
                 'onboarding_step_id' => $master->id,

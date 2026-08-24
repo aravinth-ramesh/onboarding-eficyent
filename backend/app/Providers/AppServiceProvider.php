@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(DocumentIntelligenceContract::class, function ($app) {
             return match (config('document_validation.driver')) {
-                'fake' => new FakeDocumentIntelligence(),
+                'fake' => new FakeDocumentIntelligence,
                 'claude' => new ClaudeDocumentIntelligence(
                     new AnthropicClient(apiKey: config('document_validation.anthropic_api_key')),
                 ),

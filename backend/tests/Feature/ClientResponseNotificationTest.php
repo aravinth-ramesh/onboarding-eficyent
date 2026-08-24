@@ -23,9 +23,13 @@ class ClientResponseNotificationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $requester;
+
     private Admin $other;
+
     private $onboarding;
+
     private UserAnswer $answer;
 
     protected function setUp(): void

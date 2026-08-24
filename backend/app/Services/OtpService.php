@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Mail;
 class OtpService
 {
     private const OTP_LENGTH = 6;
+
     private const OTP_EXPIRY_MINUTES = 10;
+
     private const MAX_ATTEMPTS = 5;
+
     private const RATE_LIMIT_MINUTES = 1; // Minimum time between OTP requests
 
     public function generate(string $email): OtpCode
@@ -52,7 +55,7 @@ class OtpService
             ->latest()
             ->first();
 
-        if (!$otp) {
+        if (! $otp) {
             return false;
         }
 
@@ -62,7 +65,7 @@ class OtpService
 
         $otp->increment('attempts');
 
-        if (!hash_equals($otp->code, hash('sha256', $code))) {
+        if (! hash_equals($otp->code, hash('sha256', $code))) {
             return false;
         }
 
@@ -77,7 +80,7 @@ class OtpService
             ->latest()
             ->first();
 
-        if (!$lastOtp) {
+        if (! $lastOtp) {
             return true;
         }
 

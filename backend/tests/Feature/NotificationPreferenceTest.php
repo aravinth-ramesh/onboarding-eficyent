@@ -19,7 +19,9 @@ class NotificationPreferenceTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $admin;
+
     private OnboardingService $service;
 
     protected function setUp(): void

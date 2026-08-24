@@ -96,7 +96,7 @@ class AdminEmailService
      */
     public function actionUrlFor(?AdminNotification $notification): string
     {
-        $base = rtrim(config('app.frontend_url'), '/') . '/home';
+        $base = rtrim(config('app.frontend_url'), '/').'/home';
 
         return $notification ? "{$base}?notification={$notification->id}" : $base;
     }

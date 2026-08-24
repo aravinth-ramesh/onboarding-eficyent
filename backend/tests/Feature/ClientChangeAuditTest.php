@@ -25,6 +25,7 @@ class ClientChangeAuditTest extends TestCase
     use RefreshDatabase;
 
     private User $client;
+
     private Question $question;
 
     protected function setUp(): void

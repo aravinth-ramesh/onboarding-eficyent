@@ -20,6 +20,7 @@ class OnboardingQuestionsEndpointTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private UserType $type;
 
     protected function setUp(): void

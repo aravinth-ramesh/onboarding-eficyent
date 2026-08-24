@@ -17,7 +17,9 @@ class OnboardingDecisionTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $admin;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -97,7 +99,7 @@ class OnboardingDecisionTest extends TestCase
         $submitted = $this->submittedOnboarding();
         $this->service->approve($submitted, $this->admin);
         $this->actingAs($this->admin, 'admin')
-            ->post(route('admin.user-onboardings.reject', $submitted->fresh(), ), ['comment' => 'changed my mind'])
+            ->post(route('admin.user-onboardings.reject', $submitted->fresh()), ['comment' => 'changed my mind'])
             ->assertSessionHas('error');
         $this->assertSame('approved', $submitted->fresh()->status);
     }

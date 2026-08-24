@@ -139,8 +139,8 @@ class TeamController extends Controller
 
         if (strtolower($collaborator->user->email) !== strtolower($user->email)) {
             return response()->json([
-                'message' => 'This invitation was sent to ' . $collaborator->user->email
-                    . '. Sign in with that address to join.',
+                'message' => 'This invitation was sent to '.$collaborator->user->email
+                    .'. Sign in with that address to join.',
             ], 403);
         }
 

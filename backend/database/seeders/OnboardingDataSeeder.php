@@ -15,9 +15,13 @@ use Illuminate\Support\Str;
 class OnboardingDataSeeder extends Seeder
 {
     private UserType $fi;
+
     private UserType $corp;
+
     private UserTypeSubcategory $bank;
+
     private UserTypeSubcategory $nbfc;
+
     private UserTypeSubcategory $insurance;
 
     private const TYPE_MAP = [
@@ -178,7 +182,7 @@ class OnboardingDataSeeder extends Seeder
 
     /**
      * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, QuestionGroup>  legacyId => QuestionGroup
+     * @return array<int, QuestionGroup> legacyId => QuestionGroup
      */
     private function seedGroupsFromRows(array $rows): array
     {
@@ -212,7 +216,7 @@ class OnboardingDataSeeder extends Seeder
     /**
      * @param  array<int, array<string, mixed>>  $rows
      * @param  array<int, QuestionGroup>  $groupMap
-     * @return array<int, Question>  legacyId => Question
+     * @return array<int, Question> legacyId => Question
      */
     private function seedQuestionsFromRows(array $rows, array $groupMap): array
     {

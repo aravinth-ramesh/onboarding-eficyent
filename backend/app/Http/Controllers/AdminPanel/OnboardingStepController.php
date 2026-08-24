@@ -37,7 +37,7 @@ class OnboardingStepController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        if (!empty($validated['config'])) {
+        if (! empty($validated['config'])) {
             $validated['config'] = json_decode($validated['config'], true);
         } else {
             $validated['config'] = null;
@@ -69,7 +69,7 @@ class OnboardingStepController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
-        if (!empty($validated['config'])) {
+        if (! empty($validated['config'])) {
             $validated['config'] = json_decode($validated['config'], true);
         } else {
             $validated['config'] = null;

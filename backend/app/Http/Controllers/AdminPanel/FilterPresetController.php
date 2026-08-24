@@ -72,7 +72,7 @@ class FilterPresetController extends Controller
             ])->all(),
         ];
 
-        $filename = "filter-presets-{$context}-" . now()->format('Y-m-d') . '.json';
+        $filename = "filter-presets-{$context}-".now()->format('Y-m-d').'.json';
 
         return response()->json($payload, 200, [
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
@@ -129,6 +129,7 @@ class FilterPresetController extends Controller
             // sanitising is not something we can meaningfully store.
             if ($name === '' || mb_strlen($name) > 60 || empty($filters)) {
                 $invalid++;
+
                 continue;
             }
 
@@ -139,6 +140,7 @@ class FilterPresetController extends Controller
 
             if ($exists && ! $overwrite) {
                 $skipped++;
+
                 continue;
             }
 
@@ -157,7 +159,7 @@ class FilterPresetController extends Controller
             $parts[] = "{$invalid} skipped (invalid).";
         }
         if ($truncated) {
-            $parts[] = 'Only the first ' . self::IMPORT_LIMIT . ' were read.';
+            $parts[] = 'Only the first '.self::IMPORT_LIMIT.' were read.';
         }
 
         return back()->with($imported > 0 ? 'success' : 'error', implode(' ', $parts));

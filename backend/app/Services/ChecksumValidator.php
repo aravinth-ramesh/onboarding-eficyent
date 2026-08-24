@@ -11,7 +11,7 @@ class ChecksumValidator
 {
     public function isValid(?string $algorithm, string $value): bool
     {
-        if (!$algorithm) {
+        if (! $algorithm) {
             return true;
         }
 

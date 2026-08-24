@@ -19,6 +19,7 @@ class ApplicationPdfTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -87,7 +88,7 @@ class ApplicationPdfTest extends TestCase
             $response->headers->get('content-disposition'),
         );
 
-        $text = (new PdfParser())->parseContent($response->getContent())->getText();
+        $text = (new PdfParser)->parseContent($response->getContent())->getText();
 
         $this->assertStringContainsString($onboarding->reference, $text);
         $this->assertStringContainsString('Test Client', $text);
@@ -114,7 +115,7 @@ class ApplicationPdfTest extends TestCase
             ->assertOk();
 
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
-        $text = (new PdfParser())->parseContent($response->getContent())->getText();
+        $text = (new PdfParser)->parseContent($response->getContent())->getText();
         $this->assertStringContainsString('Acme Holdings Ltd', $text);
     }
 
@@ -141,7 +142,7 @@ class ApplicationPdfTest extends TestCase
         Sanctum::actingAs($this->user);
         $response = $this->get('/api/onboarding/download-pdf')->assertOk();
 
-        $text = (new PdfParser())->parseContent($response->getContent())->getText();
+        $text = (new PdfParser)->parseContent($response->getContent())->getText();
         $this->assertStringContainsString('Approved', $text);
         $this->assertStringContainsString('All checks passed.', $text);
     }

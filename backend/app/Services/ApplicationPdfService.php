@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\UserOnboarding;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Collection;
 
 /**
  * Renders a submitted application as a PDF: reference and status header,
@@ -145,7 +144,7 @@ class ApplicationPdfService
                 ! empty($owner['is_pep']) ? 'PEP' : null,
             ])->filter()->implode(' — ');
 
-            return ($i + 1) . '. ' . ($parts !== '' ? $parts : 'Unnamed owner');
+            return ($i + 1).'. '.($parts !== '' ? $parts : 'Unnamed owner');
         })->values()->all();
     }
 
@@ -171,7 +170,7 @@ class ApplicationPdfService
                 ->filter(fn ($line) => ! str_ends_with($line, ': '))
                 ->implode('; ');
 
-            return ($i + 1) . '. ' . $cells;
+            return ($i + 1).'. '.$cells;
         })->values()->all();
     }
 }

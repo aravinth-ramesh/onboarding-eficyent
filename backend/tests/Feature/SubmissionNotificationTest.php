@@ -16,6 +16,7 @@ class SubmissionNotificationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -94,7 +95,7 @@ class SubmissionNotificationTest extends TestCase
         $onboarding = $this->submitOnboarding();
 
         $this->assertSame(
-            'ONB-' . $onboarding->started_at->format('Y') . '-' . str_pad((string) $onboarding->id, 4, '0', STR_PAD_LEFT),
+            'ONB-'.$onboarding->started_at->format('Y').'-'.str_pad((string) $onboarding->id, 4, '0', STR_PAD_LEFT),
             $onboarding->reference,
         );
     }

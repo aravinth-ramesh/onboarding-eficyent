@@ -22,8 +22,11 @@ class UboWidgetConsolidationTest extends TestCase
     use RefreshDatabase;
 
     private QuestionGroup $group;
+
     private Question $table;
+
     private Question $ubo;
+
     private UserOnboarding $onboarding;
 
     protected function setUp(): void

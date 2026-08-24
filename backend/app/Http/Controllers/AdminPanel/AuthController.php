@@ -28,7 +28,7 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
-        if (!Auth::guard('admin')->attempt($credentials, $remember)) {
+        if (! Auth::guard('admin')->attempt($credentials, $remember)) {
             return back()
                 ->with('error', 'Invalid email or password.')
                 ->withInput($request->only('email'));
@@ -36,8 +36,9 @@ class AuthController extends Controller
 
         $admin = Auth::guard('admin')->user();
 
-        if (!$admin->is_active) {
+        if (! $admin->is_active) {
             Auth::guard('admin')->logout();
+
             return back()
                 ->with('error', 'Your account has been deactivated.')
                 ->withInput($request->only('email'));

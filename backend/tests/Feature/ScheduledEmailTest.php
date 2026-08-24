@@ -17,7 +17,9 @@ class ScheduledEmailTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private UserOnboarding $a;
+
     private UserOnboarding $b;
 
     protected function setUp(): void
@@ -192,7 +194,7 @@ class ScheduledEmailTest extends TestCase
 
         $html = $response->getContent();
         // Real branded mailable, placeholders filled from the first recipient.
-        $this->assertStringContainsString('Hello Alice, about ' . $this->a->reference, $html);
+        $this->assertStringContainsString('Hello Alice, about '.$this->a->reference, $html);
         $this->assertStringContainsString('Eficyent', $html);
         $this->assertStringNotContainsString('{{name}}', $html);
         $this->assertStringNotContainsString('{{reference}}', $html);

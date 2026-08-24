@@ -20,7 +20,7 @@ class CountryListQuestionsTest extends TestCase
 
     private function textQuestion(string $label): Question
     {
-        $group = QuestionGroup::create(['name' => 'Financial', 'slug' => 'financial-' . uniqid(), 'order' => 1, 'is_active' => true]);
+        $group = QuestionGroup::create(['name' => 'Financial', 'slug' => 'financial-'.uniqid(), 'order' => 1, 'is_active' => true]);
 
         return Question::create([
             'question_group_id' => $group->id, 'label' => $label,

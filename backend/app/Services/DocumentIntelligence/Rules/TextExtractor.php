@@ -105,7 +105,7 @@ class TextExtractor
         }
 
         try {
-            return (new PdfParser())->parseFile($path)->getText();
+            return (new PdfParser)->parseFile($path)->getText();
         } catch (\Throwable $e) {
             Log::info('pdfparser could not extract text', ['error' => $e->getMessage()]);
 
@@ -115,7 +115,7 @@ class TextExtractor
 
     private function fromDocx(string $path): ?string
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($path) !== true) {
             return null;
         }

@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Mail\ClientRespondedMail;
 use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\AdminQuestion;
 use App\Models\AdminQuestionAnswer;
 use App\Models\AdminQuestionAnswerFile;
-use App\Mail\ClientRespondedMail;
 use App\Models\User;
 use App\Models\UserAnswer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -52,12 +52,12 @@ class NotificationService
         if (! empty($files)) {
             $names = collect($files)->map(fn ($f) => is_string($f) ? $f : ($f->getClientOriginalName() ?? 'file'));
 
-            return $names->count() . ' file(s) uploaded: ' . $names->implode(', ');
+            return $names->count().' file(s) uploaded: '.$names->implode(', ');
         }
 
         $text = is_array($value) ? implode(', ', $value) : (string) $value;
 
-        return mb_strlen($text) > 300 ? mb_substr($text, 0, 300) . '…' : ($text !== '' ? $text : '—');
+        return mb_strlen($text) > 300 ? mb_substr($text, 0, 300).'…' : ($text !== '' ? $text : '—');
     }
 
     public function createChangeRequest(Admin $admin, UserAnswer $answer, string $message): AdminNotification
@@ -118,7 +118,7 @@ class NotificationService
 
     public function markAsRead(AdminNotification $notification): void
     {
-        if (!$notification->read_at) {
+        if (! $notification->read_at) {
             $notification->update(['read_at' => now()]);
         }
     }

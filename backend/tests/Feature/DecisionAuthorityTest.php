@@ -38,7 +38,7 @@ class DecisionAuthorityTest extends TestCase
 
     private function onboarding(?Admin $assignee = null, array $attrs = []): UserOnboarding
     {
-        $user = User::create(['email' => uniqid() . '@t.com', 'name' => 'Co', 'position' => 'CFO']);
+        $user = User::create(['email' => uniqid().'@t.com', 'name' => 'Co', 'position' => 'CFO']);
 
         return UserOnboarding::create(array_merge([
             'user_id' => $user->id, 'user_type_id' => $this->type->id,

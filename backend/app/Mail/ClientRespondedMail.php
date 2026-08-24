@@ -49,7 +49,7 @@ class ClientRespondedMail extends Mailable implements ShouldQueue
                 'summary' => $this->summary,
                 'reviewUrl' => $onboarding
                     ? route('admin.user-onboardings.show', $onboarding)
-                    : rtrim(config('app.url'), '/') . '/admin/user-onboardings',
+                    : rtrim(config('app.url'), '/').'/admin/user-onboardings',
             ],
         );
     }

@@ -7,7 +7,6 @@ use App\Models\AnswerFile;
 use App\Models\Question;
 use App\Models\QuestionGroup;
 use App\Models\User;
-use App\Models\UserAnswer;
 use App\Services\OnboardingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +19,7 @@ class DocumentReviewTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $admin;
 
     protected function setUp(): void
@@ -141,7 +141,10 @@ class DocumentReviewTest extends TestCase
             'validation_rules' => ['expected_document' => 'board_resolution'],
         ]);
 
-        $pdf = (new class { use \Tests\Support\MakesPdfs { makePdf as public; } })->makePdf([
+        $pdf = (new class
+        {
+            use \Tests\Support\MakesPdfs { makePdf as public; }
+        })->makePdf([
             'BOARD RESOLUTION of ACME HOLDINGS LTD',
             'At a duly convened meeting of the Board of Directors it was resolved that',
             'the company shall open a corporate account with the provider.',

@@ -14,7 +14,7 @@ class AdminNotificationEmailTest extends TestCase
     {
         config(['app.frontend_url' => 'https://portal.example.com/']);
 
-        $notification = new AdminNotification();
+        $notification = new AdminNotification;
         $notification->id = 42;
 
         $url = app(AdminEmailService::class)->actionUrlFor($notification);

@@ -20,7 +20,7 @@ class AuthController extends Controller
     {
         $email = $request->validated('email');
 
-        if (!$this->otpService->canRequestNewOtp($email)) {
+        if (! $this->otpService->canRequestNewOtp($email)) {
             return response()->json([
                 'message' => 'Please wait before requesting a new code.',
             ], 429);
@@ -41,18 +41,27 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
 
-        if (!$this->otpService->verify($validated['email'], $validated['code'])) {
+        if (! $this->otpService->verify($validated['email'], $validated['code'])) {
             return response()->json([
                 'message' => 'Invalid or expired verification code.',
             ], 422);
         }
 
-        $user = User::firstOrCreate(
-            ['email' => $validated['email']],
-            ['email_verified_at' => now()],
-        );
+        // A soft-deleted account still owns its unique email address. Restore
+        // it after successful email verification instead of attempting a
+        // duplicate insert and leaking a database exception to the client.
+        $user = User::withTrashed()->firstOrNew(['email' => $validated['email']]);
 
-        if (!$user->email_verified_at) {
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        if (! $user->exists) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        if (! $user->email_verified_at) {
             $user->update(['email_verified_at' => now()]);
         }
 

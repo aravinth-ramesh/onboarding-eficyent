@@ -477,7 +477,7 @@ class OnboardingService
             ->orderByDesc('order')
             ->first();
 
-        if (!$previousStep) {
+        if (! $previousStep) {
             return $onboarding->fresh('steps');
         }
 

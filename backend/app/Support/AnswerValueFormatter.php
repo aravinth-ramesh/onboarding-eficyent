@@ -212,7 +212,7 @@ class AnswerValueFormatter
     }
 
     /**
-     * @return array<int, array<string, mixed>>|null  null when the value is not JSON rows
+     * @return array<int, array<string, mixed>>|null null when the value is not JSON rows
      */
     private static function rows(?string $raw): ?array
     {

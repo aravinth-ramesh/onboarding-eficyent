@@ -22,7 +22,7 @@ return new class extends Migration
         $corp = UserType::where('slug', 'corporate')->first();
 
         // Fresh DB (not yet seeded) — the seeder owns the KYB flow.
-        if (!$fi || !$corp) {
+        if (! $fi || ! $corp) {
             return;
         }
 
@@ -47,7 +47,7 @@ return new class extends Migration
 
         // Add the beneficial-owner module to the existing ownership group.
         $ownership = QuestionGroup::where('slug', 'ownership-structure')->first();
-        if ($ownership && !Question::where('question_group_id', $ownership->id)->where('type', 'ubo')->exists()) {
+        if ($ownership && ! Question::where('question_group_id', $ownership->id)->where('type', 'ubo')->exists()) {
             $q = Question::create([
                 'question_group_id' => $ownership->id, 'label' => 'Ultimate Beneficial Owners',
                 'type' => 'ubo', 'is_required' => true, 'is_active' => true, 'order' => 0,
@@ -58,7 +58,7 @@ return new class extends Migration
         }
 
         // Reconfigure steps only if not already on the KYB flow.
-        if (!OnboardingStep::where('slug', 'basic-info')->exists()) {
+        if (! OnboardingStep::where('slug', 'basic-info')->exists()) {
             $this->rebuildSteps();
         }
     }

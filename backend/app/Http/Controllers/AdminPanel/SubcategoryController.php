@@ -44,7 +44,7 @@ class SubcategoryController extends Controller
             $userType->subcategories()->create($validated);
         });
 
-        if (!$userType->has_subcategories) {
+        if (! $userType->has_subcategories) {
             $userType->update(['has_subcategories' => true]);
         }
 

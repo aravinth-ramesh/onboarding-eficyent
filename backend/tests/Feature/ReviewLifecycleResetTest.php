@@ -26,9 +26,13 @@ class ReviewLifecycleResetTest extends TestCase
     use RefreshDatabase;
 
     private UserType $type;
+
     private QuestionGroup $group;
+
     private Question $textQ;
+
     private Question $fileQ;
+
     private User $user;
 
     protected function setUp(): void

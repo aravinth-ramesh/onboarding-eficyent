@@ -33,7 +33,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* LoginPage handles the authenticated redirect itself so email
               deep links (?notification=...) survive the OTP round-trip. */}

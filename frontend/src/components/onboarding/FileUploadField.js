@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useId, useState, useCallback, useMemo, useEffect } from 'react';
 import FilePreviewCard, { looksLikeImage } from './FilePreviewCard';
 import { MAX_FILE_SIZE_MB, partitionBySize, oversizeMessage } from '../../utils/files';
 
@@ -8,7 +8,7 @@ import { MAX_FILE_SIZE_MB, partitionBySize, oversizeMessage } from '../../utils/
  * Stores actual File objects and notifies parent via onChange.
  */
 function FileUploadField({ question, value, onChange, existingFiles, onRemoveUploaded }) {
-  const inputRef = useRef(null);
+  const inputId = useId();
   const [dragActive, setDragActive] = useState(false);
   const [sizeError, setSizeError] = useState(null);
 
@@ -91,12 +91,12 @@ function FileUploadField({ question, value, onChange, existingFiles, onRemoveUpl
   return (
     <div>
       <input
-        ref={inputRef}
+        id={inputId}
         type="file"
         multiple={isMultiple}
         accept={question.options?.accept || '.pdf,.jpg,.jpeg,.png,.docx,.doc,.xlsx,.xls,.csv'}
         onChange={handleInputChange}
-        style={{ display: 'none' }}
+        className="visually-hidden"
       />
 
       {hasExistingFiles && (
@@ -150,12 +150,12 @@ function FileUploadField({ question, value, onChange, existingFiles, onRemoveUpl
 
       {showDropzone && (
         <label
+          htmlFor={inputId}
           className={`file-upload-dropzone ${dragActive ? 'drag-active' : ''} ${hasNewFiles ? 'has-files' : ''}`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
         >
           <div className="file-upload-dropzone-content">
             <div className="file-upload-dropzone-icon">{'\u{1F4CE}'}</div>

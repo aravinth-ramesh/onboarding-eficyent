@@ -30,17 +30,17 @@ class ApiLogger
         $user = $request->user();
 
         $payload = [
-            'method'      => $request->method(),
-            'url'         => $request->fullUrl(),
-            'status'      => $response->getStatusCode(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'status' => $response->getStatusCode(),
             'duration_ms' => $duration,
-            'ip'          => $request->ip(),
-            'user_id'     => $user?->id,
-            'user_agent'  => $request->userAgent(),
+            'ip' => $request->ip(),
+            'user_id' => $user?->id,
+            'user_agent' => $request->userAgent(),
         ];
 
         // Include request body for non-GET requests (redact sensitive fields)
-        if (!$request->isMethod('GET')) {
+        if (! $request->isMethod('GET')) {
             $body = $request->except([
                 'password', 'password_confirmation', 'token',
                 'otp', 'code', 'secret', 'authorization',
@@ -49,7 +49,7 @@ class ApiLogger
             // Truncate large values
             array_walk($body, function (&$value) {
                 if (is_string($value) && strlen($value) > 500) {
-                    $value = substr($value, 0, 500) . '...[truncated]';
+                    $value = substr($value, 0, 500).'...[truncated]';
                 }
             });
 
@@ -65,7 +65,7 @@ class ApiLogger
         $level = match (true) {
             $response->getStatusCode() >= 500 => 'error',
             $response->getStatusCode() >= 400 => 'warning',
-            default                           => 'info',
+            default => 'info',
         };
 
         Log::channel('api')->{$level}('API Request', $payload);

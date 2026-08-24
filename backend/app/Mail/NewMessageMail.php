@@ -48,7 +48,7 @@ class NewMessageMail extends Mailable implements ShouldQueue
                 'toAdmin' => $toAdmin,
                 'actionUrl' => $toAdmin
                     ? route('admin.user-onboardings.show', $onboarding)
-                    : rtrim(config('app.frontend_url'), '/') . '/home?messages=1',
+                    : rtrim(config('app.frontend_url'), '/').'/home?messages=1',
                 'actionLabel' => $toAdmin ? 'View Application' : 'Read & Reply',
             ],
         );

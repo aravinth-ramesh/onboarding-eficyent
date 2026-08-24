@@ -9,8 +9,8 @@ class ConditionalRuleEngine
     /**
      * Evaluate whether a question should be visible based on conditional rules and current answers.
      *
-     * @param array<ConditionalRule> $rules
-     * @param array<int, mixed> $answers Map of question_id => answer_value
+     * @param  array<ConditionalRule>  $rules
+     * @param  array<int, mixed>  $answers  Map of question_id => answer_value
      */
     public function evaluate(iterable $rules, array $answers): bool
     {
@@ -24,7 +24,7 @@ class ConditionalRuleEngine
         $andRules = $groupedByOperator->get('and', collect());
         if ($andRules->isNotEmpty()) {
             foreach ($andRules as $rule) {
-                if (!$this->evaluateRule($rule, $answers)) {
+                if (! $this->evaluateRule($rule, $answers)) {
                     return $rule->action === 'hide'; // If AND fails, invert for 'hide' action
                 }
             }
@@ -40,13 +40,14 @@ class ConditionalRuleEngine
                     break;
                 }
             }
-            if (!$orPassed) {
+            if (! $orPassed) {
                 return $orRules->first()->action === 'hide';
             }
         }
 
         // Default action from first rule
         $firstRule = collect($rules)->first();
+
         return $firstRule->action === 'show';
     }
 
@@ -57,15 +58,15 @@ class ConditionalRuleEngine
 
         return match ($rule->comparison_type) {
             'equals' => $this->valueEquals($parentAnswer, $triggerValue),
-            'not_equals' => !$this->valueEquals($parentAnswer, $triggerValue),
+            'not_equals' => ! $this->valueEquals($parentAnswer, $triggerValue),
             'contains' => $this->valueContains($parentAnswer, $triggerValue),
-            'not_contains' => !$this->valueContains($parentAnswer, $triggerValue),
+            'not_contains' => ! $this->valueContains($parentAnswer, $triggerValue),
             'greater_than' => (float) $parentAnswer > (float) $triggerValue,
             'less_than' => (float) $parentAnswer < (float) $triggerValue,
             'in' => $this->valueInList($parentAnswer, json_decode($triggerValue ?? '', true) ?? []),
-            'not_in' => !$this->valueInList($parentAnswer, json_decode($triggerValue ?? '', true) ?? []),
+            'not_in' => ! $this->valueInList($parentAnswer, json_decode($triggerValue ?? '', true) ?? []),
             'is_empty' => $this->valueIsEmpty($parentAnswer),
-            'is_not_empty' => !$this->valueIsEmpty($parentAnswer),
+            'is_not_empty' => ! $this->valueIsEmpty($parentAnswer),
             default => true,
         };
     }
@@ -84,11 +85,13 @@ class ConditionalRuleEngine
             if (is_array($decoded)) {
                 return $decoded;
             }
+
             return [$value];
         }
         if ($value === null) {
             return [];
         }
+
         return [(string) $value];
     }
 
@@ -99,6 +102,7 @@ class ConditionalRuleEngine
                 return true;
             }
         }
+
         return false;
     }
 
@@ -109,6 +113,7 @@ class ConditionalRuleEngine
                 return true;
             }
         }
+
         return false;
     }
 
@@ -120,6 +125,7 @@ class ConditionalRuleEngine
                 return true;
             }
         }
+
         return false;
     }
 
@@ -129,6 +135,7 @@ class ConditionalRuleEngine
             return true;
         }
         $arr = $this->parseAnswerArray($parentAnswer);
+
         return count($arr) === 0;
     }
 }

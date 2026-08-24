@@ -82,7 +82,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
@@ -111,7 +111,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
@@ -125,7 +125,7 @@ class OnboardingController extends Controller
         ]);
 
         $countryCode = strtoupper($validated['country_code']);
-        if (!array_key_exists($countryCode, config('country_registrations.countries', []))) {
+        if (! array_key_exists($countryCode, config('country_registrations.countries', []))) {
             return response()->json(['message' => 'Unknown country.'], 422);
         }
 
@@ -149,19 +149,22 @@ class OnboardingController extends Controller
 
             if (($field['required'] ?? false) && $value === '') {
                 $errors["values.{$field['key']}"] = ["{$field['label']} is required."];
+
                 continue;
             }
 
-            if ($value !== '' && !empty($field['pattern'])) {
-                if (preg_match('#' . $field['pattern'] . '#u', $value) !== 1) {
+            if ($value !== '' && ! empty($field['pattern'])) {
+                if (preg_match('#'.$field['pattern'].'#u', $value) !== 1) {
                     $errors["values.{$field['key']}"] = [$field['pattern_message'] ?? "{$field['label']} format is invalid."];
+
                     continue;
                 }
             }
 
-            if ($value !== '' && !empty($field['checksum'])) {
-                if (!$this->checksumValidator->isValid($field['checksum'], $value)) {
+            if ($value !== '' && ! empty($field['checksum'])) {
+                if (! $this->checksumValidator->isValid($field['checksum'], $value)) {
                     $errors["values.{$field['key']}"] = ["{$field['label']} failed the check-digit validation. Please re-check the number."];
+
                     continue;
                 }
             }
@@ -174,6 +177,7 @@ class OnboardingController extends Controller
                 $errors["values.{$field['key']}"] = [
                     "This {$field['label']} is already used by another onboarding application. If this is your company, please contact support.",
                 ];
+
                 continue;
             }
 
@@ -182,7 +186,7 @@ class OnboardingController extends Controller
             }
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             return response()->json(['message' => 'Please correct the highlighted fields.', 'errors' => $errors], 422);
         }
 
@@ -399,7 +403,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
@@ -424,7 +428,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding || !$onboarding->user_type_id) {
+        if (! $onboarding || ! $onboarding->user_type_id) {
             return response()->json(['message' => 'Please select a user type first.'], 422);
         }
 
@@ -558,7 +562,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
@@ -568,7 +572,7 @@ class OnboardingController extends Controller
 
         // Save non-file answers
         $textAnswers = $request->validated('answers') ?? [];
-        if (!empty($textAnswers)) {
+        if (! empty($textAnswers)) {
             try {
                 $this->answerService->saveBulkAnswers(
                     $user,
@@ -593,7 +597,7 @@ class OnboardingController extends Controller
 
         // Save file answers (grouped by question_id)
         $fileAnswers = $request->validated('file_answers') ?? [];
-        if (!empty($fileAnswers)) {
+        if (! empty($fileAnswers)) {
             // Group files by question_id
             $grouped = [];
             foreach ($fileAnswers as $entry) {
@@ -646,7 +650,7 @@ class OnboardingController extends Controller
 
         // Save per-cell files for table-type answers (grouped by question_id)
         $tableFileAnswers = $request->validated('table_file_answers') ?? [];
-        if (!empty($tableFileAnswers)) {
+        if (! empty($tableFileAnswers)) {
             $grouped = [];
             foreach ($tableFileAnswers as $entry) {
                 $grouped[(int) $entry['question_id']][] = $entry;
@@ -722,7 +726,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding) {
+        if (! $onboarding) {
             return response()->json(['message' => 'Onboarding not initialized.'], 404);
         }
 
@@ -788,7 +792,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
+        if (! $onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);
         }
 
@@ -817,7 +821,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
+        if (! $onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);
         }
 
@@ -848,7 +852,7 @@ class OnboardingController extends Controller
         $user = auth()->user();
         $onboarding = $user->activeOnboarding();
 
-        if (!$onboarding || $step->user_onboarding_id !== $onboarding->id) {
+        if (! $onboarding || $step->user_onboarding_id !== $onboarding->id) {
             return response()->json(['message' => 'Step not found.'], 404);
         }
 
@@ -867,7 +871,7 @@ class OnboardingController extends Controller
      *
      * @param  string|array|null  $answer  raw value from UserAnswer (JSON string or already decoded)
      * @param  array<int, array<string, mixed>>  $columns
-     * @return string  re-encoded JSON answer with urls injected
+     * @return string re-encoded JSON answer with urls injected
      */
     private function hydrateTableAnswerFileUrls(mixed $answer, array $columns): mixed
     {

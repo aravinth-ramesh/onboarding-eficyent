@@ -76,7 +76,7 @@ class ScheduledEmailController extends Controller
             )
             ->when(
                 filled($request->input('search')),
-                fn ($q) => $q->where('subject', 'like', '%' . trim($request->input('search')) . '%'),
+                fn ($q) => $q->where('subject', 'like', '%'.trim($request->input('search')).'%'),
             )
             ->when(
                 $this->parseDate($request->input('from')),
@@ -151,12 +151,12 @@ class ScheduledEmailController extends Controller
         ]);
 
         return $this->backToIndex($request)
-            ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to " . count($copy->onboarding_ids) . ' client(s).');
+            ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to ".count($copy->onboarding_ids).' client(s).');
     }
 
     public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $filename = 'scheduled-emails-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'scheduled-emails-'.now()->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
@@ -199,7 +199,7 @@ class ScheduledEmailController extends Controller
 
         $skipped = count($validated['ids']) - $cancelled;
         $message = "{$cancelled} scheduled email(s) cancelled."
-            . ($skipped > 0 ? " {$skipped} skipped (already sent or cancelled)." : '');
+            .($skipped > 0 ? " {$skipped} skipped (already sent or cancelled)." : '');
 
         return redirect()->route('admin.scheduled-emails.index', $request->except(['ids', '_token']))
             ->with($cancelled > 0 ? 'success' : 'error', $message);

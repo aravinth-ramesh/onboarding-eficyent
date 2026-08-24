@@ -16,7 +16,9 @@ class BulkEmailTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private UserOnboarding $a;
+
     private UserOnboarding $b;
 
     protected function setUp(): void
@@ -41,7 +43,7 @@ class BulkEmailTest extends TestCase
             ->post(route('admin.user-onboardings.bulk-email'), [
                 'ids' => [$this->a->id, $this->b->id],
                 'subject' => 'Update for {{name}}',
-                'body' => "Hello {{name}}, regarding {{reference}}.",
+                'body' => 'Hello {{name}}, regarding {{reference}}.',
             ])
             ->assertRedirect(route('admin.user-onboardings.index'))
             ->assertSessionHas('success', 'Email queued to 2 client(s).');

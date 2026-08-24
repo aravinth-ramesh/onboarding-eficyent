@@ -93,7 +93,7 @@ class AdminActivityLogTest extends TestCase
             ->assertOk()
             ->assertSee('admin.user-onboardings.notes.store')
             ->assertSee('Reviewer')
-            ->assertSee('UserOnboarding #' . $onboarding->id);
+            ->assertSee('UserOnboarding #'.$onboarding->id);
 
         // Filter that matches nothing.
         $this->actingAs($this->admin, 'admin')

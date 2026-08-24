@@ -35,7 +35,7 @@ class OnboardingDecisionMail extends Mailable implements ShouldQueue
                 'onboarding' => $this->onboarding,
                 'approved' => $this->onboarding->status === 'approved',
                 'bodyText' => $this->template()['body'],
-                'portalUrl' => rtrim(config('app.frontend_url'), '/') . '/home',
+                'portalUrl' => rtrim(config('app.frontend_url'), '/').'/home',
             ],
         );
     }

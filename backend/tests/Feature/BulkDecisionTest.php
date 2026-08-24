@@ -16,6 +16,7 @@ class BulkDecisionTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -33,7 +34,7 @@ class BulkDecisionTest extends TestCase
 
     private function make(string $email, bool $submit = true)
     {
-        $user = User::create(['email' => $email, 'name' => 'Client ' . $email, 'position' => 'CFO']);
+        $user = User::create(['email' => $email, 'name' => 'Client '.$email, 'position' => 'CFO']);
         $onboarding = $this->service->initializeForUser($user);
         if ($submit) {
             foreach ($onboarding->steps as $step) {

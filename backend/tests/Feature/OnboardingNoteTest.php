@@ -17,8 +17,11 @@ class OnboardingNoteTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $author;
+
     private Admin $otherAdmin;
+
     private $onboarding;
 
     protected function setUp(): void
@@ -93,7 +96,7 @@ class OnboardingNoteTest extends TestCase
         Sanctum::actingAs($this->user);
         $response = $this->get('/api/onboarding/download-pdf')->assertOk();
 
-        $text = (new PdfParser())->parseContent($response->getContent())->getText();
+        $text = (new PdfParser)->parseContent($response->getContent())->getText();
         $this->assertStringNotContainsString('CONFIDENTIAL-INTERNAL-MARKER', $text);
     }
 }

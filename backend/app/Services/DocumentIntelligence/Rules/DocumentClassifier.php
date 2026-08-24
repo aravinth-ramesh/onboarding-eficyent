@@ -52,7 +52,7 @@ class DocumentClassifier
 
     private function contains(string $text, string $phrase): bool
     {
-        $pattern = '/\b' . preg_quote($phrase, '/') . '\b/i';
+        $pattern = '/\b'.preg_quote($phrase, '/').'\b/i';
 
         return (bool) preg_match($pattern, $text);
     }

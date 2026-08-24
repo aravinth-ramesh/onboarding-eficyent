@@ -8,7 +8,6 @@ use App\Models\Question;
 use App\Models\QuestionGroup;
 use App\Models\User;
 use App\Models\UserAnswer;
-use App\Models\UserOnboarding;
 use App\Services\OnboardingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -20,6 +19,7 @@ class DiscardDraftTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private $onboarding;
 
     protected function setUp(): void

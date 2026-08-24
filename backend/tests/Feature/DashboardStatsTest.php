@@ -15,6 +15,7 @@ class DashboardStatsTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -32,7 +33,7 @@ class DashboardStatsTest extends TestCase
 
     private function submitFor(string $email)
     {
-        $user = User::create(['email' => $email, 'name' => 'Client ' . $email, 'position' => 'CFO']);
+        $user = User::create(['email' => $email, 'name' => 'Client '.$email, 'position' => 'CFO']);
         $onboarding = $this->service->initializeForUser($user);
         foreach ($onboarding->steps as $step) {
             $this->service->completeStep($onboarding->fresh(), $step);

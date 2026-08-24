@@ -48,7 +48,7 @@ class LogAdminActivity
             'admin_id' => Auth::guard('admin')->id(),
             'action' => $request->route()?->getName() ?? $request->path(),
             'method' => $request->method(),
-            'path' => substr('/' . ltrim($request->path(), '/'), 0, 500),
+            'path' => substr('/'.ltrim($request->path(), '/'), 0, 500),
             'subject_type' => $subjectType,
             'subject_id' => $subjectId,
             'payload' => $this->sanitizedPayload($request),
@@ -84,7 +84,7 @@ class LogAdminActivity
 
         array_walk_recursive($input, function (&$value) {
             if (is_string($value) && strlen($value) > self::MAX_VALUE_LENGTH) {
-                $value = substr($value, 0, self::MAX_VALUE_LENGTH) . '…';
+                $value = substr($value, 0, self::MAX_VALUE_LENGTH).'…';
             }
         });
 

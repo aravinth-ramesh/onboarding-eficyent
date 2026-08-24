@@ -106,7 +106,7 @@ class CountryRegistrationController extends Controller
 
         // A user-supplied regex must be compilable, otherwise it silently
         // breaks validation for every client in that country.
-        if (!empty($validated['pattern']) && @preg_match('#' . $validated['pattern'] . '#u', '') === false) {
+        if (! empty($validated['pattern']) && @preg_match('#'.$validated['pattern'].'#u', '') === false) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'pattern' => 'This is not a valid regular expression.',
             ]);

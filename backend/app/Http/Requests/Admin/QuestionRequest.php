@@ -71,7 +71,7 @@ class QuestionRequest extends FormRequest
             $pattern = data_get($this->input('validation_rules'), 'pattern');
             if (is_string($pattern) && $pattern !== '') {
                 set_error_handler(fn () => null);
-                $valid = @preg_match('/' . str_replace('/', '\\/', $pattern) . '/', '') !== false;
+                $valid = @preg_match('/'.str_replace('/', '\\/', $pattern).'/', '') !== false;
                 restore_error_handler();
                 if (! $valid) {
                     $validator->errors()->add('validation_rules.pattern', 'The regex pattern is invalid.');

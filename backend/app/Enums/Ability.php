@@ -13,23 +13,35 @@ final class Ability
 {
     // Onboardings — visibility
     public const VIEW_ALL_ONBOARDINGS = 'onboardings.view-all';
+
     public const VIEW_ASSIGNED_ONBOARDINGS = 'onboardings.view-assigned';
 
     // Onboardings — actions
     public const ASSIGN_ONBOARDING = 'onboardings.assign';
+
     public const REVIEW_ONBOARDING = 'onboardings.review';
+
     public const SUBMIT_FOR_APPROVAL = 'onboardings.submit-for-approval';
+
     public const APPROVE_ONBOARDING = 'onboardings.approve';
+
     public const REJECT_ONBOARDING = 'onboardings.reject';
+
     public const ESCALATE_ONBOARDING = 'onboardings.escalate';
+
     public const MESSAGE_CLIENT = 'onboardings.message-client';
+
     public const VIEW_WORKLOAD = 'onboardings.view-workload';
 
     // Platform
     public const MANAGE_TEMPLATES = 'platform.manage-templates';
+
     public const MANAGE_EMAILS = 'platform.manage-emails';
+
     public const TUNE_DOCUMENT_POLICY = 'platform.tune-document-policy';
+
     public const VIEW_ACTIVITY_LOG = 'platform.view-activity-log';
+
     public const MANAGE_USERS = 'platform.manage-users';
 
     /** Every ability — used to grant Super Admin the full set. */

@@ -72,10 +72,12 @@ function SelectTypeStep({ step }) {
         <p className="section-label">Organization Type</p>
         <div style={{ display: 'grid', gap: 10, marginBottom: 24 }}>
           {userTypes.map((type) => (
-            <div
+            <button
+              type="button"
               key={type.id}
               className={`type-card ${selectedType === type.id ? 'selected' : ''}`}
               onClick={() => { setSelectedType(type.id); setSelectedSubcategory(null); }}
+              aria-pressed={selectedType === type.id}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="type-card-check">
@@ -86,7 +88,7 @@ function SelectTypeStep({ step }) {
                   {type.description && <p className="type-card-desc">{type.description}</p>}
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -95,10 +97,12 @@ function SelectTypeStep({ step }) {
             <p className="section-label">Subcategory</p>
             <div style={{ display: 'grid', gap: 10, marginBottom: 24 }}>
               {currentType.subcategories.map((sub) => (
-                <div
+                <button
+                  type="button"
                   key={sub.id}
                   className={`type-card ${selectedSubcategory === sub.id ? 'selected' : ''}`}
                   onClick={() => setSelectedSubcategory(sub.id)}
+                  aria-pressed={selectedSubcategory === sub.id}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div className="type-card-check">
@@ -106,7 +110,7 @@ function SelectTypeStep({ step }) {
                     </div>
                     <div className="type-card-title">{sub.name}</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </>

@@ -124,6 +124,7 @@ class QuestionController extends Controller
         if (! is_array($decoded) || count($decoded) === 0) {
             return null;
         }
+
         return $decoded;
     }
 
@@ -168,7 +169,7 @@ class QuestionController extends Controller
 
         $mappings = $request->input('mappings', []);
 
-        if (!is_array($mappings)) {
+        if (! is_array($mappings)) {
             return;
         }
 
@@ -179,13 +180,13 @@ class QuestionController extends Controller
 
             $subcategoryIds = $mapping['subcategory_ids'] ?? [];
 
-            if (!empty($subcategoryIds) && is_array($subcategoryIds)) {
+            if (! empty($subcategoryIds) && is_array($subcategoryIds)) {
                 foreach ($subcategoryIds as $subId) {
                     $question->typeMappings()->create([
                         'user_type_id' => $mapping['user_type_id'],
                         'user_type_subcategory_id' => $subId,
                         'order' => $question->order,
-                        'is_required' => !empty($mapping['is_required']),
+                        'is_required' => ! empty($mapping['is_required']),
                         'is_active' => true,
                     ]);
                 }
@@ -194,7 +195,7 @@ class QuestionController extends Controller
                     'user_type_id' => $mapping['user_type_id'],
                     'user_type_subcategory_id' => null,
                     'order' => $question->order,
-                    'is_required' => !empty($mapping['is_required']),
+                    'is_required' => ! empty($mapping['is_required']),
                     'is_active' => true,
                 ]);
             }

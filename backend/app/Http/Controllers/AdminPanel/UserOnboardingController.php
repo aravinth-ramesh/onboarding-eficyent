@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\AdminPanel;
 
-use App\Enums\Ability;
 use App\Http\Controllers\Concerns\ParsesDateRange;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
@@ -118,7 +117,7 @@ class UserOnboardingController extends Controller
      */
     public function exportCsv(Request $request)
     {
-        $filename = 'onboardings-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'onboardings-'.now()->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
@@ -204,14 +203,14 @@ class UserOnboardingController extends Controller
             ]);
 
             return $redirect->with('success',
-                "Email scheduled for {$scheduled->send_at->format('M d, Y H:i')} to " . count($validated['ids']) . ' client(s).');
+                "Email scheduled for {$scheduled->send_at->format('M d, Y H:i')} to ".count($validated['ids']).' client(s).');
         }
 
         $sent = $this->emailService->sendBulk($admin, $validated['ids'], $validated['subject'], $validated['body']);
         $skipped = count($validated['ids']) - $sent;
 
         $message = "Email queued to {$sent} client(s)."
-            . ($skipped > 0 ? " {$skipped} skipped (no email address or send failed)." : '');
+            .($skipped > 0 ? " {$skipped} skipped (no email address or send failed)." : '');
 
         return $redirect->with($sent > 0 ? 'success' : 'error', $message);
     }
@@ -248,7 +247,7 @@ class UserOnboardingController extends Controller
 
         $verb = $validated['decision'] === 'approve' ? 'approved' : 'rejected';
         $message = "{$decided} application(s) {$verb}."
-            . ($skipped > 0 ? " {$skipped} skipped (couldn't be {$verb} — already decided, awaiting a second reviewer, or sections not fully reviewed)." : '');
+            .($skipped > 0 ? " {$skipped} skipped (couldn't be {$verb} — already decided, awaiting a second reviewer, or sections not fully reviewed)." : '');
 
         return redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'decision', 'comment', '_token']))
             ->with($decided > 0 ? 'success' : 'error', $message);
@@ -452,7 +451,7 @@ class UserOnboardingController extends Controller
             }
 
             return redirect()
-                ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+                ->to(route('admin.user-onboardings.show', $userOnboarding).'#section-'.$group->id)
                 ->with('error', $error);
         }
 
@@ -474,7 +473,7 @@ class UserOnboardingController extends Controller
                 }
 
                 return redirect()
-                    ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+                    ->to(route('admin.user-onboardings.show', $userOnboarding).'#section-'.$group->id)
                     ->with('error', $error);
             }
         }
@@ -518,7 +517,7 @@ class UserOnboardingController extends Controller
         }
 
         return redirect()
-            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#section-' . $group->id)
+            ->to(route('admin.user-onboardings.show', $userOnboarding).'#section-'.$group->id)
             ->with('success', $message);
     }
 
@@ -554,7 +553,7 @@ class UserOnboardingController extends Controller
         }
 
         return redirect()
-            ->to(route('admin.user-onboardings.show', $userOnboarding) . '#documents')
+            ->to(route('admin.user-onboardings.show', $userOnboarding).'#documents')
             ->with('success', $validated['review_decision'] === 'resubmit_requested'
                 ? 'Resubmission requested — the client has been notified.'
                 : 'Document review saved.');
@@ -571,7 +570,7 @@ class UserOnboardingController extends Controller
         }
 
         $label = $answer->question->label ?? 'a document';
-        $message = trim('Please re-upload the document for "' . $label . '".' . ($note ? ' ' . $note : ''));
+        $message = trim('Please re-upload the document for "'.$label.'".'.($note ? ' '.$note : ''));
         $notification = $this->notificationService->createChangeRequest($admin, $answer, $message);
 
         $user = $userOnboarding->user;
@@ -793,7 +792,7 @@ class UserOnboardingController extends Controller
             ->with(
                 $count > 0 ? 'success' : 'error',
                 $count > 0
-                    ? "{$count} " . str('company')->plural($count) . ' ' . ($assignee ? 'assigned.' : 'unassigned.')
+                    ? "{$count} ".str('company')->plural($count).' '.($assignee ? 'assigned.' : 'unassigned.')
                     : 'No companies were updated.',
             );
     }

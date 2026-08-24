@@ -55,7 +55,7 @@ class OnboardingIndexFilterTest extends TestCase
         $this->index(['search' => 'Carol'])->assertSee('Carol White')->assertDontSee('Alice Smith');
 
         $bob = UserOnboarding::whereHas('user', fn ($q) => $q->where('email', 'bob@bank.com'))->first();
-        $reference = 'ONB-' . now()->format('Y') . '-' . str_pad((string) $bob->id, 4, '0', STR_PAD_LEFT);
+        $reference = 'ONB-'.now()->format('Y').'-'.str_pad((string) $bob->id, 4, '0', STR_PAD_LEFT);
         $this->index(['search' => $reference])->assertSee('Bob Jones')->assertDontSee('Alice Smith');
     }
 

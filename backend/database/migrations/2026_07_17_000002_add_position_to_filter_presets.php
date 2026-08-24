@@ -20,7 +20,7 @@ return new class extends Migration
         DB::table('filter_presets')->orderBy('admin_id')->orderBy('context')->orderBy('name')
             ->get(['id', 'admin_id', 'context'])
             ->each(function ($row) use (&$counters) {
-                $key = $row->admin_id . '|' . $row->context;
+                $key = $row->admin_id.'|'.$row->context;
                 $counters[$key] = ($counters[$key] ?? 0) + 1;
                 DB::table('filter_presets')->where('id', $row->id)->update(['position' => $counters[$key]]);
             });

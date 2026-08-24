@@ -33,7 +33,7 @@ class OnboardingSubmittedClientMail extends Mailable implements ShouldQueue
             with: [
                 'onboarding' => $this->onboarding,
                 'bodyText' => $this->template()['body'],
-                'portalUrl' => rtrim(config('app.frontend_url'), '/') . '/home',
+                'portalUrl' => rtrim(config('app.frontend_url'), '/').'/home',
             ],
         );
     }

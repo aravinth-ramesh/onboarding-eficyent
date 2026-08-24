@@ -20,7 +20,7 @@ class FinancialFieldRulesTest extends TestCase
 
     private function question(string $label, string $type = 'text', ?array $options = null): Question
     {
-        $group = QuestionGroup::create(['name' => 'G', 'slug' => 'g-' . uniqid(), 'order' => 1, 'is_active' => true]);
+        $group = QuestionGroup::create(['name' => 'G', 'slug' => 'g-'.uniqid(), 'order' => 1, 'is_active' => true]);
 
         return Question::create([
             'question_group_id' => $group->id, 'label' => $label, 'type' => $type,

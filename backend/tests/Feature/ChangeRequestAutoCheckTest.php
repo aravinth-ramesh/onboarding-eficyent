@@ -24,8 +24,11 @@ class ChangeRequestAutoCheckTest extends TestCase
     use RefreshDatabase;
 
     private UserOnboarding $onb;
+
     private QuestionGroup $group;
+
     private UserAnswer $answer;
+
     private Admin $admin;
 
     protected function setUp(): void

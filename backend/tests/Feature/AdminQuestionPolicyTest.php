@@ -18,6 +18,7 @@ class AdminQuestionPolicyTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private QuestionGroup $group;
 
     protected function setUp(): void

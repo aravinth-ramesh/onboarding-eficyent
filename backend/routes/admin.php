@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Ability;
 use App\Http\Controllers\AdminPanel\AuthController;
 use App\Http\Controllers\AdminPanel\ConditionalRuleController;
 use App\Http\Controllers\AdminPanel\CountryRegistrationController;
@@ -11,7 +12,6 @@ use App\Http\Controllers\AdminPanel\QuestionGroupController;
 use App\Http\Controllers\AdminPanel\SubcategoryController;
 use App\Http\Controllers\AdminPanel\UserOnboardingController;
 use App\Http\Controllers\AdminPanel\UserTypeController;
-use App\Enums\Ability;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -27,7 +27,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
     // Platform configuration — templates & rules (Admin / Super Admin only)
-    Route::middleware('ability:' . Ability::MANAGE_TEMPLATES)->group(function () {
+    Route::middleware('ability:'.Ability::MANAGE_TEMPLATES)->group(function () {
         Route::resource('user-types', UserTypeController::class)->except(['show']);
         Route::resource('user-types.subcategories', SubcategoryController::class)->except(['show']);
         Route::resource('question-groups', QuestionGroupController::class)->except(['show']);
@@ -38,15 +38,15 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     });
 
     // Scheduled Emails (broadcast tooling — Manager / Admin+)
-    Route::middleware('ability:' . Ability::MANAGE_EMAILS)->group(function () {
-    Route::get('scheduled-emails', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'index'])->name('scheduled-emails.index');
-    // Before the {scheduledEmail} wildcards below.
-    Route::get('scheduled-emails/export-csv', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'exportCsv'])->name('scheduled-emails.export-csv');
-    Route::post('scheduled-emails/bulk-cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'bulkCancel'])->name('scheduled-emails.bulk-cancel');
-    Route::post('scheduled-emails/{scheduledEmail}/cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'cancel'])->name('scheduled-emails.cancel');
-    Route::post('scheduled-emails/{scheduledEmail}/restore', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'restore'])->name('scheduled-emails.restore');
-    Route::post('scheduled-emails/{scheduledEmail}/duplicate', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'duplicate'])->name('scheduled-emails.duplicate');
-    Route::get('scheduled-emails/{scheduledEmail}/preview', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'preview'])->name('scheduled-emails.preview');
+    Route::middleware('ability:'.Ability::MANAGE_EMAILS)->group(function () {
+        Route::get('scheduled-emails', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'index'])->name('scheduled-emails.index');
+        // Before the {scheduledEmail} wildcards below.
+        Route::get('scheduled-emails/export-csv', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'exportCsv'])->name('scheduled-emails.export-csv');
+        Route::post('scheduled-emails/bulk-cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'bulkCancel'])->name('scheduled-emails.bulk-cancel');
+        Route::post('scheduled-emails/{scheduledEmail}/cancel', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'cancel'])->name('scheduled-emails.cancel');
+        Route::post('scheduled-emails/{scheduledEmail}/restore', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'restore'])->name('scheduled-emails.restore');
+        Route::post('scheduled-emails/{scheduledEmail}/duplicate', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'duplicate'])->name('scheduled-emails.duplicate');
+        Route::get('scheduled-emails/{scheduledEmail}/preview', [\App\Http\Controllers\AdminPanel\ScheduledEmailController::class, 'preview'])->name('scheduled-emails.preview');
     });
 
     // Filter Presets (saved views on list pages; {context} names the page)
@@ -64,7 +64,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::delete('filter-presets/{context}', [\App\Http\Controllers\AdminPanel\FilterPresetController::class, 'destroyAll'])->name('filter-presets.destroy-all');
 
     // Email Templates (configuration — Admin+)
-    Route::middleware('ability:' . Ability::MANAGE_TEMPLATES)->group(function () {
+    Route::middleware('ability:'.Ability::MANAGE_TEMPLATES)->group(function () {
         Route::get('email-templates', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'index'])->name('email-templates.index');
         Route::get('email-templates/{key}/edit', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'edit'])->name('email-templates.edit');
         Route::put('email-templates/{key}', [\App\Http\Controllers\AdminPanel\EmailTemplateController::class, 'update'])->name('email-templates.update');
@@ -75,39 +75,39 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     Route::get('user-onboardings', [UserOnboardingController::class, 'index'])->name('user-onboardings.index');
     // Must precede the {userOnboarding} wildcard.
     Route::get('user-onboardings/export-csv', [UserOnboardingController::class, 'exportCsv'])->name('user-onboardings.export-csv');
-    Route::post('user-onboardings/bulk-decision', [UserOnboardingController::class, 'bulkDecision'])->name('user-onboardings.bulk-decision')->middleware('ability:' . Ability::APPROVE_ONBOARDING);
-    Route::post('user-onboardings/bulk-assign', [UserOnboardingController::class, 'bulkAssign'])->name('user-onboardings.bulk-assign')->middleware('ability:' . Ability::ASSIGN_ONBOARDING);
-    Route::post('user-onboardings/bulk-email', [UserOnboardingController::class, 'bulkEmail'])->name('user-onboardings.bulk-email')->middleware('ability:' . Ability::MANAGE_EMAILS);
+    Route::post('user-onboardings/bulk-decision', [UserOnboardingController::class, 'bulkDecision'])->name('user-onboardings.bulk-decision')->middleware('ability:'.Ability::APPROVE_ONBOARDING);
+    Route::post('user-onboardings/bulk-assign', [UserOnboardingController::class, 'bulkAssign'])->name('user-onboardings.bulk-assign')->middleware('ability:'.Ability::ASSIGN_ONBOARDING);
+    Route::post('user-onboardings/bulk-email', [UserOnboardingController::class, 'bulkEmail'])->name('user-onboardings.bulk-email')->middleware('ability:'.Ability::MANAGE_EMAILS);
     Route::get('user-onboardings/{userOnboarding}', [UserOnboardingController::class, 'show'])->name('user-onboardings.show');
     Route::post('user-onboardings/{userOnboarding}/steps/{step}/toggle', [UserOnboardingController::class, 'toggleStep'])->name('user-onboardings.steps.toggle');
     Route::get('user-onboardings/{userOnboarding}/export-pdf', [UserOnboardingController::class, 'exportPdf'])->name('user-onboardings.export-pdf');
     Route::post('notifications/{notification}/check', [UserOnboardingController::class, 'checkResponse'])->name('notifications.check');
     Route::post('user-onboardings/{userOnboarding}/archive', [UserOnboardingController::class, 'archive'])->name('user-onboardings.archive');
     Route::post('user-onboardings/{userOnboarding}/unarchive', [UserOnboardingController::class, 'unarchive'])->name('user-onboardings.unarchive');
-    Route::post('user-onboardings/{userOnboarding}/assign', [UserOnboardingController::class, 'assign'])->name('user-onboardings.assign')->middleware('ability:' . Ability::ASSIGN_ONBOARDING);
-    Route::post('user-onboardings/{userOnboarding}/messages', [UserOnboardingController::class, 'replyMessage'])->name('user-onboardings.messages.reply')->middleware('ability:' . Ability::MESSAGE_CLIENT);
+    Route::post('user-onboardings/{userOnboarding}/assign', [UserOnboardingController::class, 'assign'])->name('user-onboardings.assign')->middleware('ability:'.Ability::ASSIGN_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/messages', [UserOnboardingController::class, 'replyMessage'])->name('user-onboardings.messages.reply')->middleware('ability:'.Ability::MESSAGE_CLIENT);
     Route::post('user-onboardings/{userOnboarding}/notes', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'store'])->name('user-onboardings.notes.store');
     Route::delete('user-onboardings/{userOnboarding}/notes/{note}', [\App\Http\Controllers\AdminPanel\OnboardingNoteController::class, 'destroy'])->name('user-onboardings.notes.destroy');
-    Route::post('user-onboardings/{userOnboarding}/approve', [UserOnboardingController::class, 'approve'])->name('user-onboardings.approve')->middleware('ability:' . Ability::APPROVE_ONBOARDING);
-    Route::post('user-onboardings/{userOnboarding}/reject', [UserOnboardingController::class, 'reject'])->name('user-onboardings.reject')->middleware('ability:' . Ability::REJECT_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/approve', [UserOnboardingController::class, 'approve'])->name('user-onboardings.approve')->middleware('ability:'.Ability::APPROVE_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/reject', [UserOnboardingController::class, 'reject'])->name('user-onboardings.reject')->middleware('ability:'.Ability::REJECT_ONBOARDING);
     // Four-eyes: reviewer hands off (maker) → a different checker decides.
-    Route::post('user-onboardings/{userOnboarding}/submit-for-approval', [UserOnboardingController::class, 'submitForApproval'])->name('user-onboardings.submit-for-approval')->middleware('ability:' . Ability::SUBMIT_FOR_APPROVAL);
-    Route::post('user-onboardings/{userOnboarding}/escalate', [UserOnboardingController::class, 'escalate'])->name('user-onboardings.escalate')->middleware('ability:' . Ability::ESCALATE_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/submit-for-approval', [UserOnboardingController::class, 'submitForApproval'])->name('user-onboardings.submit-for-approval')->middleware('ability:'.Ability::SUBMIT_FOR_APPROVAL);
+    Route::post('user-onboardings/{userOnboarding}/escalate', [UserOnboardingController::class, 'escalate'])->name('user-onboardings.escalate')->middleware('ability:'.Ability::ESCALATE_ONBOARDING);
     Route::get('user-onboardings/{userOnboarding}/answers/{answer}/history', [UserOnboardingController::class, 'answerHistory'])->name('user-onboardings.answers.history');
-    Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change')->middleware('ability:' . Ability::MESSAGE_CLIENT);
+    Route::post('user-onboardings/{userOnboarding}/answers/{answer}/request-change', [UserOnboardingController::class, 'requestChange'])->name('user-onboardings.answers.request-change')->middleware('ability:'.Ability::MESSAGE_CLIENT);
     // Sectioned review — per-section progress and per-document verdicts.
-    Route::post('user-onboardings/{userOnboarding}/sections/{group}/review', [UserOnboardingController::class, 'reviewSection'])->name('user-onboardings.sections.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
-    Route::post('user-onboardings/{userOnboarding}/documents/{file}/review', [UserOnboardingController::class, 'reviewDocument'])->name('user-onboardings.documents.review')->middleware('ability:' . Ability::REVIEW_ONBOARDING);
-    Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question')->middleware('ability:' . Ability::MESSAGE_CLIENT);
-    Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question')->middleware('ability:' . Ability::MESSAGE_CLIENT);
-    Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email')->middleware('ability:' . Ability::MESSAGE_CLIENT);
+    Route::post('user-onboardings/{userOnboarding}/sections/{group}/review', [UserOnboardingController::class, 'reviewSection'])->name('user-onboardings.sections.review')->middleware('ability:'.Ability::REVIEW_ONBOARDING);
+    Route::post('user-onboardings/{userOnboarding}/documents/{file}/review', [UserOnboardingController::class, 'reviewDocument'])->name('user-onboardings.documents.review')->middleware('ability:'.Ability::REVIEW_ONBOARDING);
+    Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question')->middleware('ability:'.Ability::MESSAGE_CLIENT);
+    Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question')->middleware('ability:'.Ability::MESSAGE_CLIENT);
+    Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email')->middleware('ability:'.Ability::MESSAGE_CLIENT);
 
     // Serve an uploaded document inline (preview) with a separate ?download=1
     // option — any admin who can see the onboarding may view its files (EOP-81).
     Route::get('documents/{file}', [DocumentReviewController::class, 'serve'])->name('documents.show');
 
     // Staff / user management (Admin / Super Admin)
-    Route::middleware('ability:' . Ability::MANAGE_USERS)->group(function () {
+    Route::middleware('ability:'.Ability::MANAGE_USERS)->group(function () {
         Route::get('users', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/create', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'create'])->name('users.create');
         Route::post('users', [\App\Http\Controllers\AdminPanel\AdminUserController::class, 'store'])->name('users.store');
@@ -117,7 +117,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     });
 
     // Monitoring — audit trails (Compliance / Admin+)
-    Route::middleware('ability:' . Ability::VIEW_ACTIVITY_LOG)->group(function () {
+    Route::middleware('ability:'.Ability::VIEW_ACTIVITY_LOG)->group(function () {
         Route::get('audit-logs', [UserOnboardingController::class, 'auditLogs'])->name('audit-logs.index');
         Route::get('audit-logs/{log}/document/{side}/{index}', [UserOnboardingController::class, 'auditLogDocument'])
             ->whereNumber('index')
@@ -127,7 +127,7 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     });
 
     // Document Reviews (validation queue + rules tuning — Compliance / Admin+)
-    Route::middleware('ability:' . Ability::TUNE_DOCUMENT_POLICY)->group(function () {
+    Route::middleware('ability:'.Ability::TUNE_DOCUMENT_POLICY)->group(function () {
         Route::get('document-reviews', [DocumentReviewController::class, 'index'])->name('document-reviews.index');
         Route::post('document-reviews/{file}/approve', [DocumentReviewController::class, 'approve'])->name('document-reviews.approve');
     });

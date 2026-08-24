@@ -17,7 +17,9 @@ class MessagingTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Admin $admin;
+
     private $onboarding;
 
     protected function setUp(): void

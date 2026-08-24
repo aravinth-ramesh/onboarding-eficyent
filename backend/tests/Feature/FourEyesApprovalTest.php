@@ -25,7 +25,9 @@ class FourEyesApprovalTest extends TestCase
     use RefreshDatabase;
 
     private UserType $type;
+
     private UserOnboarding $onboarding;
+
     private QuestionGroup $group;
 
     protected function setUp(): void

@@ -46,9 +46,9 @@ class SaveAnswersRequest extends FormRequest
         $maxSizeMb = round(config('onboarding_uploads.max_file_size_kb', 5120) / 1024, 1);
 
         return [
-            'file_answers.*.file.mimes' => 'Only allowed file types: ' . implode(', ', config('onboarding_uploads.allowed_mimes', [])) . '.',
+            'file_answers.*.file.mimes' => 'Only allowed file types: '.implode(', ', config('onboarding_uploads.allowed_mimes', [])).'.',
             'file_answers.*.file.max' => "Each file must not exceed {$maxSizeMb} MB.",
-            'table_file_answers.*.file.mimes' => 'Only allowed file types: ' . implode(', ', config('onboarding_uploads.allowed_mimes', [])) . '.',
+            'table_file_answers.*.file.mimes' => 'Only allowed file types: '.implode(', ', config('onboarding_uploads.allowed_mimes', [])).'.',
             'table_file_answers.*.file.max' => "Each file must not exceed {$maxSizeMb} MB.",
         ];
     }

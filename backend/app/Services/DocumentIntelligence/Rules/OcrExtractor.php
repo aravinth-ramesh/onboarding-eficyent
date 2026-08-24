@@ -27,7 +27,7 @@ class OcrExtractor
             return null;
         }
 
-        $workDir = sys_get_temp_dir() . '/ocr_' . bin2hex(random_bytes(8));
+        $workDir = sys_get_temp_dir().'/ocr_'.bin2hex(random_bytes(8));
         if (! mkdir($workDir, 0700)) {
             return null;
         }
@@ -42,12 +42,12 @@ class OcrExtractor
                 '-f', '1',
                 '-l', (string) $ocr['max_pages'],
                 $path,
-                $workDir . '/page',
+                $workDir.'/page',
             ]);
             $render->setTimeout((float) $ocr['timeout_seconds']);
             $render->run();
 
-            $pages = glob($workDir . '/page*.png') ?: [];
+            $pages = glob($workDir.'/page*.png') ?: [];
             if ($pages === []) {
                 return null;
             }
@@ -76,7 +76,7 @@ class OcrExtractor
 
             return null;
         } finally {
-            foreach (glob($workDir . '/*') ?: [] as $file) {
+            foreach (glob($workDir.'/*') ?: [] as $file) {
                 @unlink($file);
             }
             @rmdir($workDir);
@@ -211,7 +211,7 @@ class OcrExtractor
             return null;
         }
 
-        $out = tempnam(sys_get_temp_dir(), 'ocr_pre_') . '.png';
+        $out = tempnam(sys_get_temp_dir(), 'ocr_pre_').'.png';
 
         try {
             $process = new Process(array_merge($magick, [
@@ -258,7 +258,7 @@ class OcrExtractor
                 $img = imagescale($img, imagesx($img) * 2, -1, IMG_BICUBIC);
             }
 
-            $out = tempnam(sys_get_temp_dir(), 'ocr_pre_') . '.png';
+            $out = tempnam(sys_get_temp_dir(), 'ocr_pre_').'.png';
             imagepng($img, $out);
             imagedestroy($img);
 

@@ -16,7 +16,9 @@ class AssignmentTest extends TestCase
     use RefreshDatabase;
 
     private Admin $alice;
+
     private Admin $bob;
+
     private UserOnboarding $onboarding;
 
     protected function setUp(): void

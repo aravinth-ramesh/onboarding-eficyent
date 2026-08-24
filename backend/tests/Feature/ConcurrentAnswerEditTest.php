@@ -23,8 +23,11 @@ class ConcurrentAnswerEditTest extends TestCase
     use RefreshDatabase;
 
     private UserOnboarding $onboarding;
+
     private Question $question;
+
     private User $owner;
+
     private User $collaborator;
 
     protected function setUp(): void

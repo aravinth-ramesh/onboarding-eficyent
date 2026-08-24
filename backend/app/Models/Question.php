@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Question extends Model
 {
-    use SoftDeletes, HasAutoOrder;
+    use HasAutoOrder, SoftDeletes;
 
     public function orderScopeColumns(): array
     {

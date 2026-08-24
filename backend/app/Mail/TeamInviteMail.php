@@ -45,7 +45,7 @@ class TeamInviteMail extends Mailable implements ShouldQueue
                 // dropping them into whatever session the browser holds
                 // (EOP-53). Falls back to the plain portal for legacy sends.
                 'portalUrl' => rtrim(config('app.frontend_url'), '/')
-                    . ($this->inviteToken ? '/login?invite=' . urlencode($this->inviteToken) : '/home'),
+                    .($this->inviteToken ? '/login?invite='.urlencode($this->inviteToken) : '/home'),
             ],
         );
     }

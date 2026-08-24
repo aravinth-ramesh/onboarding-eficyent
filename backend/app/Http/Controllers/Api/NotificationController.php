@@ -123,7 +123,7 @@ class NotificationController extends Controller
 
         $request->validate([
             'files' => 'required|array|min:1',
-            'files.*' => 'file|max:' . config('onboarding_uploads.max_file_size_kb', 5120),
+            'files.*' => 'file|max:'.config('onboarding_uploads.max_file_size_kb', 5120),
         ]);
 
         $files = $request->file('files');

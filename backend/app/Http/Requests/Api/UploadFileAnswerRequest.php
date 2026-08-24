@@ -20,7 +20,7 @@ class UploadFileAnswerRequest extends FormRequest
         return [
             'question_id' => ['required', 'exists:questions,id'],
             'files' => ['required', 'array', 'min:1', "max:{$maxFiles}"],
-            'files.*' => ["required", "file", "mimes:{$allowedMimes}", "max:{$maxSize}"],
+            'files.*' => ['required', 'file', "mimes:{$allowedMimes}", "max:{$maxSize}"],
         ];
     }
 
@@ -32,7 +32,7 @@ class UploadFileAnswerRequest extends FormRequest
         return [
             'files.*.mimes' => "Only the following file types are allowed: {$allowedMimes}.",
             'files.*.max' => "Each file must not exceed {$maxSizeMb} MB.",
-            'files.max' => 'Too many files. Maximum allowed: ' . config('onboarding_uploads.max_files_per_question', 10) . '.',
+            'files.max' => 'Too many files. Maximum allowed: '.config('onboarding_uploads.max_files_per_question', 10).'.',
         ];
     }
 }

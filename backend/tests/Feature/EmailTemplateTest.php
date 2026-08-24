@@ -19,6 +19,7 @@ class EmailTemplateTest extends TestCase
     use RefreshDatabase;
 
     private Admin $admin;
+
     private OnboardingService $service;
 
     protected function setUp(): void
@@ -61,7 +62,7 @@ class EmailTemplateTest extends TestCase
         $this->actingAs($this->admin, 'admin')
             ->put(route('admin.email-templates.update', 'onboarding_submitted_client'), [
                 'subject' => 'We got it, {{client_name}}! ({{reference}})',
-                'body' => "Thanks {{client_name}} — application {{reference}} for a {{organization_type}} is in review.",
+                'body' => 'Thanks {{client_name}} — application {{reference}} for a {{organization_type}} is in review.',
             ])
             ->assertRedirect();
 

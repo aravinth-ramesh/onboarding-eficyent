@@ -23,7 +23,9 @@ class DeleteAnswerFileTest extends TestCase
     use RefreshDatabase;
 
     private UserOnboarding $onboarding;
+
     private UserAnswer $answer;
+
     private User $client;
 
     protected function setUp(): void

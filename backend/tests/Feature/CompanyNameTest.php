@@ -24,6 +24,7 @@ class CompanyNameTest extends TestCase
     use RefreshDatabase;
 
     private UserType $type;
+
     private QuestionGroup $group;
 
     protected function setUp(): void

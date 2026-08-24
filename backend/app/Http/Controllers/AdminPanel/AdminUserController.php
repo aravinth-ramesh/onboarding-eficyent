@@ -107,7 +107,7 @@ class AdminUserController extends Controller
         $admin->update(['is_active' => ! $admin->is_active]);
 
         return back()->with('success',
-            "Staff member \"{$admin->name}\" " . ($admin->is_active ? 'activated.' : 'deactivated.'));
+            "Staff member \"{$admin->name}\" ".($admin->is_active ? 'activated.' : 'deactivated.'));
     }
 
     private function assignableRoleValues(): array

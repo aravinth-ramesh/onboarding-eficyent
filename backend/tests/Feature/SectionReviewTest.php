@@ -24,8 +24,11 @@ class SectionReviewTest extends TestCase
     use RefreshDatabase;
 
     private UserType $type;
+
     private UserOnboarding $onboarding;
+
     private QuestionGroup $companyGroup;
+
     private QuestionGroup $docsGroup;
 
     protected function setUp(): void
@@ -57,7 +60,7 @@ class SectionReviewTest extends TestCase
 
     private function admin(AdminRole $role, ?int $assignTo = null): Admin
     {
-        $admin = Admin::create(['name' => ucfirst($role->value), 'email' => $role->value . '@test.com', 'password' => 'x', 'is_active' => true, 'role' => $role]);
+        $admin = Admin::create(['name' => ucfirst($role->value), 'email' => $role->value.'@test.com', 'password' => 'x', 'is_active' => true, 'role' => $role]);
 
         return $admin;
     }

@@ -253,6 +253,7 @@ class AnswerService
                     }
                     $existing->update(['value' => $newValue]);
                 }
+
                 return $existing;
             }
 

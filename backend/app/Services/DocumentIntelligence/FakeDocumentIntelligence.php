@@ -58,7 +58,7 @@ class FakeDocumentIntelligence implements DocumentIntelligenceContract
             issueDate: $issueDate,
             expiryDate: $expiryDate,
             confidence: 'high',
-            summary: 'Fake analysis of ' . $file->getClientOriginalName(),
+            summary: 'Fake analysis of '.$file->getClientOriginalName(),
         );
     }
 }

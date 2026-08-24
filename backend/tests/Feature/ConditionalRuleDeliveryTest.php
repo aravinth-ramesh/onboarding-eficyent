@@ -24,7 +24,9 @@ class ConditionalRuleDeliveryTest extends TestCase
     use RefreshDatabase;
 
     private UserType $type;
+
     private Question $parent;
+
     private Question $child;
 
     protected function setUp(): void

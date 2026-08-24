@@ -30,10 +30,10 @@ class CountryRegistrationService
      */
     public function categoryForType(?UserType $type): string
     {
-        if (!$type) {
+        if (! $type) {
             return 'corporate';
         }
-        $haystack = strtolower(($type->slug ?? '') . ' ' . ($type->name ?? ''));
+        $haystack = strtolower(($type->slug ?? '').' '.($type->name ?? ''));
 
         return preg_match('/financ|bank|nbfc|insur|fund|broker|capital/', $haystack) === 1
             ? 'fi'
@@ -47,7 +47,7 @@ class CountryRegistrationService
      */
     public function fieldsFor(string $countryCode, string $category): array
     {
-        if (!CountryRegistration::query()->exists()) {
+        if (! CountryRegistration::query()->exists()) {
             return $this->configFieldsFor($countryCode, $category);
         }
 
@@ -70,7 +70,7 @@ class CountryRegistrationService
      */
     public function catalogForCategory(string $category): array
     {
-        if (!CountryRegistration::query()->exists()) {
+        if (! CountryRegistration::query()->exists()) {
             return $this->configCatalogForCategory($category);
         }
 
@@ -115,7 +115,7 @@ class CountryRegistrationService
         $overrides = [];
         foreach (config('country_registrations.overrides', []) as $code => $fields) {
             $filtered = $this->filterConfigByCategory($fields, $category);
-            if (!empty($filtered)) {
+            if (! empty($filtered)) {
                 $overrides[$code] = $filtered;
             }
         }
