@@ -21,18 +21,29 @@ class AuthController extends Controller
         $email = $request->validated('email');
 
         if (! $this->otpService->canRequestNewOtp($email)) {
+            // Say how much longer, so the refused client can keep counting down
+            // honestly rather than leaving the resend button lying about being
+            // ready (EOP-3).
             return response()->json([
                 'message' => 'Please wait before requesting a new code.',
+                'resend_available_in_seconds' => $this->otpService->secondsUntilResendAllowed($email),
             ], 429);
         }
 
-        $this->otpService->send($email);
+        $otp = $this->otpService->send($email);
 
         // The client can't show how long the code is good for, or when a
         // resend becomes available, unless we tell it (EOP-3, EOP-4).
+        //
+        // The deadline comes off the row that was just issued rather than the
+        // configured duration: the two could drift, and the client should be
+        // counting down to the moment the server will actually stop accepting
+        // the code, not to a duration measured from whenever the response
+        // happened to arrive.
         return response()->json([
             'message' => 'Verification code sent to your email.',
-            'expires_in_seconds' => $this->otpService->expirySeconds(),
+            'expires_at' => $otp->expires_at->toIso8601String(),
+            'expires_in_seconds' => max(0, (int) ceil(now()->diffInSeconds($otp->expires_at, false))),
             'resend_available_in_seconds' => $this->otpService->resendCooldownSeconds(),
         ]);
     }

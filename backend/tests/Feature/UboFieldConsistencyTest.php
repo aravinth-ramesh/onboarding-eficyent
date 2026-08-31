@@ -101,4 +101,61 @@ class UboFieldConsistencyTest extends TestCase
             ->assertSee('Live question')
             ->assertDontSee('Retired question');
     }
+    public function test_id_type_is_a_dropdown_even_without_a_nationality_column(): void
+    {
+        // The directors table has an ID Type column but no nationality column,
+        // so the owner-table gate skipped it and it kept the free text field
+        // the legacy seed gave it — a dropdown in one section and a text box in
+        // the other (EOP-49).
+        $group = QuestionGroup::create(['name' => 'Own', 'slug' => 'own-'.uniqid(), 'order' => 1, 'is_active' => true]);
+        $directors = Question::create([
+            'question_group_id' => $group->id, 'label' => 'Directors and executive officers',
+            'type' => 'table', 'is_required' => false, 'order' => 1, 'is_active' => true,
+            'options' => ['columns' => [
+                ['key' => 'full_name', 'label' => 'Full Name', 'type' => 'text'],
+                ['key' => 'id_type', 'label' => 'ID Type', 'type' => 'text'],
+                ['key' => 'id_number', 'label' => 'ID Number', 'type' => 'text'],
+            ]],
+        ]);
+
+        UboTableColumns::apply();
+
+        $idType = collect($directors->fresh()->options['columns'])->firstWhere('key', 'id_type');
+        $this->assertSame('select', $idType['type']);
+        $this->assertCount(4, $idType['options']);
+        $this->assertSame('passport', $idType['options'][0]['value']);
+    }
+
+    public function test_an_id_type_select_that_already_has_options_is_left_alone(): void
+    {
+        $group = QuestionGroup::create(['name' => 'Own', 'slug' => 'own-'.uniqid(), 'order' => 1, 'is_active' => true]);
+        $question = Question::create([
+            'question_group_id' => $group->id, 'label' => 'Custom', 'type' => 'table',
+            'is_required' => false, 'order' => 1, 'is_active' => true,
+            'options' => ['columns' => [
+                ['key' => 'id_type', 'label' => 'ID Type', 'type' => 'select',
+                    'options' => [['value' => 'custom', 'label' => 'Custom only']]],
+            ]],
+        ]);
+
+        UboTableColumns::apply();
+
+        $idType = collect($question->fresh()->options['columns'])->firstWhere('key', 'id_type');
+        $this->assertCount(1, $idType['options'], 'a deliberately configured list survives');
+        $this->assertSame('custom', $idType['options'][0]['value']);
+    }
+
+    public function test_a_table_with_no_id_type_is_untouched(): void
+    {
+        $group = QuestionGroup::create(['name' => 'Bank', 'slug' => 'bank-'.uniqid(), 'order' => 1, 'is_active' => true]);
+        $question = Question::create([
+            'question_group_id' => $group->id, 'label' => 'Bank', 'type' => 'table',
+            'is_required' => false, 'order' => 1, 'is_active' => true,
+            'options' => ['columns' => [['key' => 'bank_name', 'label' => 'Bank Name', 'type' => 'text']]],
+        ]);
+
+        UboTableColumns::apply();
+
+        $this->assertSame('text', $question->fresh()->options['columns'][0]['type']);
+    }
 }

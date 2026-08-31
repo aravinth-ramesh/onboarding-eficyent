@@ -42,12 +42,45 @@ class UboTableColumns
                 continue;
             }
 
-            $keys = array_column($columns, 'key');
-            if (! in_array('nationality', $keys, true)) {
-                continue; // not an owner/director table
+            $changed = false;
+
+            // Normalise ID Type wherever it appears, before the owner-table
+            // gate below. The directors table carries an ID Type column but no
+            // nationality column, so it was skipped entirely and kept the free
+            // text field the legacy seed gave it -- one section offered the
+            // dropdown and the other a text box (EOP-49). Matching on key and
+            // label, the way PhoneColumnTypes does, rather than on the shape of
+            // the surrounding table.
+            foreach ($columns as $i => $column) {
+                if (! preg_match('/\bid[\s_-]*type\b/i', ($column['key'] ?? '').' '.($column['label'] ?? ''))) {
+                    continue;
+                }
+
+                $isSelect = ($column['type'] ?? 'text') === 'select';
+                $hasOptions = is_array($column['options'] ?? null) && $column['options'] !== [];
+
+                // Leave a select that already carries its own option list.
+                if ($isSelect && $hasOptions) {
+                    continue;
+                }
+
+                $columns[$i]['type'] = 'select';
+                $columns[$i]['options'] = self::ID_TYPES;
+                $changed = true;
             }
 
-            $changed = false;
+            $keys = array_column($columns, 'key');
+            if (! in_array('nationality', $keys, true)) {
+                // Not an owner table, so the rest of this pass does not apply —
+                // but any ID Type fix above still has to be saved.
+                if ($changed) {
+                    $options['columns'] = $columns;
+                    $question->update(['options' => $options]);
+                    $changedQuestions++;
+                }
+
+                continue;
+            }
 
             foreach ($columns as $i => $column) {
                 if (($column['key'] ?? '') !== 'nationality') {

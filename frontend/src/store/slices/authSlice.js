@@ -15,7 +15,13 @@ export const sendOtp = createAsyncThunk('auth/sendOtp', async (email, { rejectWi
     const response = await authApi.sendOtp(email);
     return response.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to send OTP');
+    // Carry the whole body, not just the message: a refused resend reports how
+    // much longer to wait, and the screen needs it to keep counting down
+    // honestly (EOP-3).
+    return rejectWithValue({
+      message: error.response?.data?.message || 'Failed to send OTP',
+      resend_available_in_seconds: error.response?.data?.resend_available_in_seconds,
+    });
   }
 });
 
@@ -105,7 +111,8 @@ const authSlice = createSlice({
       })
       .addCase(sendOtp.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        // The payload is an object now; keep `error` a string for the UI.
+        state.error = action.payload?.message ?? action.payload;
       })
       // Verify OTP
       .addCase(verifyOtp.pending, (state) => {

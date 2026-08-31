@@ -167,6 +167,17 @@
        were squeezed until headings and values wrapped one or two characters
        per line. Give the table a floor width and let it scroll inside its
        own container rather than compressing the columns (retest item 32). */
+    /* `.submitted-answers-value table` above sets table-layout: fixed, which
+       ignores min-width and splits the width equally between columns. With
+       eleven columns that left ~58px each, and because the headings below are
+       nowrap they overflowed their cell and painted over the neighbouring
+       heading rather than wrapping or scrolling (report item 6). Opting this
+       table back into auto layout is what makes the widths below take effect. */
+    .submitted-answers-value table.answer-table {
+        table-layout: auto;
+        width: auto;
+        min-width: 100%;
+    }
     .answer-table { min-width: 680px; }
     .answer-table th { white-space: nowrap; }
     .answer-table td { min-width: 110px; vertical-align: top; word-break: normal; overflow-wrap: anywhere; }

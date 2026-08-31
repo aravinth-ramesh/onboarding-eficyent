@@ -9,6 +9,10 @@ import appConfig from '../../appConfig';
 // and accepts a dotless domain such as "aaaa@a" (EOP-2).
 const isValidEmail = (value) => /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(String(value || '').trim());
 
+/** Whole seconds left until a deadline, or null when there isn't one. */
+const remainingSeconds = (deadline) =>
+  deadline == null ? null : Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+
 const formatCountdown = (seconds) => {
   const s = Math.max(0, seconds);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -38,6 +42,12 @@ function LoginPage() {
   // Seconds until the code expires, and until a resend is allowed (EOP-3/EOP-4).
   const [expiresIn, setExpiresIn] = useState(null);
   const [resendIn, setResendIn] = useState(0);
+  // Absolute deadlines the counters are recomputed from. Subtracting one per
+  // tick drifts: browsers throttle timers in a background tab and stop them
+  // while the machine sleeps, so the page would still show time remaining on a
+  // code the server had already expired.
+  const expiryDeadline = useRef(null);
+  const resendDeadline = useRef(null);
   const inputRefs = useRef([]);
 
   // Team invitation deep link (?invite=token). The link must never simply drop
@@ -84,10 +94,27 @@ function LoginPage() {
     const result = await dispatch(sendOtp(address));
     // The API reports how long the code lasts and when a resend is allowed.
     const payload = result?.payload;
+
     if (payload && !result.error) {
-      setExpiresIn(payload.expires_in_seconds ?? null);
-      setResendIn(payload.resend_available_in_seconds ?? 0);
+      // Prefer the server's absolute deadline; fall back to the duration for an
+      // older backend that only sends seconds.
+      const parsed = payload.expires_at ? Date.parse(payload.expires_at) : NaN;
+      expiryDeadline.current = Number.isNaN(parsed)
+        ? (payload.expires_in_seconds != null ? Date.now() + payload.expires_in_seconds * 1000 : null)
+        : parsed;
+      resendDeadline.current = Date.now() + (payload.resend_available_in_seconds ?? 0) * 1000;
+
+      setExpiresIn(remainingSeconds(expiryDeadline.current));
+      setResendIn(remainingSeconds(resendDeadline.current) ?? 0);
+    } else if (result?.error) {
+      // A refused resend still tells us when one becomes available (EOP-3).
+      const wait = result.payload?.resend_available_in_seconds;
+      if (wait != null) {
+        resendDeadline.current = Date.now() + wait * 1000;
+        setResendIn(wait);
+      }
     }
+
     return result;
   }, [dispatch]);
 
@@ -110,13 +137,16 @@ function LoginPage() {
     await requestOtp(email);
   };
 
-  // One ticker drives both the expiry countdown and the resend cooldown.
+  // One ticker drives both countdowns, recomputing each from its deadline so a
+  // throttled or suspended tab catches up instead of drifting.
   useEffect(() => {
     if (!otpSent) return undefined;
-    const id = setInterval(() => {
-      setExpiresIn((v) => (v === null ? v : Math.max(0, v - 1)));
-      setResendIn((v) => Math.max(0, v - 1));
-    }, 1000);
+    const tick = () => {
+      setExpiresIn(remainingSeconds(expiryDeadline.current));
+      setResendIn(remainingSeconds(resendDeadline.current) ?? 0);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [otpSent]);
 

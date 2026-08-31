@@ -98,4 +98,24 @@ class OtpService
     {
         return self::RATE_LIMIT_MINUTES * 60;
     }
+
+    /**
+     * Seconds until a resend is actually allowed for this address.
+     *
+     * The flat cooldown above answers "how long after sending"; this answers
+     * "how long from now", which is what a client refused with a 429 needs in
+     * order to show an honest countdown instead of guessing.
+     */
+    public function secondsUntilResendAllowed(string $email): int
+    {
+        $lastOtp = OtpCode::where('email', $email)->latest()->first();
+
+        if (! $lastOtp) {
+            return 0;
+        }
+
+        $allowedAt = $lastOtp->created_at->addMinutes(self::RATE_LIMIT_MINUTES);
+
+        return max(0, (int) ceil(now()->diffInSeconds($allowedAt, false)));
+    }
 }
