@@ -48,19 +48,28 @@
                     @forelse($rules as $rule)
                         <tr>
                             <td class="fw-semibold">
-                                <span class="badge bg-light text-dark mb-1">{{ $rule->question->group->name ?? 'N/A' }}</span><br>
-                                {{ Str::limit($rule->question->label ?? 'N/A', 40) }}
+                                <span class="badge bg-light text-dark mb-1">{{ $rule->question?->group?->name ?? 'N/A' }}</span>
+                                @if($rule->question?->trashed())
+                                    {{-- Say so, rather than leaving the row looking simply blank. --}}
+                                    <span class="badge bg-danger-subtle text-danger border mb-1" title="This question has been deleted, so the rule no longer applies">deleted</span>
+                                @endif
+                                <br>
+                                {{ Str::limit($rule->question?->label ?? 'N/A', 40) }}
                             </td>
                             <td>
                                 @if($rule->parent_field === 'country_code')
                                     <span class="badge badge-in-progress mb-1">🌍 Country of Incorporation</span>
                                 @else
-                                    <span class="badge bg-light text-dark mb-1">{{ $rule->parentQuestion?->group?->name ?? 'N/A' }}</span><br>
+                                    <span class="badge bg-light text-dark mb-1">{{ $rule->parentQuestion?->group?->name ?? 'N/A' }}</span>
+                                    @if($rule->parentQuestion?->trashed())
+                                        <span class="badge bg-danger-subtle text-danger border mb-1" title="This question has been deleted, so the rule no longer applies">deleted</span>
+                                    @endif
+                                    <br>
                                     {{ Str::limit($rule->parentQuestion?->label ?? 'N/A', 40) }}
                                 @endif
                             </td>
                             <td><code>{{ $rule->comparison_type }}</code></td>
-                            <td>{{ Str::limit($rule->trigger_value ?? '-', 30) }}</td>
+                            <td>{{ Str::limit($rule->trigger_value ?: '-', 30) }}</td>
                             <td>
                                 <span class="badge {{ $rule->action === 'show' ? 'bg-success' : 'bg-secondary' }}">
                                     {{ ucfirst($rule->action) }}

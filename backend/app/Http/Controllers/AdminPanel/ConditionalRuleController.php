@@ -14,7 +14,14 @@ class ConditionalRuleController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ConditionalRule::with(['question.group', 'parentQuestion.group']);
+        // Resolve trashed questions too. Deleting a question only soft-deletes
+        // it, so the DB-level cascade never fires and its rules survive — and
+        // because belongsTo applies the soft-delete scope, both sides resolved
+        // to null and the row rendered with no detail at all (report item 1).
+        $query = ConditionalRule::with([
+            'question' => fn ($q) => $q->withTrashed()->with('group'),
+            'parentQuestion' => fn ($q) => $q->withTrashed()->with('group'),
+        ]);
 
         if ($request->filled('question_id')) {
             $query->where('question_id', $request->input('question_id'));

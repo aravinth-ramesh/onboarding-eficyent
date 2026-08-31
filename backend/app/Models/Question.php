@@ -51,6 +51,20 @@ class Question extends Model
         return $this->hasMany(QuestionTypeMapping::class);
     }
 
+    /**
+     * Deleting a question only soft-deletes it, so the database-level cascade
+     * on conditional_rules never fires and its rules outlive it — leaving rules
+     * that point at nothing and render blank in the admin list (report item 1).
+     * Clear them out with the question.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $question) {
+            $question->conditionalRules()->delete();
+            $question->dependentRules()->delete();
+        });
+    }
+
     public function conditionalRules(): HasMany
     {
         return $this->hasMany(ConditionalRule::class);

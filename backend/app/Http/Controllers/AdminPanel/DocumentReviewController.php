@@ -19,7 +19,20 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class DocumentReviewController extends Controller
 {
-    private const ATTENTION_STATUSES = ['needs_review', 'type_mismatch', 'expired', 'stale'];
+    /**
+     * Statuses that put a document in front of a human.
+     *
+     * `skipped` belongs here: automated validation short-circuits to it
+     * whenever the question carries no expected_document policy, and no seeder
+     * or migration sets that policy — so on a real install every upload lands
+     * as skipped and the queue reported "Nothing awaiting review" while
+     * documents sat unreviewed (report item 15). A document the automation
+     * never assessed is exactly one a reviewer must look at.
+     */
+    private const ATTENTION_STATUSES = ['needs_review', 'type_mismatch', 'expired', 'stale', 'skipped'];
+
+    /** Documents the automation actually assessed, for the auto-pass rate. */
+    private const ASSESSED_STATUSES = ['needs_review', 'type_mismatch', 'expired', 'stale', 'passed'];
 
     public function index(Request $request): View
     {
@@ -118,8 +131,13 @@ class DocumentReviewController extends Controller
      */
     private function stats(): array
     {
-        $recent = AnswerFile::where('created_at', '>=', now()->subDays(30))
-            ->where('validation_status', '!=', 'skipped');
+        // Counted separately rather than excluded outright: dropping skipped
+        // made every tile read zero on an install where nothing carries an
+        // expected_document policy (report item 15).
+        $recent = AnswerFile::where('created_at', '>=', now()->subDays(30));
+
+        $assessed = (clone $recent)->whereIn('validation_status', self::ASSESSED_STATUSES);
+        $notAssessed = (clone $recent)->where('validation_status', 'skipped')->count();
 
         $byStatus = (clone $recent)->selectRaw('validation_status, count(*) as total')
             ->groupBy('validation_status')
@@ -137,12 +155,18 @@ class DocumentReviewController extends Controller
             ->limit(5)
             ->get();
 
+        // The rate answers "of the documents automation judged, how many
+        // passed" — counting never-assessed uploads in the denominator would
+        // drag it down for work the automation never attempted.
+        $assessedTotal = $assessed->count();
+
         return [
             'total' => $total,
             'passed' => $byStatus->get('passed', 0),
             'needs_review' => $byStatus->get('needs_review', 0),
+            'not_assessed' => $notAssessed,
             'justified' => $byStatus->get('type_mismatch', 0) + $byStatus->get('expired', 0) + $byStatus->get('stale', 0),
-            'auto_pass_rate' => $total > 0 ? round($byStatus->get('passed', 0) / $total * 100) : null,
+            'auto_pass_rate' => $assessedTotal > 0 ? round($byStatus->get('passed', 0) / $assessedTotal * 100) : null,
             'top_review_questions' => $topReviewQuestions,
         ];
     }
