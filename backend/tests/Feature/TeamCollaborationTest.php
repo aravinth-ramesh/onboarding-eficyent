@@ -188,6 +188,30 @@ class TeamCollaborationTest extends TestCase
         );
     }
 
+    public function test_an_account_that_already_existed_is_also_marked_invitation_only(): void
+    {
+        // invited_at was set only when the invite created the User row, so
+        // someone who had already signed in but never started an application
+        // kept a null marker -- and removing them still handed them their own
+        // application, where they appeared as the owner (report item 3).
+        $existing = User::create(['email' => 'existing@test.com', 'name' => 'Existing', 'position' => 'CFO']);
+        $this->assertNull($existing->invited_at);
+
+        Sanctum::actingAs($this->owner);
+        $this->postJson('/api/onboarding/team/invite', ['email' => 'existing@test.com'])->assertStatus(201);
+
+        $this->assertNotNull($existing->fresh()->invited_at, 'the invite must mark the account');
+
+        $collaborator = $existing->fresh()->collaboration;
+        Sanctum::actingAs($this->owner);
+        $this->deleteJson("/api/onboarding/team/{$collaborator->id}")->assertOk();
+
+        Sanctum::actingAs($existing->fresh());
+        $this->getJson('/api/onboarding/status')->assertOk()->assertJsonPath('data', null);
+
+        $this->assertDatabaseMissing('user_onboardings', ['user_id' => $existing->id]);
+    }
+
     public function test_a_genuine_new_user_still_gets_an_application(): void
     {
         // The guard keys off invitation-only accounts, so ordinary self-service

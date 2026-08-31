@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { PHONE_COUNTRY_CODES } from '../../config/phoneCountryCodes';
-import { parsePhone, formatPhone } from '../../utils/phoneValue';
+import { usePhoneParts } from '../../hooks/usePhoneParts';
 
 /**
  * Phone number field: a country dial-code dropdown + a number input.
@@ -8,16 +8,16 @@ import { parsePhone, formatPhone } from '../../utils/phoneValue';
  * so required validation behaves correctly).
  */
 function PhoneField({ question, value, onChange }) {
-  const { dial, number } = useMemo(() => parsePhone(value), [value]);
-
-  const emit = (nextDial, nextNumber) => onChange(question.id, formatPhone(nextDial, nextNumber));
+  const { dial, number, setDial, setNumber } = usePhoneParts(value, (next) =>
+    onChange(question.id, next),
+  );
 
   return (
     <div className="phone-field">
       <select
         className="form-select phone-field-dial"
         value={dial}
-        onChange={(e) => emit(e.target.value, number)}
+        onChange={(e) => setDial(e.target.value)}
         aria-label="Country dial code"
       >
         {PHONE_COUNTRY_CODES.map((c) => (
@@ -32,7 +32,7 @@ function PhoneField({ question, value, onChange }) {
         className="form-control phone-field-number"
         placeholder={question.placeholder || 'Phone number'}
         value={number}
-        onChange={(e) => emit(dial, e.target.value)}
+        onChange={(e) => setNumber(e.target.value)}
       />
     </div>
   );

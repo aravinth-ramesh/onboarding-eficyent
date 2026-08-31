@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 
 /**
  * A single-select that can be typed into.
@@ -25,6 +25,45 @@ function SearchableSelect({
   const [highlighted, setHighlighted] = useState(0);
   const rootRef = useRef(null);
   const inputRef = useRef(null);
+  const toggleRef = useRef(null);
+  // The menu is positioned against the viewport rather than its parent: it used
+  // to be absolutely positioned, so any ancestor with overflow:hidden -- the
+  // step card, the registration panel -- cut the option list off part-way
+  // (retest items 8 and 16). Measured on open, and kept in step while the page
+  // scrolls or resizes.
+  const [menuStyle, setMenuStyle] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+
+    const place = () => {
+      const el = toggleRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      // Drop upward when the space below cannot hold a usable list.
+      const dropUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+      const available = Math.max(160, (dropUp ? spaceAbove : spaceBelow) - 16);
+
+      setMenuStyle({
+        position: 'fixed',
+        left: r.left,
+        width: r.width,
+        maxHeight: available,
+        ...(dropUp ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+      });
+    };
+
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
 
   const selected = useMemo(
     () => options.find((o) => String(o.value) === String(value)) || null,
@@ -86,6 +125,7 @@ function SearchableSelect({
       <button
         type="button"
         id={id}
+        ref={toggleRef}
         className="form-control searchable-select-toggle"
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
@@ -100,7 +140,7 @@ function SearchableSelect({
       </button>
 
       {open && (
-        <div className="searchable-select-menu">
+        <div className="searchable-select-menu" style={menuStyle || undefined}>
           <input
             ref={inputRef}
             type="text"

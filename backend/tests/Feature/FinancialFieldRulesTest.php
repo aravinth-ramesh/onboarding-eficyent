@@ -63,7 +63,9 @@ class FinancialFieldRulesTest extends TestCase
         FieldValidationRules::apply();
 
         $columns = collect($q->fresh()->options['columns'])->keyBy('key');
-        $this->assertSame('iban', $columns['account_number_/_iban_:']['validation']['format']);
+        // One field holds either form. Requiring an IBAN here rejected every
+        // valid domestic account number (report item 5).
+        $this->assertSame('account_or_iban', $columns['account_number_/_iban_:']['validation']['format']);
         $this->assertSame('swift', $columns['swift_/_bic_code_:']['validation']['format']);
         $this->assertTrue($columns['bank_name_:']['validation']['requires_letter']);
     }

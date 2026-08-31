@@ -19,6 +19,17 @@ export const saveAnswers = (answers) =>
   client.post('/onboarding/answers', { answers });
 
 /**
+ * Whether a value is something the browser can actually upload.
+ *
+ * FormData stringifies anything that is not a File or Blob, so a stored path
+ * standing in for an already-uploaded document would be sent as text and fail
+ * the server's `file` rule (items 11, 14, 17).
+ */
+const isUploadable = (file) =>
+  (typeof File !== 'undefined' && file instanceof File) ||
+  (typeof Blob !== 'undefined' && file instanceof Blob);
+
+/**
  * Save answers with file uploads using multipart/form-data.
  * @param {Array} answers - Array of { question_id, value } for non-file answers
  * @param {Object} fileAnswers - Map of questionId -> File[] for file-type answers
@@ -43,23 +54,32 @@ export const saveAnswersWithFiles = (answers, fileAnswers, tableFileAnswers, fil
     }
   });
 
-  // Append file answers
+  // Append file answers. Only a real File/Blob may be appended: FormData turns
+  // anything else into a string, so an already-uploaded document -- held as a
+  // stored path rather than a File -- arrived as text and was rejected by the
+  // server's `required|file` rule with "The file_answers.N.file field is
+  // required", even though every attachment was present. The same coercion
+  // broke saving a requested change to a table that holds a file column, which
+  // surfaced as a server error on the first attempt (items 11, 14, 17).
   let fileIndex = 0;
   Object.entries(fileAnswers || {}).forEach(([questionId, files]) => {
-    files.forEach((file) => {
+    (files || []).filter(isUploadable).forEach((file) => {
       formData.append(`file_answers[${fileIndex}][question_id]`, questionId);
       formData.append(`file_answers[${fileIndex}][file]`, file);
       fileIndex++;
     });
   });
 
-  // Append per-cell files for table answers
-  (tableFileAnswers || []).forEach((entry, index) => {
-    formData.append(`table_file_answers[${index}][question_id]`, entry.questionId);
-    formData.append(`table_file_answers[${index}][row_index]`, entry.rowIndex);
-    formData.append(`table_file_answers[${index}][column_key]`, entry.columnKey);
-    formData.append(`table_file_answers[${index}][file]`, entry.file);
-  });
+  // Append per-cell files for table answers, re-indexed so the keys stay
+  // sequential once already-uploaded cells are skipped.
+  (tableFileAnswers || [])
+    .filter((entry) => isUploadable(entry?.file))
+    .forEach((entry, index) => {
+      formData.append(`table_file_answers[${index}][question_id]`, entry.questionId);
+      formData.append(`table_file_answers[${index}][row_index]`, entry.rowIndex);
+      formData.append(`table_file_answers[${index}][column_key]`, entry.columnKey);
+      formData.append(`table_file_answers[${index}][file]`, entry.file);
+    });
 
   Object.entries(fileJustifications || {}).forEach(([questionId, text]) => {
     if (text) formData.append(`file_justifications[${questionId}]`, text);

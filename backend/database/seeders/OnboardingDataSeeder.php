@@ -62,6 +62,9 @@ class OnboardingDataSeeder extends Seeder
         // Phone columns inside tables get the dial-code dropdown too
         // (retest items 28 and 31).
         \App\Support\PhoneColumnTypes::apply();
+
+        // The combined account-number/IBAN field accepts either form (item 5).
+        \App\Support\BankAccountFormat::apply();
         \App\Support\DuplicateRegistrationQuestions::apply();
     }
 

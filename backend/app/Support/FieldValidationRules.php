@@ -69,7 +69,9 @@ class FieldValidationRules
         'branch_name_/_location_:' => ['requires_letter' => true, 'min_length' => 2, 'max_length' => 120],
         'account_holder_name_:' => ['format' => 'alpha', 'min_length' => 2, 'max_length' => 120],
         'bank_address_:' => ['requires_letter' => true, 'min_length' => 5, 'max_length' => 200],
-        'account_number_/_iban_:' => ['format' => 'iban'],
+        // One field holds either form, so requiring an IBAN rejected every
+        // valid domestic account number (retest item 5).
+        'account_number_/_iban_:' => ['format' => 'account_or_iban'],
         'swift_/_bic_code_:' => ['format' => 'swift'],
     ];
 

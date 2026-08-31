@@ -73,8 +73,17 @@ const FORMAT_VALIDATORS = {
     test: (s) => isValidIban(s),
     message: 'Enter a valid IBAN.',
   },
-  // A single field holding both an email address and a phone number, e.g.
-  // "AML Officer Contact Email & Number" — require both parts (EOP-42).
+  // One field holds either form, so requiring an IBAN rejected every valid
+  // domestic account number (retest item 5). Accept an IBAN, or an account
+  // number: alphanumeric, optionally spaced or hyphened, 6-34 characters.
+  account_or_iban: {
+    test: (s) => {
+      const compact = s.replace(/[\s-]/g, '');
+      if (/^[A-Za-z]{2}\d{2}[A-Za-z0-9]+$/.test(compact)) return isValidIban(s);
+      return /^[A-Za-z0-9]{6,34}$/.test(compact);
+    },
+    message: 'Enter a valid account number or IBAN.',
+  },
   // Postal codes differ far too much between countries to pin to one pattern
   // (Singapore is six digits, the UK "SW1A 1AA", Ireland "D02 AF30"), so this
   // checks shape rather than a country format: at least three characters,
@@ -90,6 +99,8 @@ const FORMAT_VALIDATORS = {
     test: (s) => /^[\p{L}\p{N}][\p{L}\p{N}\s/-]*[\p{L}\p{N}]$/u.test(s.trim()),
     message: 'Only letters, numbers, hyphens and slashes are allowed.',
   },
+  // A single field holding both an email address and a phone number, e.g.
+  // "AML Officer Contact Email & Number" — require both parts (EOP-42).
   contact: {
     test: (s) =>
       /[^\s@]+@[^\s@]+\.[^\s@]+/.test(s) && (s.replace(/[^\d]/g, '').length >= 7),
@@ -336,11 +347,28 @@ export const validateAddress = (value) => {
   }
   if (!addr || typeof addr !== 'object') return null;
 
-  const postal = addr.postal == null ? '' : String(addr.postal).trim();
+  const part = (key) => (addr[key] == null ? '' : String(addr[key]).trim());
 
-  return postal !== '' && !FORMAT_VALIDATORS.postal_code.test(postal)
-    ? FORMAT_VALIDATORS.postal_code.message
-    : null;
+  const postal = part('postal');
+  if (postal !== '' && !FORMAT_VALIDATORS.postal_code.test(postal)) {
+    return FORMAT_VALIDATORS.postal_code.message;
+  }
+
+  // A single character passed for street, city and state, so "a" satisfied a
+  // mandatory address (retest item 9). These are free text worldwide, so the
+  // check is a floor on length plus at least one letter, not a format.
+  for (const [key, label, min] of [
+    ['line1', 'Street address', 4],
+    ['city', 'City', 2],
+    ['state', 'State / Province', 2],
+  ]) {
+    const text = part(key);
+    if (text === '') continue;
+    if (text.length < min) return `${label} must be at least ${min} characters.`;
+    if (!/\p{L}/u.test(text)) return `${label} must contain letters.`;
+  }
+
+  return null;
 };
 
 // Beneficial ownership cannot add up to more than the whole company. The rule

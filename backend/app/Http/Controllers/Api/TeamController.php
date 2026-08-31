@@ -74,10 +74,20 @@ class TeamController extends Controller
                 return response()->json(['message' => 'This person already belongs to a team.'], 422);
             }
         } else {
-            // Mark the account as invitation-only: it must not be handed an
-            // application of its own if this membership is later removed
-            // (EOP-56).
-            $invitee = User::create(['email' => $email, 'invited_at' => now()]);
+            $invitee = User::create(['email' => $email]);
+        }
+
+        // Mark the account as invitation-only so that removing this membership
+        // later does not hand them an application of their own, which would
+        // show them as its owner (EOP-56).
+        //
+        // This has to cover an account that already existed, not just one
+        // created here: someone who had signed in but never started an
+        // application kept a null invited_at, so removing them still minted a
+        // fresh application they owned. Anyone reaching this point has no
+        // application of their own -- the guard above returns early otherwise.
+        if ($invitee->invited_at === null) {
+            $invitee->forceFill(['invited_at' => now()])->save();
         }
 
         $collaborator = OnboardingCollaborator::create([

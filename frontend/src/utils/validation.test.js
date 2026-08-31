@@ -174,3 +174,42 @@ describe('postal codes and ID documents (retest items 21, 31)', () => {
     expect(validateByType('text', '///-', rules)).not.toBeNull();
   });
 });
+
+describe('account number vs IBAN, and address parts (report items 5, 9)', () => {
+  const acct = { format: 'account_or_iban' };
+
+  it('accepts a plain domestic account number', () => {
+    expect(validateByType('text', '000123456789', acct)).toBeNull();
+    expect(validateByType('text', '50100234567890', acct)).toBeNull();
+  });
+
+  it('still accepts a valid IBAN', () => {
+    expect(validateByType('text', 'GB82 WEST 1234 5698 7654 32', acct)).toBeNull();
+  });
+
+  it('rejects an IBAN whose checksum is wrong', () => {
+    expect(validateByType('text', 'GB82WEST12345698765433', acct)).not.toBeNull();
+  });
+
+  it('rejects something too short to be either', () => {
+    expect(validateByType('text', '123', acct)).not.toBeNull();
+  });
+
+  const address = (parts) => JSON.stringify({ postal: '560001', ...parts });
+
+  it('rejects a single-character street, city or state', () => {
+    expect(validateByType('address', address({ line1: 'a' }))).toMatch(/Street address/);
+    expect(validateByType('address', address({ city: 'a' }))).toMatch(/City/);
+    expect(validateByType('address', address({ state: 'a' }))).toMatch(/State/);
+  });
+
+  it('accepts real address parts', () => {
+    expect(
+      validateByType('address', address({ line1: '12 High Street', city: 'Bengaluru', state: 'Karnataka' }))
+    ).toBeNull();
+  });
+
+  it('rejects digits-only address parts', () => {
+    expect(validateByType('address', address({ city: '12345' }))).toMatch(/City/);
+  });
+});

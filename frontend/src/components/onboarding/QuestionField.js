@@ -5,9 +5,13 @@ import PhoneField from './PhoneField';
 import MccField from './MccField';
 import AddressField from './AddressField';
 import UboField from './UboField';
+import SearchableMultiSelect from '../common/SearchableMultiSelect';
 // The HTML min/max here is progressive enhancement — JS validation in
 // `utils/validation.js` is authoritative.
 import { dateBound } from '../../utils/dateBounds';
+
+/** Above this many options a checkbox list stops being readable (item 15). */
+const MULTI_SELECT_DROPDOWN_THRESHOLD = 12;
 
 /**
  * Cap input at the limit, counting the trimmed value. A raw `maxLength`
@@ -170,9 +174,27 @@ function QuestionField({ question, value, onChange, cellErrors, onRemoveUploaded
         handleChange(newValues);
       };
 
+      const options = question.options || [];
+
+      // A handful of options reads better as plain checkboxes, all visible at
+      // once. A long list does not: the country fields laid ~190 checkboxes
+      // down the page, so choosing three meant scrolling past all of them
+      // (retest item 15).
+      if (options.length > MULTI_SELECT_DROPDOWN_THRESHOLD) {
+        return (
+          <SearchableMultiSelect
+            options={options}
+            values={selectedValues}
+            onChange={handleChange}
+            placeholder="Select one or more…"
+            ariaLabel={question.label}
+          />
+        );
+      }
+
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {(question.options || []).map((option) => (
+          {options.map((option) => (
             <label
               key={option.value}
               style={{
