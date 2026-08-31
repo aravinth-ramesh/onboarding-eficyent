@@ -12,6 +12,7 @@ class NotificationController extends Controller
 {
     public function __construct(
         private NotificationService $notificationService,
+        private \App\Services\AnswerService $answerService,
     ) {}
 
     public function index(): JsonResponse
@@ -93,6 +94,14 @@ class NotificationController extends Controller
 
         $request->validate([
             'value' => 'required',
+            // A table answer may carry replacement uploads for its file cells.
+            // Without this the client had to fold the File into the JSON value,
+            // where it stringified to {} -- the document was silently dropped
+            // and the cell left holding an empty object (report item 13).
+            'table_file_answers' => ['sometimes', 'array'],
+            'table_file_answers.*.row_index' => ['required', 'integer', 'min:0'],
+            'table_file_answers.*.column_key' => ['required', 'string', 'max:255'],
+            'table_file_answers.*.file' => ['required', 'file', 'max:'.config('onboarding_uploads.max_file_size_kb', 5120)],
         ]);
 
         if ($notification->type === 'change_request') {
@@ -100,6 +109,10 @@ class NotificationController extends Controller
         } else {
             $this->notificationService->resolveNewQuestion($notification, $request->input('value'));
         }
+
+        // Merged after the value is written, so the freshly stored rows keep
+        // their uploads rather than being overwritten by them.
+        $this->attachTableCellFiles($request, $notification);
 
         return response()->json(['message' => 'Response submitted successfully.']);
     }
@@ -135,6 +148,55 @@ class NotificationController extends Controller
         }
 
         return response()->json(['message' => 'File(s) submitted successfully.']);
+    }
+
+    /**
+     * Merge any per-cell uploads submitted alongside a table answer.
+     */
+    private function attachTableCellFiles(Request $request, AdminNotification $notification): void
+    {
+        $entries = $request->input('table_file_answers', []);
+
+        if (empty($entries)) {
+            return;
+        }
+
+        $answer = $notification->userAnswer;
+        $onboarding = $answer?->onboarding;
+
+        if (! $answer || ! $onboarding) {
+            return;
+        }
+
+        $files = $request->file('table_file_answers', []);
+
+        $prepared = [];
+        foreach ($entries as $index => $entry) {
+            $file = $files[$index]['file'] ?? null;
+            if ($file === null) {
+                continue;
+            }
+            $prepared[] = [
+                'row_index' => (int) $entry['row_index'],
+                'column_key' => $entry['column_key'],
+                'file' => $file,
+            ];
+        }
+
+        if ($prepared === []) {
+            return;
+        }
+
+        /** @disregard */
+        $user = auth()->user();
+
+        $this->answerService->saveTableCellFiles(
+            $onboarding->user,
+            $onboarding,
+            (int) $answer->question_id,
+            $prepared,
+            $user,
+        );
     }
 
     /**

@@ -10,7 +10,51 @@ import {
   fetchNotifications,
 } from '../../store/slices/notificationSlice';
 import QuestionField from '../onboarding/QuestionField';
+import TableAnswerView from '../onboarding/TableAnswerView';
 import FileUploadField from '../onboarding/FileUploadField';
+
+/**
+ * Never hand React a raw object. A table file cell is stored as one, and an
+ * unrenderable child throws "Objects are not valid as a React child" — with no
+ * error boundary above this modal that tears the tree down, leaving the spinner
+ * up forever (report item 13).
+ */
+const renderable = (val) =>
+  val === null || val === undefined
+    ? ''
+    : typeof val === 'string' || typeof val === 'number' || React.isValidElement(val)
+      ? val
+      : JSON.stringify(val);
+
+
+/**
+ * Split a table answer into the JSON-safe value and the uploads that have to
+ * travel as multipart. A cell holding a freshly picked File is left untouched
+ * in the value so the server's existing reference survives, and the File is
+ * returned separately to be merged in after the value is written.
+ */
+const extractTableFiles = (answer) => {
+  let rows = answer;
+  if (typeof rows === 'string') {
+    try { rows = JSON.parse(rows); } catch { return { value: answer, tableFileAnswers: [] }; }
+  }
+  if (!Array.isArray(rows)) return { value: answer, tableFileAnswers: [] };
+
+  const tableFileAnswers = [];
+  const cleaned = rows.map((row, rowIndex) => {
+    if (!row || typeof row !== 'object') return row;
+    const next = { ...row };
+    Object.entries(row).forEach(([columnKey, cell]) => {
+      if (typeof File !== 'undefined' && cell instanceof File) {
+        tableFileAnswers.push({ rowIndex, columnKey, file: cell });
+        delete next[columnKey];
+      }
+    });
+    return next;
+  });
+
+  return { value: JSON.stringify(cleaned), tableFileAnswers };
+};
 
 function NotificationDetail({ notificationId, onClose }) {
   const dispatch = useDispatch();
@@ -66,7 +110,12 @@ function NotificationDetail({ notificationId, onClose }) {
         files.forEach((file) => formData.append('files[]', file));
         await dispatch(resolveNotificationWithFile({ id: notificationId, formData })).unwrap();
       } else {
-        await dispatch(resolveNotification({ id: notificationId, value: answer })).unwrap();
+        // Lift any File out of the table rows before the value is serialised:
+        // JSON.stringify turns a File into {}, which silently dropped the
+        // document and left the cell holding an empty object that crashed the
+        // modal on every later change request (report item 13).
+        const { value, tableFileAnswers } = extractTableFiles(answer);
+        await dispatch(resolveNotification({ id: notificationId, value, tableFileAnswers })).unwrap();
       }
       setSubmitSuccess(true);
       dispatch(fetchUnreadCount());
@@ -94,7 +143,7 @@ function NotificationDetail({ notificationId, onClose }) {
         });
         return labels.join(', ');
       } catch {
-        return val;
+        return renderable(val);
       }
     }
     if (['radio', 'select'].includes(question.type)) {
@@ -108,40 +157,20 @@ function NotificationDetail({ notificationId, onClose }) {
       try {
         const rows = typeof val === 'string' ? JSON.parse(val) : val;
         if (Array.isArray(rows)) {
-          const columns = (question.options && question.options.columns) || [];
-          if (columns.length === 0) return `${rows.length} row(s)`;
-          return (
-            <div className="table-field-readonly" style={{ marginTop: 4 }}>
-              <table className="table-field-table readonly">
-                <thead>
-                  <tr>
-                    <th className="table-field-row-num">#</th>
-                    {columns.map((col) => <th key={col.key}>{col.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i}>
-                      <td className="table-field-row-num">{i + 1}</td>
-                      {columns.map((col) => {
-                        const cellVal = row[col.key] || '';
-                        if (col.type === 'select' && col.options) {
-                          const opt = col.options.find((o) => o.value === cellVal);
-                          return <td key={col.key}>{opt ? opt.label : cellVal || '\u2014'}</td>;
-                        }
-                        return <td key={col.key}>{cellVal || '\u2014'}</td>;
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
+          // Rendered by the shared component rather than a local copy. The copy
+          // dropped each cell straight into JSX, and a file cell is stored as an
+          // object -- React 19 throws "Objects are not valid as a React child",
+          // and with no error boundary the tree is torn down, so the modal never
+          // got past its spinner and the section could not be updated at all
+          // (report item 13). TableAnswerView already renders a file cell as a
+          // link, and is what the review and submitted-answer screens use.
+          return <TableAnswerView question={question} value={rows} />;
         }
       } catch { /* fall through */ }
-      return val;
+      // fall through to the safe rendering below
     }
-    return val;
+
+    return renderable(val);
   };
 
   // Portal to <body>: the bell (and this modal) live inside the topbar, whose

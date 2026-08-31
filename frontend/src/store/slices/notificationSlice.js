@@ -52,9 +52,9 @@ export const markNotificationAsRead = createAsyncThunk(
 
 export const resolveNotification = createAsyncThunk(
   'notifications/resolve',
-  async ({ id, value }, { rejectWithValue }) => {
+  async ({ id, value, tableFileAnswers }, { rejectWithValue }) => {
     try {
-      await notificationsApi.resolveNotification(id, value);
+      await notificationsApi.resolveNotification(id, value, tableFileAnswers);
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to submit response');
