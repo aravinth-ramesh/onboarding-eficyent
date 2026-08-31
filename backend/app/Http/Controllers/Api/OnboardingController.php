@@ -804,12 +804,49 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Your application has already been submitted and can no longer be edited.'], 403);
         }
 
+        // Enforce the application's own conditional rules, but only at the
+        // point of submission: a draft stays free to be half-filled, while
+        // nothing reaches review with a required-and-visible question left
+        // unanswered. Visibility was a browser-side rule until now, so a client
+        // that simply never asked the question could submit without it.
+        if ($this->isFinalStep($onboarding, $step)) {
+            $missing = app(\App\Services\SubmissionCompleteness::class)->missingRequired($onboarding);
+
+            if ($missing !== []) {
+                return response()->json([
+                    'message' => count($missing) === 1
+                        ? '"'.$missing[0].'" is required before you can submit.'
+                        : count($missing).' required questions still need an answer before you can submit.',
+                    'code' => 'incomplete_application',
+                    'missing' => $missing,
+                ], 422);
+            }
+        }
+
         $onboarding = $this->onboardingService->completeStep($onboarding, $step);
 
         return response()->json([
             'message' => 'Step completed.',
             'data' => $this->formatOnboardingResponse($onboarding),
         ]);
+    }
+
+    /**
+     * Whether completing this step is what submits the application — i.e. no
+     * later step is still outstanding. Mirrors the branch in
+     * OnboardingService::completeStep that flips the status to completed.
+     */
+    private function isFinalStep(UserOnboarding $onboarding, UserOnboardingStep $step): bool
+    {
+        // An edit started from Final Review returns there instead of submitting.
+        if ($onboarding->return_to_step_id && $onboarding->return_to_step_id !== $step->id) {
+            return false;
+        }
+
+        return ! $onboarding->steps()
+            ->where('order', '>', $step->order)
+            ->whereNotIn('status', ['completed', 'skipped'])
+            ->exists();
     }
 
     /**
