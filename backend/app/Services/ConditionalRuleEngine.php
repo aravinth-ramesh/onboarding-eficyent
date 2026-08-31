@@ -53,7 +53,17 @@ class ConditionalRuleEngine
 
     private function evaluateRule(ConditionalRule $rule, array $answers): bool
     {
-        $parentAnswer = $answers[$rule->parent_question_id] ?? null;
+        // A rule keys off either a parent question's answer or a virtual field
+        // such as `country_code` from the registration step, which is injected
+        // into $answers under that name rather than under a question id. Only
+        // the question id was read here, so every country rule compared against
+        // null and silently evaluated as though the country had not been
+        // chosen. This mirrors evaluateSingleRule in
+        // frontend/src/utils/conditionalEngine.js, which has always handled it —
+        // the two engines have to agree or the same rule means two things.
+        $parentAnswer = $rule->parent_field
+            ? ($answers[$rule->parent_field] ?? null)
+            : ($answers[$rule->parent_question_id] ?? null);
         $triggerValue = $rule->trigger_value;
 
         return match ($rule->comparison_type) {

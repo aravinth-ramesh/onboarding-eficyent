@@ -44,7 +44,18 @@ class DocumentReviewController extends Controller
 
         // Fetch the matching documents, then group them by application so each
         // application appears once with its documents underneath (EOP-93).
+        /** @disregard */
+        $admin = Auth::guard('admin')->user();
+
         $files = AnswerFile::with(['answer.question', 'answer.onboarding.user', 'reviewer'])
+            // Same visibility rule the rest of the per-application surfaces use,
+            // and the one serve() already enforces on the individual download.
+            // It changes nothing today — every role that can reach this route
+            // sees all applications by design, and the one role restricted to
+            // assigned work lacks the ability to get here — but it means the
+            // queue cannot start leaking if that ability is ever granted more
+            // widely or a new restricted role is added.
+            ->whereHas('answer.onboarding', fn ($q) => $q->visibleTo($admin))
             ->when(
                 $status,
                 fn ($q) => $q->where('validation_status', $status),
