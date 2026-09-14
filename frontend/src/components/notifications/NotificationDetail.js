@@ -153,6 +153,37 @@ function NotificationDetail({ notificationId, onClose }) {
     if (question.type === 'file' && notification.files && notification.files.length > 0) {
       return notification.files.map((f) => f.original_filename).join(', ');
     }
+    // A structured address is stored as an object, so without a branch here it
+    // fell through to the JSON guard below and the client was shown the raw
+    // JSON of their own previous answer (report item 18).
+    if (question.type === 'address') {
+      let addr = val;
+      if (typeof addr === 'string') {
+        try { addr = JSON.parse(addr); } catch { return renderable(val); }
+      }
+      if (!addr || typeof addr !== 'object') return renderable(val);
+
+      const parts = [
+        ['Street address', addr.line1],
+        ['City', addr.city],
+        ['State / Province', addr.state],
+        ['Postal code', addr.postal],
+        ['Country', addr.country],
+      ].filter(([, v]) => v != null && String(v).trim() !== '');
+
+      if (parts.length === 0) return '\u2014';
+
+      return (
+        <div className="answer-address-readonly">
+          {parts.map(([label, v]) => (
+            <div key={label}>
+              <span className="text-muted">{label}:</span> {String(v)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     if (question.type === 'table') {
       try {
         const rows = typeof val === 'string' ? JSON.parse(val) : val;

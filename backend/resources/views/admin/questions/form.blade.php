@@ -387,7 +387,8 @@
                                                     value="1"
                                                     class="form-check-input mapping-input-{{ $idx }}"
                                                     id="mapping_req_{{ $ut->id }}"
-                                                    {{ ($mapping['is_required'] ?? false) ? 'checked' : '' }}
+                                                    {{-- null means "inherit", so show the question's own flag rather than an unticked box that misrepresents it (report item 14). --}}
+                                                    {{ ($mapping['is_required'] ?? $question?->is_required ?? false) ? 'checked' : '' }}
                                                     {{ $isChecked ? '' : 'disabled' }}>
                                                 <label class="form-check-label" for="mapping_req_{{ $ut->id }}" style="font-size: 0.8rem;">Required</label>
                                             </div>

@@ -419,7 +419,9 @@ class UserOnboardingController extends Controller
      */
     public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse|JsonResponse
     {
-        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+        // Not before the client submits, and not by a second reviewer while
+        // someone else holds it (report items 4 and 12).
+        abort_unless($userOnboarding->isReviewableBy(Auth::guard('admin')->user()), 403);
 
         $validated = $request->validate([
             'status' => ['required', 'in:pending,in_progress,completed'],
@@ -527,7 +529,7 @@ class UserOnboardingController extends Controller
      */
     public function reviewDocument(Request $request, UserOnboarding $userOnboarding, AnswerFile $file): RedirectResponse
     {
-        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+        abort_unless($userOnboarding->isReviewableBy(Auth::guard('admin')->user()), 403);
 
         // The file must hang off an answer belonging to this application.
         $file->loadMissing('answer');

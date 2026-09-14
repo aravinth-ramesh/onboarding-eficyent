@@ -52,8 +52,22 @@ class CountryRegistrationService
         }
 
         $rows = $this->activeRowsFor($countryCode);
-        if ($rows->isEmpty()) {
-            $rows = $this->activeRowsFor('*');
+
+        // A country configured in country_registrations.overrides carries a
+        // complete set of its own — GB's "crn" IS the company registration
+        // number — so the generic defaults are deliberately replaced, not added
+        // to. Anywhere else the generic set is what the client sees, and a row
+        // the admin adds is an addition to it: loading the defaults only when
+        // the country had NO rows meant that first added field silently
+        // replaced all three of them (report item 15).
+        if (! $this->hasConfiguredFields($countryCode)) {
+            $rows = $this->activeRowsFor('*')
+                ->concat($rows)
+                ->reverse()
+                ->unique('field_key')   // an added row may still shadow a default
+                ->reverse()
+                ->sortBy('order')
+                ->values();
         }
 
         return $rows->filter(fn (CountryRegistration $r) => $r->appliesToCategory($category))
@@ -101,6 +115,12 @@ class CountryRegistrationService
     }
 
     // ── Config fallback (used only before the catalog table is seeded) ──
+
+    /** Whether this country ships its own complete field set, rather than using the generic defaults. */
+    private function hasConfiguredFields(string $countryCode): bool
+    {
+        return array_key_exists($countryCode, config('country_registrations.overrides', []));
+    }
 
     private function configFieldsFor(string $countryCode, string $category): array
     {

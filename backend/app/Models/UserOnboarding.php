@@ -116,8 +116,17 @@ class UserOnboarding extends Model
      */
     public function scopeAwaitingApprovalBy($query, Admin $admin)
     {
+        // An escalated application is Compliance's to approve, so it must not
+        // appear in anyone else's approval queue — it was driving both the
+        // dashboard card and the Onboardings badge for managers and admins,
+        // telling them work was waiting that was not theirs (report item 11).
+        $states = $admin->isRole(\App\Enums\AdminRole::Compliance)
+            || $admin->isRole(\App\Enums\AdminRole::SuperAdmin)
+                ? ['pending_approval', 'escalated']
+                : ['pending_approval'];
+
         return $query->where('status', 'completed')
-            ->whereIn('approval_state', ['pending_approval', 'escalated'])
+            ->whereIn('approval_state', $states)
             ->where(fn ($q) => $q->whereNull('submitted_for_approval_by')
                 ->orWhere('submitted_for_approval_by', '!=', $admin->id));
     }
@@ -171,6 +180,41 @@ class UserOnboarding extends Model
             $admin->seesOnlyAssignedOnboardings(),
             fn ($q) => $q->where('assigned_to', $admin->id),
         );
+    }
+
+    /** Whether the client has submitted this application for review yet. */
+    public function isSubmittedForReview(): bool
+    {
+        return in_array($this->status, ['completed', 'approved', 'rejected'], true);
+    }
+
+    /**
+     * Whether this admin may record a review decision right now.
+     *
+     * Two conditions, reported separately but enforced together because they
+     * guard the same act: reviewing cannot begin before the client has
+     * submitted (report item 4), and a submitted application belongs to
+     * whoever holds it, so two reviewers cannot work the same one at once and
+     * overwrite each other's verdicts (report item 12). Unassigned work stays
+     * open — auto-assignment gives every submitted application an owner, so in
+     * practice the lock is held — and Admin / Super Admin can always step in,
+     * so an absent reviewer is never a deadlock. Releasing is just
+     * reassignment, which already exists and leaves an audit trail.
+     */
+    public function isReviewableBy(Admin $admin): bool
+    {
+        if (! $this->isSubmittedForReview()) {
+            return false;
+        }
+
+        if (! $this->isVisibleTo($admin)) {
+            return false;
+        }
+
+        return $this->assigned_to === null
+            || (int) $this->assigned_to === (int) $admin->id
+            || $admin->isRole(\App\Enums\AdminRole::Admin)
+            || $admin->isRole(\App\Enums\AdminRole::SuperAdmin);
     }
 
     /** Whether the given admin is allowed to open this specific onboarding. */

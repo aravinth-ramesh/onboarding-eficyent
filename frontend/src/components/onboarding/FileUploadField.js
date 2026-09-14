@@ -84,9 +84,13 @@ function FileUploadField({ question, value, onChange, existingFiles, onRemoveUpl
   // Show the dropzone whenever the user can still add another file:
   // - always when nothing is selected and no existing file is shown
   // - in multi-file mode, also when files already exist (to add more)
-  // - in single-file mode with an existing file, so a wrong document can be
-  //   replaced rather than being stuck forever (EOP-22)
-  const showDropzone = !hasNewFiles || isMultiple;
+  //
+  // EOP-22 dropped the hasExistingFiles guard so a wrong document could be
+  // replaced, but the same change added a remove button to the saved file —
+  // so the second dropzone bought nothing and instead rendered a phantom
+  // upload slot beside every document the client came back to (report item
+  // 17). Replacing is: remove, then upload.
+  const showDropzone = !hasExistingFiles && (!hasNewFiles || isMultiple);
 
   return (
     <div>

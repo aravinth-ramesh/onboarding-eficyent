@@ -299,7 +299,7 @@ export const validateUbo = (value) => {
   return null;
 };
 
-export const validateByType = (type, value, rules) => {
+export const validateByType = (type, value, rules, options = {}) => {
   // A phone field carries its own country in the "+CC number" value, so it is
   // always checked against that country's numbering plan — it needs no
   // configured rules, and previously had no case here at all, which is why
@@ -318,7 +318,7 @@ export const validateByType = (type, value, rules) => {
   // A structured address had no validator at all, so its postal code accepted
   // a single character — or anything else (retest item 21).
   if (type === 'address') {
-    return validateAddress(value);
+    return validateAddress(value, options);
   }
 
   if (!rules || typeof rules !== 'object') return null;
@@ -340,7 +340,16 @@ export const validateByType = (type, value, rules) => {
  * postal code qualifies — street, city and state are free text anywhere in the
  * world. Blank stays valid here; `is_required` decides whether blank is allowed.
  */
-export const validateAddress = (value) => {
+/** The parts of a structured address, in the order they are shown. */
+const ADDRESS_PARTS = [
+  ['line1', 'Street address', 4],
+  ['city', 'City', 2],
+  ['state', 'State / Province', 2],
+  ['postal', 'Postal code', 3],
+  ['country', 'Country', 2],
+];
+
+export const validateAddress = (value, { requireAll = false } = {}) => {
   let addr = value;
   if (typeof addr === 'string') {
     try { addr = JSON.parse(addr); } catch { return null; }
@@ -354,14 +363,24 @@ export const validateAddress = (value) => {
     return FORMAT_VALIDATORS.postal_code.message;
   }
 
+  // A required address means the whole address: filling only the street and
+  // continuing left the application with a partial address that still read as
+  // answered, because a non-empty object satisfies the required check (report
+  // item 2). Country was not checked at all.
+  if (requireAll) {
+    const blank = ADDRESS_PARTS.filter(([key]) => part(key) === '').map(([, label]) => label);
+
+    if (blank.length === 1) return `${blank[0]} is required.`;
+    if (blank.length > 1) return `${blank.slice(0, -1).join(', ')} and ${blank[blank.length - 1]} are required.`;
+  }
+
   // A single character passed for street, city and state, so "a" satisfied a
   // mandatory address (retest item 9). These are free text worldwide, so the
-  // check is a floor on length plus at least one letter, not a format.
-  for (const [key, label, min] of [
-    ['line1', 'Street address', 4],
-    ['city', 'City', 2],
-    ['state', 'State / Province', 2],
-  ]) {
+  // check is a floor on length plus at least one letter, not a format. Country
+  // comes from a fixed list, so it needs no shape check of its own.
+  for (const [key, label, min] of ADDRESS_PARTS) {
+    if (key === 'postal' || key === 'country') continue;
+
     const text = part(key);
     if (text === '') continue;
     if (text.length < min) return `${label} must be at least ${min} characters.`;
@@ -411,6 +430,13 @@ export const validateOwnershipTotal = (value, columns) => {
 export const validateQuestion = (question, value) => {
   if (question.is_required && isEmpty(value)) {
     return 'This field is required.';
+  }
+
+  // A required address means the whole address, not any one filled field: a
+  // non-empty object satisfies the check above, so a lone street let the user
+  // continue (report item 2).
+  if (question.type === 'address') {
+    return validateAddress(value, { requireAll: !!question.is_required });
   }
 
   if (question.type === 'table') {

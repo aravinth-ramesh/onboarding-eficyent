@@ -163,8 +163,36 @@ class QuestionController extends Controller
             ->with('success', 'Question deleted successfully.');
     }
 
+    /**
+     * The per-type requiredness override, or null to inherit the question's own
+     * flag.
+     *
+     * The column is nullable precisely so a mapping can defer to the question,
+     * and the client reads `$mapping->is_required ?? $question->is_required`.
+     * The form always posted a concrete 0 or 1, so the first save replaced
+     * "inherit" with a hard false — after which turning the question back to
+     * Mandatory changed nothing, because `0 ?? true` is 0 (report item 14).
+     *
+     * Storing null whenever the two agree keeps the question as the single
+     * source of truth, while still allowing a genuine per-type override.
+     */
+    private static function mappingRequired(array $mapping, Question $question): ?bool
+    {
+        $required = ! empty($mapping['is_required']);
+
+        return $required === (bool) $question->is_required ? null : $required;
+    }
+
     private function syncTypeMappings(Request $request, Question $question): void
     {
+        // An update that carries no mappings at all is not an instruction to
+        // unmap the question from every user type — that would remove it from
+        // the client form entirely. Only rewrite when the form actually sent
+        // the section.
+        if (! $request->has('mappings')) {
+            return;
+        }
+
         $question->typeMappings()->delete();
 
         $mappings = $request->input('mappings', []);
@@ -186,7 +214,7 @@ class QuestionController extends Controller
                         'user_type_id' => $mapping['user_type_id'],
                         'user_type_subcategory_id' => $subId,
                         'order' => $question->order,
-                        'is_required' => ! empty($mapping['is_required']),
+                        'is_required' => self::mappingRequired($mapping, $question),
                         'is_active' => true,
                     ]);
                 }
@@ -195,7 +223,7 @@ class QuestionController extends Controller
                     'user_type_id' => $mapping['user_type_id'],
                     'user_type_subcategory_id' => null,
                     'order' => $question->order,
-                    'is_required' => ! empty($mapping['is_required']),
+                    'is_required' => self::mappingRequired($mapping, $question),
                     'is_active' => true,
                 ]);
             }

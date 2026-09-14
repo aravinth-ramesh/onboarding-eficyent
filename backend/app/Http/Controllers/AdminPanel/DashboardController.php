@@ -91,13 +91,22 @@ class DashboardController extends Controller
      */
     private function teamWorkload()
     {
+        // The review log is append-only: a reject, reopen, resubmit and
+        // approve leaves two rows for one application, so counting events
+        // showed the same application under both Approved and Rejected
+        // (report item 13). Reduce to the latest decision per application, so
+        // the workload reflects where each application actually stands.
+        // De-duplicated in memory rather than with a window function because
+        // the 30-day set is small and the suite runs on SQLite.
         $decisions = OnboardingReviewLog::whereIn('event', ['approved', 'rejected'])
             ->where('created_at', '>=', now()->subDays(30))
             ->whereNotNull('admin_id')
-            ->selectRaw('admin_id, event, count(*) as total')
-            ->groupBy('admin_id', 'event')
-            ->get()
-            ->groupBy('admin_id');
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['admin_id', 'event', 'user_onboarding_id', 'created_at'])
+            ->unique('user_onboarding_id')
+            ->groupBy('admin_id')
+            ->map(fn ($rows) => $rows->countBy('event'));
 
         return \App\Models\Admin::where('is_active', true)
             ->withCount(['assignedOnboardings as open_count' => fn ($q) => $q->where('status', 'completed')])
@@ -110,8 +119,8 @@ class DashboardController extends Controller
                 return (object) [
                     'admin' => $admin,
                     'open' => $admin->open_count,
-                    'approved_30d' => (int) $own->firstWhere('event', 'approved')?->total,
-                    'rejected_30d' => (int) $own->firstWhere('event', 'rejected')?->total,
+                    'approved_30d' => (int) ($own['approved'] ?? 0),
+                    'rejected_30d' => (int) ($own['rejected'] ?? 0),
                 ];
             });
     }

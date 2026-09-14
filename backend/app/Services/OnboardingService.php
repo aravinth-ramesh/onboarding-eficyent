@@ -322,12 +322,23 @@ class OnboardingService
      */
     public function canDecide(UserOnboarding $onboarding, Admin $admin): bool
     {
+        // Escalation narrows who may decide; it does not widen it. Both
+        // approval states were treated alike, so escalating to Compliance
+        // actually opened the application to every checker — and this runs
+        // before the assignment rules because an unassigned escalated
+        // application short-circuited below and was decidable by anyone
+        // (report item 11). Super Admin is kept as break-glass so an absent
+        // compliance team is never a deadlock.
+        if ($onboarding->approval_state === 'escalated') {
+            return $admin->isRole(AdminRole::Compliance) || $admin->isRole(AdminRole::SuperAdmin);
+        }
+
         if (! $onboarding->assigned_to || (int) $onboarding->assigned_to === (int) $admin->id) {
             return true;
         }
 
-        if ($onboarding->approval_state !== null) {
-            return true; // pending_approval or escalated — open to a checker
+        if ($onboarding->approval_state === 'pending_approval') {
+            return true; // handed off for a second pair of eyes
         }
 
         return $admin->isRole(AdminRole::Admin) || $admin->isRole(AdminRole::SuperAdmin);
