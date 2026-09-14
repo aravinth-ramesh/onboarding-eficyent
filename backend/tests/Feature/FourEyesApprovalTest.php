@@ -150,6 +150,9 @@ class FourEyesApprovalTest extends TestCase
     public function test_approval_is_refused_when_sections_are_not_all_reviewed(): void
     {
         $checker = $this->admin(AdminRole::Manager, 'c@t.com'); // no section marked
+        // Held by the checker, so the section gate is what this exercises
+        // rather than the claim rule added for report item 10.
+        $this->onboarding->update(['assigned_to' => $checker->id]);
 
         $this->actingAs($checker, 'admin')
             ->post(route('admin.user-onboardings.approve', $this->onboarding), ['comment' => 'x'])
@@ -162,6 +165,7 @@ class FourEyesApprovalTest extends TestCase
     public function test_rejection_does_not_require_all_sections_reviewed(): void
     {
         $checker = $this->admin(AdminRole::Manager, 'c@t.com');
+        $this->onboarding->update(['assigned_to' => $checker->id]);
 
         $this->actingAs($checker, 'admin')
             ->post(route('admin.user-onboardings.reject', $this->onboarding), ['comment' => 'Missing UBO evidence.'])

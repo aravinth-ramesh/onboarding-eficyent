@@ -77,12 +77,38 @@ class DecisionAuthorityTest extends TestCase
         $this->assertSame('rejected', $onboarding->fresh()->status);
     }
 
-    public function test_unassigned_work_is_open_to_any_eligible_admin(): void
+    public function test_a_manager_must_claim_unassigned_work_before_deciding_it(): void
     {
+        // This used to assert the opposite — that unassigned work was open to
+        // anyone — which is the behaviour reported as a defect: a Manager could
+        // approve applications that were never theirs (report item 10).
         $manager = $this->admin(AdminRole::Manager, 'm@t.com');
         $onboarding = $this->onboarding(null);
 
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Assign this application to yourself');
+
         app(OnboardingService::class)->reject($onboarding, $manager, 'Duplicate application.');
+    }
+
+    public function test_claiming_it_first_lets_the_manager_decide(): void
+    {
+        $manager = $this->admin(AdminRole::Manager, 'm2@t.com');
+        $onboarding = $this->onboarding(null);
+        $onboarding->update(['assigned_to' => $manager->id]);
+
+        app(OnboardingService::class)->reject($onboarding->fresh(), $manager, 'Duplicate application.');
+
+        $this->assertSame('rejected', $onboarding->fresh()->status);
+    }
+
+    public function test_an_admin_can_still_decide_unassigned_work(): void
+    {
+        // Deliberately scoped to Manager: other roles keep their behaviour.
+        $admin = $this->admin(AdminRole::Admin, 'a@t.com');
+        $onboarding = $this->onboarding(null);
+
+        app(OnboardingService::class)->reject($onboarding, $admin, 'Duplicate application.');
 
         $this->assertSame('rejected', $onboarding->fresh()->status);
     }

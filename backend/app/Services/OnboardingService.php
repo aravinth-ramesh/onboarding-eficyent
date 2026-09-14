@@ -333,8 +333,20 @@ class OnboardingService
             return $admin->isRole(AdminRole::Compliance) || $admin->isRole(AdminRole::SuperAdmin);
         }
 
-        if (! $onboarding->assigned_to || (int) $onboarding->assigned_to === (int) $admin->id) {
+        if ((int) $onboarding->assigned_to === (int) $admin->id) {
             return true;
+        }
+
+        if (! $onboarding->assigned_to) {
+            // Unassigned work is nobody's yet. A Manager must claim it before
+            // deciding it, so approvals are always traceable to whoever held
+            // the application (report item 10) — assigning to themselves takes
+            // one click and is already audited. Deliberately scoped to Manager
+            // rather than made a general rule: the reporter asked for this role
+            // only, and widening it would change Compliance and Admin too. If
+            // the same discipline is wanted everywhere, this is the line to
+            // generalise.
+            return ! $admin->isRole(AdminRole::Manager);
         }
 
         if ($onboarding->approval_state === 'pending_approval') {
@@ -369,7 +381,17 @@ class OnboardingService
         // be reachable when approval was not, which read as inconsistent
         // access control (EOP-89).
         if (! $this->canDecide($onboarding, $admin)) {
-            throw new \DomainException('This application is assigned to another reviewer. Ask them to decide, or have it submitted for approval or escalated first.');
+            // Say which rule stopped them — "assigned to another reviewer" was
+            // plainly wrong for an application assigned to nobody, and for one
+            // escalated to Compliance (EOP-83).
+            throw new \DomainException(match (true) {
+                $onboarding->approval_state === 'escalated'
+                    => 'This application has been escalated to Compliance, who will decide it.',
+                ! $onboarding->assigned_to
+                    => 'Assign this application to yourself before deciding it, so the decision is traceable to a reviewer.',
+                default
+                    => 'This application is assigned to another reviewer. Ask them to decide, or have it submitted for approval or escalated first.',
+            });
         }
 
         // An approval means the whole application checks out, so every section
