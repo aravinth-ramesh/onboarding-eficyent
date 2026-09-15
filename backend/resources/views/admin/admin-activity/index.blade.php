@@ -29,14 +29,36 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
+@php
+    // One card per admin rather than a flat row per action: following what a
+    // single member of staff did meant scanning the whole page (report item 8).
+    // Grouping applies to the page being shown, so the filters and pagination
+    // above behave exactly as before.
+    $grouped = $logs->getCollection()->groupBy(fn ($log) => $log->admin_id ?? 0);
+@endphp
+
+@forelse($grouped as $adminId => $entries)
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center gap-2 flex-wrap"
+             role="button" data-bs-toggle="collapse" data-bs-target="#activity-{{ $adminId }}"
+             aria-expanded="true" aria-controls="activity-{{ $adminId }}">
+            <i class="bi bi-chevron-down small text-muted"></i>
+            <span class="fw-semibold">{{ $entries->first()->admin->name ?? 'Unknown admin' }}</span>
+            @if($entries->first()->admin?->role)
+                <span class="badge bg-light text-dark border">{{ ucfirst(str_replace('_', ' ', $entries->first()->admin->role->value)) }}</span>
+            @endif
+            <span class="badge bg-secondary-subtle text-secondary border ms-auto">
+                {{ $entries->count() }} {{ Str::plural('action', $entries->count()) }}
+            </span>
+            <span class="text-muted small">latest {{ $entries->max('created_at')?->format('M d, Y H:i') ?? '-' }}</span>
+        </div>
+        <div class="collapse show" id="activity-{{ $adminId }}">
+        <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Time</th>
-                        <th>Admin</th>
                         <th>Action</th>
                         <th>Subject</th>
                         <th>Status</th>
@@ -45,10 +67,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($logs as $log)
+                    @foreach($entries as $log)
                         <tr>
                             <td style="white-space: nowrap;">{{ $log->created_at->format('M d, Y H:i:s') }}</td>
-                            <td>{{ $log->admin->name ?? 'Unknown' }}</td>
                             <td><code style="font-size: 0.8rem;">{{ $log->action }}</code></td>
                             <td>
                                 @if($log->subject_type)
@@ -74,19 +95,24 @@
                                 @endif
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No admin activity recorded yet.</td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
+        </div>
+        </div>
     </div>
-    @if($logs->hasPages())
+@empty
+    <div class="card">
+        <div class="card-body text-center text-muted py-4">No admin activity recorded yet.</div>
+    </div>
+@endforelse
+
+@if($logs->hasPages())
+    <div class="card">
         <div class="card-footer">
             {{ $logs->links() }}
         </div>
-    @endif
-</div>
+    </div>
+@endif
 @endsection

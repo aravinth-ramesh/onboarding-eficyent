@@ -235,6 +235,34 @@
                                 @elseif($onboarding->approval_state === 'pending_approval')
                                     <span class="badge bg-info-subtle text-info-emphasis border" title="Awaiting a second reviewer"><i class="bi bi-hourglass-split"></i></span>
                                 @endif
+                                @if($onboarding->status === 'completed')
+                                    @php
+                                        // Derived, not stored: the status column and the approval
+                                        // workflow are untouched. "Ready" is the same condition
+                                        // OnboardingService::decide() enforces before an approval,
+                                        // so the badge predicts whether Approve will actually work.
+                                        $reviewed = $onboarding->sections_reviewed_count ?? 0;
+                                        $sectionsTotal = $onboarding->sections_total_count ?? 0;
+                                        $touched = $onboarding->sections_touched_count ?? 0;
+                                        $ready = $sectionsTotal > 0 && $reviewed === $sectionsTotal;
+                                    @endphp
+                                    @if($ready)
+                                        <span class="badge bg-success-subtle text-success-emphasis border"
+                                              title="Every section reviewed — this can be decided">
+                                            <i class="bi bi-check2-all"></i> Ready
+                                        </span>
+                                    @elseif($reviewed > 0 || $touched > 0)
+                                        <span class="badge bg-info-subtle text-info-emphasis border"
+                                              title="{{ $reviewed }} of {{ $sectionsTotal }} sections reviewed">
+                                            Review {{ $reviewed }}/{{ $sectionsTotal }}
+                                        </span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border"
+                                              title="No section has been reviewed yet">
+                                            Not started
+                                        </span>
+                                    @endif
+                                @endif
                                 @include('admin.user-onboardings._aging-badge', ['aging' => $onboarding->reviewAging()])
                             </td>
                             <td>

@@ -56,7 +56,24 @@ class UserOnboardingController extends Controller
 
     public function index(Request $request): View
     {
-        $onboardings = $this->filteredQuery($request)->with('assignee')->latest()->paginate(20)->withQueryString();
+        // Review progress alongside the status, so an admin can tell at a
+        // glance which submitted applications are actually ready to decide.
+        // Every one of them read "Awaiting Review" whether nothing, some or
+        // all of it had been reviewed (report item 9). Aggregated in SQL
+        // rather than via sectionReviewProgress(), which walks answers in PHP
+        // and would be N+1 across the page.
+        $onboardings = $this->filteredQuery($request)
+            ->with('assignee')
+            ->withCount([
+                'sectionReviews as sections_reviewed_count' => fn ($q) => $q->where('status', 'completed'),
+                'sectionReviews as sections_touched_count' => fn ($q) => $q->whereIn('status', ['in_progress', 'completed']),
+                // The denominator the approval gate uses: groups the client
+                // actually answered, not every group that exists.
+                'answers as sections_total_count' => fn ($q) => $q
+                    ->join('questions', 'questions.id', '=', 'user_answers.question_id')
+                    ->select(\Illuminate\Support\Facades\DB::raw('count(distinct questions.question_group_id)')),
+            ])
+            ->latest()->paginate(20)->withQueryString();
         $userTypes = UserType::orderBy('order')->get();
         $admins = Admin::reviewers()->get();
 

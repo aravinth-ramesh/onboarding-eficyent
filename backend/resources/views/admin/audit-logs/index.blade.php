@@ -11,14 +11,42 @@
     </p>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
+@php
+    // One card per application rather than a flat row per edit: reading a
+    // single client's activity meant scanning the whole page for their rows
+    // (report item 6). Grouping is applied to the page being shown, so the
+    // filters and pagination above keep working exactly as before.
+    $grouped = $logs->getCollection()->groupBy(fn ($log) => $log->answer?->onboarding?->id ?? 0);
+@endphp
+
+@forelse($grouped as $onboardingId => $entries)
+    @php $onb = $entries->first()->answer?->onboarding; @endphp
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center gap-2 flex-wrap"
+             role="button" data-bs-toggle="collapse" data-bs-target="#changes-{{ $onboardingId }}"
+             aria-expanded="true" aria-controls="changes-{{ $onboardingId }}">
+            <i class="bi bi-chevron-down small text-muted"></i>
+            @if($onb)
+                <a href="{{ route('admin.user-onboardings.show', $onb) }}" class="fw-semibold text-decoration-none" onclick="event.stopPropagation();">{{ $onb->reference }}</a>
+                <span class="badge badge-{{ $onb->status }}">{{ ucfirst(str_replace('_', ' ', $onb->status)) }}</span>
+                <span class="text-muted small">{{ $onb->displayName }}</span>
+            @else
+                <span class="text-muted">Application no longer available</span>
+            @endif
+            <span class="badge bg-secondary-subtle text-secondary border ms-auto">
+                {{ $entries->count() }} {{ Str::plural('change', $entries->count()) }}
+            </span>
+            <span class="text-muted small">
+                latest {{ $entries->max('edited_at')?->format('M d, Y H:i') ?? '-' }}
+            </span>
+        </div>
+        <div class="collapse show" id="changes-{{ $onboardingId }}">
+        <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Application</th>
                         <th>Question</th>
                         <th>Old Value</th>
                         <th>New Value</th>
@@ -26,19 +54,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($logs as $log)
-                        @php $onb = $log->answer?->onboarding; @endphp
+                    @foreach($entries as $log)
                         <tr>
                             <td style="white-space: nowrap;">{{ $log->edited_at?->format('M d, Y H:i') ?? '-' }}</td>
-                            <td>
-                                @if($onb)
-                                    <a href="{{ route('admin.user-onboardings.show', $onb) }}" class="fw-semibold text-decoration-none">{{ $onb->reference }}</a>
-                                    <span class="badge badge-{{ $onb->status }} ms-1">{{ ucfirst(str_replace('_', ' ', $onb->status)) }}</span>
-                                    <div><small class="text-muted">{{ $onb->displayName }}</small></div>
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
-                            </td>
                             <td>{{ Str::limit($log->question->label ?? 'N/A', 40) }}</td>
                             @php
                                 $oldText = \App\Support\AnswerValueFormatter::readable($log->old_value, $log->question);
@@ -87,21 +105,26 @@
                                 @endif
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                No post-submission changes yet — clients haven't edited anything after submitting.
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
+        </div>
+        </div>
     </div>
-    @if($logs->hasPages())
+@empty
+    <div class="card">
+        <div class="card-body text-center text-muted py-4">
+            No post-submission changes yet — clients haven't edited anything after submitting.
+        </div>
+    </div>
+@endforelse
+
+@if($logs->hasPages())
+    <div class="card">
         <div class="card-footer">
             {{ $logs->links() }}
         </div>
-    @endif
-</div>
+    </div>
+@endif
 @endsection
