@@ -290,6 +290,34 @@ npm install
 npm start             # Runs on http://localhost:3000
 ```
 
+### Deploying an update
+
+```bash
+cd backend
+php artisan migrate
+php artisan onboarding:sync-config    # See below — run this on every deploy
+```
+
+Much of this platform's behaviour is configuration stored in the database —
+question types, validation rules, table columns, the country registration
+catalog — while the definitions that produce it live in code (`config/` and
+`app/Support/*`). A deploy runs migrations, not seeders, so a changed
+definition does not reach an existing installation on its own.
+
+`onboarding:sync-config` closes that gap. It applies every shipped definition
+to the current database, and is safe to run repeatedly: a second run reports
+`Already in sync — nothing to change.` Use `--dry-run` to see what would
+change without writing anything.
+
+This matters because the failure is silent. The client form keeps working —
+it falls back to the config file — while the admin panel shows stale or empty
+data, so nobody notices until someone files a bug about a screen being blank
+or a setting not taking effect.
+
+Prefer this command over writing a new data migration when you change a
+definition under `app/Support/`. Add the applier to `SyncOnboardingConfig`
+instead, minding the documented ordering.
+
 ### Document Validation — server dependencies
 
 Uploaded KYC documents are validated locally (type classification, issue/expiry

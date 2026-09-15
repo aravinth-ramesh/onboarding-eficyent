@@ -24,9 +24,19 @@ class IndustryClassificationOptions
             return 0;
         }
 
+        // Only count questions whose options actually move, so a re-run of the
+        // sync command reports nothing rather than re-claiming the same work.
         return Question::where('type', 'mcc')
             ->get()
-            ->each(fn (Question $question) => $question->update(['options' => $options]))
+            ->filter(function (Question $question) use ($options) {
+                if ($question->options == $options) {
+                    return false;
+                }
+
+                $question->update(['options' => $options]);
+
+                return true;
+            })
             ->count();
     }
 

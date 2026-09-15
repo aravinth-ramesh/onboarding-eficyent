@@ -31,11 +31,13 @@ class CountryRegistrationCatalog
         return $written;
     }
 
-    /** @return int rows written for this country */
+    /** @return int rows actually created or altered for this country */
     private static function seedCountry(string $code, array $fields): int
     {
+        $changed = 0;
+
         foreach ($fields as $index => $field) {
-            CountryRegistration::updateOrCreate(
+            $row = CountryRegistration::updateOrCreate(
                 ['country_code' => $code, 'field_key' => $field['key']],
                 [
                     'label' => $field['label'],
@@ -50,9 +52,16 @@ class CountryRegistrationCatalog
                     'is_active' => true,
                 ]
             );
+
+            // Count real work, not rows touched: the sync command's value is
+            // that a second run reports nothing, which is how an operator can
+            // tell whether a deploy actually needed it.
+            if ($row->wasRecentlyCreated || $row->wasChanged()) {
+                $changed++;
+            }
         }
 
-        return count($fields);
+        return $changed;
     }
 
     private static function appliesTo(array $types): string
