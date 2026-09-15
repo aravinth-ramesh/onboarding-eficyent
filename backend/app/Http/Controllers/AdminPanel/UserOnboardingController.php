@@ -185,8 +185,14 @@ class UserOnboardingController extends Controller
             'ids.*' => 'integer|exists:user_onboardings,id',
             'subject' => 'required|string|max:500',
             'body' => 'required|string|max:10000',
-            'send_at' => 'nullable|date|after:now',
+            // See ScheduleTime: `after:now` compared a local wall-clock string
+            // against UTC now (report item 19).
+            'send_at' => 'nullable|date',
         ]);
+
+        if (! empty($validated['send_at']) && ! \App\Support\ScheduleTime::isFuture($validated['send_at'])) {
+            return back()->withErrors(['send_at' => 'Choose a time in the future.'])->withInput();
+        }
 
         $admin = Auth::guard('admin')->user();
         $redirect = redirect()->route('admin.user-onboardings.index', $request->except(['ids', 'subject', 'body', 'send_at', '_token']));
@@ -198,12 +204,14 @@ class UserOnboardingController extends Controller
                 'subject' => $validated['subject'],
                 'body' => $validated['body'],
                 'onboarding_ids' => array_values($validated['ids']),
-                'send_at' => $validated['send_at'],
+                'send_at' => \App\Support\ScheduleTime::toUtc($validated['send_at']),
                 'status' => 'pending',
             ]);
 
             return $redirect->with('success',
-                "Email scheduled for {$scheduled->send_at->format('M d, Y H:i')} to ".count($validated['ids']).' client(s).');
+                'Email scheduled for '
+                    .\App\Support\ScheduleTime::forDisplay($scheduled->send_at)->format('M d, Y H:i')
+                    .' to '.count($validated['ids']).' client(s).');
         }
 
         $sent = $this->emailService->sendBulk($admin, $validated['ids'], $validated['subject'], $validated['body']);
@@ -555,7 +563,12 @@ class UserOnboardingController extends Controller
         }
 
         return redirect()
-            ->to(route('admin.user-onboardings.show', $userOnboarding).'#documents')
+            // Back to the document just decided, not the top of the card.
+            // Returning to #documents meant the page re-rendered, the new flash
+            // alert shifted everything down after the browser had already
+            // jumped, and the admin landed at the top of the page looking at
+            // step 1 — so every approval cost a scroll back (report item 16).
+            ->to(route('admin.user-onboardings.show', $userOnboarding).'#document-'.$file->id)
             ->with('success', $validated['review_decision'] === 'resubmit_requested'
                 ? 'Resubmission requested — the client has been notified.'
                 : 'Document review saved.');

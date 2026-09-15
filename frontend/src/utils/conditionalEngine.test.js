@@ -1,4 +1,5 @@
 import { evaluateConditionalRules } from './conditionalEngine';
+import { validateQuestion } from './validation';
 
 const showRule = (overrides = {}) => ({
   parent_question_id: 1, comparison_type: 'equals', trigger_value: 'yes',
@@ -61,5 +62,42 @@ describe('conditional rule engine', () => {
     const rules = [showRule({ trigger_value: 'aml' })];
     expect(evaluateConditionalRules(rules, { 1: ['kyc', 'aml'] })).toBe(true);
     expect(evaluateConditionalRules(rules, { 1: ['kyc'] })).toBe(false);
+  });
+});
+
+describe('a field revealed by "Yes" is enforced (report item 5)', () => {
+  // Mirrors what QuestionsStep does per step: skip questions the rules hide,
+  // then require the ones that remain. Only `show` and `hide` actions exist, so
+  // a revealed field is mandatory purely by virtue of is_required — which is
+  // why report item 14 (the Mandatory toggle that would not come back on)
+  // presents as this: the flag was set in the admin panel and silently lost.
+  const enforce = (question, answers) => {
+    if (!evaluateConditionalRules(question.conditional_rules, answers)) return null;
+    return validateQuestion(question, answers[question.id]);
+  };
+
+  const describeControls = {
+    id: 2,
+    type: 'textarea',
+    is_required: true,
+    conditional_rules: [showRule({ parent_question_id: 1, trigger_value: 'yes' })],
+  };
+
+  it('blocks when "Yes" reveals it and it is left empty', () => {
+    expect(enforce(describeControls, { 1: 'yes', 2: '' })).toBe('This field is required.');
+  });
+
+  it('passes once it is filled in', () => {
+    expect(enforce(describeControls, { 1: 'yes', 2: 'Enhanced due diligence applied.' })).toBeNull();
+  });
+
+  it('does not block when "No" hides it', () => {
+    expect(enforce(describeControls, { 1: 'no', 2: '' })).toBeNull();
+  });
+
+  it('is not enforced while it is left non-mandatory', () => {
+    // The state item 14 stranded these fields in.
+    const optional = { ...describeControls, is_required: false };
+    expect(enforce(optional, { 1: 'yes', 2: '' })).toBeNull();
   });
 });

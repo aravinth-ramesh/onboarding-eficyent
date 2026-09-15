@@ -138,20 +138,29 @@ class ScheduledEmailController extends Controller
     public function duplicate(Request $request, ScheduledEmail $scheduledEmail): RedirectResponse
     {
         $validated = $request->validate([
-            'send_at' => 'required|date|after:now',
+            // Not `after:now`: that parses the naive input in the app's zone
+            // (UTC) while the admin typed local time, so a genuinely future
+            // time could be rejected as past (report item 19).
+            'send_at' => 'required|date',
         ]);
+
+        if (! \App\Support\ScheduleTime::isFuture($validated['send_at'])) {
+            return back()->withErrors(['send_at' => 'Choose a time in the future.'])->withInput();
+        }
 
         $copy = ScheduledEmail::create([
             'admin_id' => Auth::guard('admin')->id(),
             'subject' => $scheduledEmail->subject,
             'body' => $scheduledEmail->body,
             'onboarding_ids' => $scheduledEmail->onboarding_ids,
-            'send_at' => $validated['send_at'],
+            'send_at' => \App\Support\ScheduleTime::toUtc($validated['send_at']),
             'status' => 'pending',
         ]);
 
         return $this->backToIndex($request)
-            ->with('success', "Scheduled email duplicated for {$copy->send_at->format('M d, Y H:i')} to ".count($copy->onboarding_ids).' client(s).');
+            ->with('success', 'Scheduled email duplicated for '
+                .\App\Support\ScheduleTime::forDisplay($copy->send_at)->format('M d, Y H:i')
+                .' to '.count($copy->onboarding_ids).' client(s).');
     }
 
     public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
@@ -161,8 +170,9 @@ class ScheduledEmailController extends Controller
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
             fputcsv($out, [
-                'Send At (UTC)', 'Status', 'Subject', 'Recipients', 'Sent Count',
-                'Scheduled By', 'Created At (UTC)', 'Processed At (UTC)',
+                'Send At ('.\App\Support\ScheduleTime::zone().')', 'Status', 'Subject', 'Recipients', 'Sent Count',
+                'Scheduled By', 'Created At ('.\App\Support\ScheduleTime::zone().')',
+                'Processed At ('.\App\Support\ScheduleTime::zone().')',
             ]);
 
             $this->filteredQuery($request)
@@ -170,14 +180,14 @@ class ScheduledEmailController extends Controller
                 ->lazy()
                 ->each(function (ScheduledEmail $email) use ($out) {
                     fputcsv($out, [
-                        $email->send_at->toDateTimeString(),
+                        \App\Support\ScheduleTime::forDisplay($email->send_at)->toDateTimeString(),
                         $email->status,
                         $email->subject,
                         count($email->onboarding_ids),
                         $email->sent_count ?? '',
                         $email->admin->name ?? '',
-                        $email->created_at->toDateTimeString(),
-                        $email->processed_at?->toDateTimeString() ?? '',
+                        \App\Support\ScheduleTime::forDisplay($email->created_at)->toDateTimeString(),
+                        \App\Support\ScheduleTime::forDisplay($email->processed_at)?->toDateTimeString() ?? '',
                     ]);
                 });
 

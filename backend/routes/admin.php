@@ -98,6 +98,14 @@ Route::middleware(['web', AdminAuth::class, \App\Http\Middleware\LogAdminActivit
     // Sectioned review — per-section progress and per-document verdicts.
     Route::post('user-onboardings/{userOnboarding}/sections/{group}/review', [UserOnboardingController::class, 'reviewSection'])->name('user-onboardings.sections.review')->middleware('ability:'.Ability::REVIEW_ONBOARDING);
     Route::post('user-onboardings/{userOnboarding}/documents/{file}/review', [UserOnboardingController::class, 'reviewDocument'])->name('user-onboardings.documents.review')->middleware('ability:'.Ability::REVIEW_ONBOARDING);
+        // Read-only uploads: a table cell's file, and a follow-up question's
+        // attachment. Both were linked by frozen storage URL and would not open
+        // (report item 20).
+        Route::get('user-onboardings/{userOnboarding}/answers/{answer}/cell/{row}/{column}', [DocumentReviewController::class, 'serveTableCell'])
+            ->whereNumber('row')
+            ->name('documents.table-cell');
+        Route::get('documents/follow-up/{file}', [DocumentReviewController::class, 'serveFollowUpFile'])
+            ->name('documents.follow-up');
     Route::get('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'createQuestion'])->name('user-onboardings.new-question')->middleware('ability:'.Ability::MESSAGE_CLIENT);
     Route::post('user-onboardings/{userOnboarding}/new-question', [UserOnboardingController::class, 'storeQuestion'])->name('user-onboardings.store-question')->middleware('ability:'.Ability::MESSAGE_CLIENT);
     Route::post('send-email', [UserOnboardingController::class, 'sendEmail'])->name('send-email')->middleware('ability:'.Ability::MESSAGE_CLIENT);

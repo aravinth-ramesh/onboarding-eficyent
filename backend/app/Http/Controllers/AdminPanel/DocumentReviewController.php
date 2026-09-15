@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\AdminPanel;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminQuestionAnswerFile;
 use App\Models\AnswerFile;
+use App\Models\UserAnswer;
+use App\Models\UserOnboarding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -108,6 +111,67 @@ class DocumentReviewController extends Controller
     public function serve(Request $request, AnswerFile $file): StreamedResponse
     {
         $onboarding = $file->answer?->onboarding;
+        abort_unless($onboarding !== null, 404);
+        abort_unless($onboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $disk = Storage::disk($file->disk);
+        abort_unless($disk->exists($file->s3_path), 404);
+
+        return $disk->response(
+            $file->s3_path,
+            $file->original_filename,
+            ['Content-Type' => $file->mime_type ?: 'application/octet-stream'],
+            $request->boolean('download') ? 'attachment' : 'inline',
+        );
+    }
+
+    /**
+     * Serve a file stored inside a table answer's cell.
+     *
+     * These were linked with the storage URL frozen into the answer JSON at
+     * upload time, which points at the client app's host on the public disk and
+     * is unsigned on S3 — so the link 404s or 403s, and when the JSON predates
+     * the `url` key the template rendered a plain span that could not be
+     * clicked at all (report item 20). The path is read out of the answer
+     * itself, never taken from the request.
+     */
+    public function serveTableCell(
+        Request $request,
+        UserOnboarding $userOnboarding,
+        UserAnswer $answer,
+        int $row,
+        string $column,
+    ): StreamedResponse {
+        abort_unless((int) $answer->user_onboarding_id === (int) $userOnboarding->id, 404);
+        abort_unless($userOnboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
+
+        $rows = is_string($answer->value) ? json_decode($answer->value, true) : ($answer->value ?? []);
+        $cell = is_array($rows) ? ($rows[$row][$column] ?? null) : null;
+
+        abort_unless(is_array($cell), 404);
+
+        $path = $cell['path'] ?? $cell['s3_path'] ?? null;
+        abort_unless(is_string($path) && $path !== '', 404);
+
+        $disk = Storage::disk($cell['disk'] ?? config('onboarding_uploads.disk'));
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->response(
+            $path,
+            $cell['filename'] ?? basename($path),
+            ['Content-Type' => $cell['mime'] ?? 'application/octet-stream'],
+            $request->boolean('download') ? 'attachment' : 'inline',
+        );
+    }
+
+    /**
+     * Serve a document attached to a follow-up question's answer. These had no
+     * admin route at all — the only binding is for AnswerFile (report item 20).
+     */
+    public function serveFollowUpFile(Request $request, AdminQuestionAnswerFile $file): StreamedResponse
+    {
+        $onboarding = $file->answer?->adminQuestion?->user?->onboarding;
+
         abort_unless($onboarding !== null, 404);
         abort_unless($onboarding->isVisibleTo(Auth::guard('admin')->user()), 403);
 

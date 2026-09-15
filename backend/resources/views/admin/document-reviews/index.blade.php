@@ -91,7 +91,7 @@
                                 <span class="fw-semibold">{{ $application->displayName }}</span>
                                 <span class="text-muted">· {{ $application->reference }}</span>
                                 <span class="badge bg-secondary-subtle text-secondary border ms-1">{{ $appFiles->count() }} {{ Str::plural('document', $appFiles->count()) }}</span>
-                                <a class="small ms-2" href="{{ route('admin.user-onboardings.show', $application) }}">View onboarding →</a>
+                                <a class="small ms-2" href="{{ route('admin.user-onboardings.show', $application) }}#documents">View onboarding →</a>
                             </td>
                         </tr>
                         @foreach($appFiles as $file)

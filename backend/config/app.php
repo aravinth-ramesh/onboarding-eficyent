@@ -81,6 +81,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Display Timezone
+    |--------------------------------------------------------------------------
+    |
+    | The zone admins enter and read times in. Storage stays UTC — the
+    | scheduler compares against it — so this is applied only at the edges, by
+    | App\Support\ScheduleTime. Leave as UTC to keep the previous behaviour.
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'UTC'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

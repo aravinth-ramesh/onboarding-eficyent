@@ -355,7 +355,12 @@ function QuestionsStep({ step, onBack, isFirstStep }) {
       // (regex/min/max/date) only apply when there's a value to check.
       if (question.type === 'file') return;
       const value = answers[question.id];
-      const typeError = validateByType(question.type, value, question.validation_rules);
+      // A required address means every part of it. This path calls
+      // validateByType directly rather than validateQuestion, so the flag has
+      // to be passed through or a part-filled address slips by (report item 2).
+      const typeError = validateByType(question.type, value, question.validation_rules, {
+        requireAll: !!question.is_required,
+      });
       if (typeError) {
         errors[question.id] = typeError;
       }

@@ -113,9 +113,9 @@
                                 @endif
                             </td>
                             <td style="white-space: nowrap;">
-                                {{ $email->send_at->format('M d, Y H:i') }}
+                                {{ \App\Support\ScheduleTime::forDisplay($email->send_at)->format('M d, Y H:i') }}
                                 @if($email->status === 'pending')
-                                    <div class="small text-muted">{{ $email->send_at->diffForHumans() }}</div>
+                                    <div class="small text-muted">{{ \App\Support\ScheduleTime::forDisplay($email->send_at)->diffForHumans() }}</div>
                                 @endif
                             </td>
                             <td>{{ Str::limit($email->subject, 50) }}</td>
@@ -216,7 +216,7 @@
                     <div class="mb-0">
                         <label for="dupSendAt" class="form-label">Send at <span class="text-danger">*</span></label>
                         <input type="datetime-local" class="form-control" id="dupSendAt" name="send_at" required>
-                        <div class="form-text">Server clock (UTC). Must be in the future.</div>
+                        <div class="form-text">Times are in {{ \App\Support\ScheduleTime::zone() }}. Must be in the future.</div>
                     </div>
                 </div>
                 <div class="modal-footer">

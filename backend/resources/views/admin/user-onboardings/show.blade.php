@@ -178,6 +178,9 @@
         width: auto;
         min-width: 100%;
     }
+    /* Approving a document reloads the page and jumps to its anchor; without
+       a margin the row lands under the header (report item 16). */
+    .document-row { scroll-margin-top: 5rem; }
     .answer-table { min-width: 680px; }
     .answer-table th { white-space: nowrap; }
     .answer-table td { min-width: 110px; vertical-align: top; word-break: normal; overflow-wrap: anywhere; }
@@ -768,13 +771,11 @@
                                                                         @if(($col['type'] ?? null) === 'file')
                                                                             @if(is_array($cellVal) && (!empty($cellVal['filename']) || !empty($cellVal['path'])))
                                                                                 @php $cellName = $cellVal['filename'] ?? 'Uploaded file'; @endphp
-                                                                                @if(!empty($cellVal['url']))
-                                                                                    <a href="{{ $cellVal['url'] }}" target="_blank" class="submitted-answers-file-link">
-                                                                                        <i class="bi bi-paperclip"></i> {{ $cellName }}
-                                                                                    </a>
-                                                                                @else
-                                                                                    <span><i class="bi bi-paperclip"></i> {{ $cellName }}</span>
-                                                                                @endif
+                                                                                {{-- Served, not the URL frozen into the answer at upload time (report item 20). --}}
+                                                                                <a href="{{ route('admin.documents.table-cell', [$userOnboarding, $answer, $rowIdx, $col['key']]) }}"
+                                                                                   target="_blank" rel="noopener" class="submitted-answers-file-link">
+                                                                                    <i class="bi bi-paperclip"></i> {{ $cellName }}
+                                                                                </a>
                                                                             @else
                                                                                 <span class="text-muted">&mdash;</span>
                                                                             @endif
@@ -891,7 +892,11 @@
                     $otherUploads->push((object) [
                         'label' => ($a->question->label ?? 'Table') . ' — ' . ($col['label'] ?? 'File') . ' (row ' . ($ri + 1) . ')',
                         'name' => $cell['filename'] ?? 'Uploaded file',
-                        'url' => $cell['url'] ?? null,
+                        // Served through an authorised route rather than the
+                        // storage URL frozen into the answer at upload time,
+                        // which pointed at the wrong host and was unsigned on
+                        // S3 (report item 20).
+                        'url' => route('admin.documents.table-cell', [$userOnboarding, $a, $ri, $col['key']]),
                     ]);
                 }
             }
@@ -902,7 +907,7 @@
             $otherUploads->push((object) [
                 'label' => 'Follow-up question: ' . ($aq->label ?? 'Admin question'),
                 'name' => $f->original_filename,
-                'url' => $f->url,
+                'url' => route('admin.documents.follow-up', $f),
             ]);
         }
     }
@@ -923,7 +928,7 @@
                             $decision = $file->review_decision;
                             $decisionMeta = $decision ? ($docDecisionBadges[$decision] ?? null) : null;
                         @endphp
-                        <div class="document-row border rounded p-2 mb-2">
+                        <div class="document-row border rounded p-2 mb-2" id="document-{{ $file->id }}">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                 <div>
                                     <div class="text-muted small">{{ $answer->question->label }}</div>

@@ -301,7 +301,7 @@
                 <div class="mb-2 d-none" id="bulkEmailSendAtWrap">
                     <label for="bulkEmailSendAt" class="form-label">Send at</label>
                     <input type="datetime-local" class="form-control" id="bulkEmailSendAt">
-                    <div class="form-text">Runs on the server clock (UTC). Must be in the future.</div>
+                    <div class="form-text">Times are in {{ \App\Support\ScheduleTime::zone() }}. Must be in the future.</div>
                 </div>
                 <div class="text-danger d-none" id="bulkEmailError" style="font-size: 0.85rem;"></div>
             </div>
