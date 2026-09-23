@@ -318,6 +318,40 @@ class UserOnboarding extends Model
         return $this->hasMany(OnboardingSectionReview::class);
     }
 
+    /** Every uploaded document across this application's answers. */
+    public function answerFiles(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(
+            AnswerFile::class,
+            UserAnswer::class,
+            'user_onboarding_id',
+            'user_answer_id',
+            'id',
+            'id',
+        );
+    }
+
+    /**
+     * How many uploaded documents still carry no verdict.
+     *
+     * Approval gated on section sign-off alone, so an application could be
+     * approved with every document unreviewed — the documents were visible in
+     * the UI but counted for nothing (report item 7).
+     */
+    public function documentReviewProgress(): array
+    {
+        $files = $this->relationLoaded('answerFiles') ? $this->answerFiles : $this->answerFiles()->get();
+
+        $total = $files->count();
+        $done = $files->filter(fn ($f) => $f->review_decision !== null)->count();
+
+        return [
+            'done' => $done,
+            'total' => $total,
+            'complete' => $done === $total,
+        ];
+    }
+
     /**
      * The sections (QuestionGroups) this application actually contains, in
      * display order, each paired with its saved review marker (or null). This

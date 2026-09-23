@@ -241,8 +241,12 @@
                                         // workflow are untouched. "Ready" is the same condition
                                         // OnboardingService::decide() enforces before an approval,
                                         // so the badge predicts whether Approve will actually work.
-                                        $reviewed = $onboarding->sections_reviewed_count ?? 0;
-                                        $sectionsTotal = $onboarding->sections_total_count ?? 0;
+                                        // Documents are part of the review, not a
+                                        // separate thing the count ignores (item 7).
+                                        $reviewed = ($onboarding->sections_reviewed_count ?? 0)
+                                            + ($onboarding->documents_reviewed_count ?? 0);
+                                        $sectionsTotal = ($onboarding->sections_total_count ?? 0)
+                                            + ($onboarding->documents_total_count ?? 0);
                                         $touched = $onboarding->sections_touched_count ?? 0;
                                         $ready = $sectionsTotal > 0 && $reviewed === $sectionsTotal;
                                     @endphp

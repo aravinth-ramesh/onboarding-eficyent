@@ -401,6 +401,19 @@ class OnboardingService
             if ($progress['total'] > 0 && ! $progress['complete']) {
                 throw new \DomainException('Every section must be reviewed before the application can be approved.');
             }
+
+            // And every uploaded document. Sections alone were the gate, so an
+            // application could be approved with no document looked at —
+            // exactly the evidence a KYB approval rests on (report item 7).
+            $documents = $onboarding->documentReviewProgress();
+            if ($documents['total'] > 0 && ! $documents['complete']) {
+                $outstanding = $documents['total'] - $documents['done'];
+
+                throw new \DomainException(
+                    $outstanding.' uploaded '.\Illuminate\Support\Str::plural('document', $outstanding)
+                    .' still need a verdict before the application can be approved.'
+                );
+            }
         }
 
         $onboarding->update([

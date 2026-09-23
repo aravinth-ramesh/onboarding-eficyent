@@ -72,6 +72,12 @@ class UserOnboardingController extends Controller
                 'answers as sections_total_count' => fn ($q) => $q
                     ->join('questions', 'questions.id', '=', 'user_answers.question_id')
                     ->select(\Illuminate\Support\Facades\DB::raw('count(distinct questions.question_group_id)')),
+                // Documents count towards the review too — they were visible in
+                // the application but excluded from the progress figure, so it
+                // read complete while every document was still unreviewed
+                // (report item 7).
+                'answerFiles as documents_total_count',
+                'answerFiles as documents_reviewed_count' => fn ($q) => $q->whereNotNull('review_decision'),
             ])
             ->latest()->paginate(20)->withQueryString();
         $userTypes = UserType::orderBy('order')->get();
@@ -442,11 +448,55 @@ class UserOnboardingController extends Controller
      * application, so a long review can be paused and resumed. Only marks
      * belonging to sections the application actually contains are accepted.
      */
+    /**
+     * Why this admin may not review right now, or null if they may.
+     *
+     * Naming the actual rule matters: the refusal used to be a bare 403, and
+     * the client's fallback text ("Could not save the section") gave the admin
+     * no idea whether they were too early, looking at someone else's case, or
+     * simply lacked access (report item 4).
+     */
+    private function reviewRefusal(UserOnboarding $userOnboarding): ?string
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if ($userOnboarding->isReviewableBy($admin)) {
+            return null;
+        }
+
+        // Not being allowed to see the application at all stays a 403: that is
+        // an authorization failure, not something to explain in a toast. Only
+        // the workflow refusals below carry a message.
+        abort_unless($userOnboarding->isVisibleTo($admin), 403);
+
+        if (! $userOnboarding->isSubmittedForReview()) {
+            return 'Application review is available only after the user submits the application.';
+        }
+
+        return 'This application is being reviewed by '
+            .($userOnboarding->assignee->name ?? 'another reviewer')
+            .'. Reassign it to yourself to take over the review.';
+    }
+
+    /** Return a refusal the way the caller asked for it — JSON or a redirect. */
+    private function refuse(Request $request, string $message, string $back): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 403);
+        }
+
+        return redirect()->to($back)->with('error', $message);
+    }
+
     public function reviewSection(Request $request, UserOnboarding $userOnboarding, QuestionGroup $group): RedirectResponse|JsonResponse
     {
         // Not before the client submits, and not by a second reviewer while
-        // someone else holds it (report items 4 and 12).
-        abort_unless($userOnboarding->isReviewableBy(Auth::guard('admin')->user()), 403);
+        // someone else holds it. A bare 403 left the client falling back to
+        // "Could not save the section", which tells the admin nothing about
+        // why (report item 4).
+        if ($refusal = $this->reviewRefusal($userOnboarding)) {
+            return $this->refuse($request, $refusal, route('admin.user-onboardings.show', $userOnboarding));
+        }
 
         $validated = $request->validate([
             'status' => ['required', 'in:pending,in_progress,completed'],
@@ -554,7 +604,9 @@ class UserOnboardingController extends Controller
      */
     public function reviewDocument(Request $request, UserOnboarding $userOnboarding, AnswerFile $file): RedirectResponse
     {
-        abort_unless($userOnboarding->isReviewableBy(Auth::guard('admin')->user()), 403);
+        if ($refusal = $this->reviewRefusal($userOnboarding)) {
+            return $this->refuse($request, $refusal, route('admin.user-onboardings.show', $userOnboarding).'#documents');
+        }
 
         // The file must hang off an answer belonging to this application.
         $file->loadMissing('answer');
