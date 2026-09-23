@@ -549,6 +549,22 @@ class OnboardingController extends Controller
             ];
         })->sortBy('order')->values();
 
+        // Drop the groups belonging to a step an admin disabled. Skipped steps
+        // are already filtered out of the steps payload, but their groups still
+        // came through here — so the client was never asked those questions yet
+        // still rendered a heading for each on the review and submitted-answers
+        // screens, as an empty section (report item 6). Filtered server-side so
+        // every client view agrees rather than each remembering to check.
+        $skippedSlugs = $onboarding->steps()
+            ->where('status', 'skipped')
+            ->get()
+            ->flatMap(fn (UserOnboardingStep $step) => $step->config['groups'] ?? [])
+            ->unique();
+
+        if ($skippedSlugs->isNotEmpty()) {
+            $groups = $groups->reject(fn ($group) => $skippedSlugs->contains($group['slug']))->values();
+        }
+
         return response()->json(['data' => $groups]);
     }
 
